@@ -22,12 +22,20 @@ export default function HomePage() {
             </span>
           </div>
 
-          <Link
-            href="/studio"
-            className="rounded-xl border border-[#F5F1E8]/12 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3]"
-          >
-            Open Studio
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/projects"
+              className="rounded-xl border border-[#F5F1E8]/12 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/50 hover:text-[#F5F1E8]"
+            >
+              Projects
+            </Link>
+            <Link
+              href="/studio"
+              className="rounded-xl border border-[#F5F1E8]/12 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3]"
+            >
+              Open Studio
+            </Link>
+          </div>
         </div>
       </header>
 
