@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --ink-950: #070b10;
+  --ink-900: #0d131c;
+  --ink-850: #131c28;
+  --ink-800: #1a2636;
+  --warm-white: #f5f1e8;
+  --warm-muted: #b6b0a4;
+  --warm-subtle: #7d7a72;
+  --mint: #49e6b3;
+  --mint-hover: #2fd49f;
+  --mint-dim: #102e28;
+}
+
+@layer base {
+  html {
+    background-color: var(--ink-950);
+    color: var(--warm-white);
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--ink-950);
+    color: var(--warm-white);
+    font-family:
+      "Plus Jakarta Sans",
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Accessible custom range slider for timeline scrubbing */
+input[type="range"].studio-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].studio-scrubber:focus {
+  outline: none;
+}
+
+input[type="range"].studio-scrubber::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].studio-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--mint);
+  border: 2px solid var(--ink-950);
+  box-shadow: 0 0 0 2px rgba(73, 230, 179, 0.35);
+  margin-top: -5px;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+input[type="range"].studio-scrubber:hover::-webkit-slider-thumb,
+input[type="range"].studio-scrubber:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px rgba(73, 230, 179, 0.35);
+}
+
+input[type="range"].studio-scrubber::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+input[type="range"].studio-scrubber::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--mint);
+  border: 2px solid var(--ink-950);
+  box-shadow: 0 0 0 2px rgba(73, 230, 179, 0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
