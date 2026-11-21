@@ -24,12 +24,14 @@ export default async function UploadPage() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="mx-auto mb-7 max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight text-[#F5F1E8] sm:text-3xl">
-            Upload a Clip
+            New Project · Upload a Clip
           </h1>
           <p className="mt-1 text-sm text-[#B6B0A4]">
-            Direct resumable TUS upload to your private storage bucket. MP4,
-            MOV, MP3, and WAV clips up to 150 MB and 3 minutes long are
-            supported.
+            Uploading creates a private project automatically. Track processing
+            status in <strong className="font-semibold text-[#F5F1E8]">Projects</strong>{" "}
+            and click <strong className="font-semibold text-[#F5F1E8]">Open editor</strong>{" "}
+            when captions are ready. MP4, MOV, MP3, and WAV up to 150 MB and 3
+            minutes are supported.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { ProjectsList } from "@/components/ProjectsList";
 import {
@@ -44,17 +44,18 @@ export default async function ProjectsPage() {
               Your Projects
             </h1>
             <p className="mt-1 text-sm text-[#B6B0A4]">
-              Private clips uploaded to your account with live processing stages
-              and word-synced previews.
+              New uploads appear here while processing runs. Once a clip is
+              ready, click <strong className="font-semibold text-[#F5F1E8]">Open editor</strong> to edit captions and styles.
             </p>
           </div>
 
           <Link
             href="/upload"
+            data-testid="new-project-header-btn"
             className="inline-flex items-center gap-2 rounded-xl bg-[#49E6B3] px-4 py-2.5 text-sm font-semibold text-[#070B10] shadow-[0_8px_24px_rgba(73,230,179,0.22)] transition hover:bg-[#2FD49F]"
           >
-            <Upload className="h-4 w-4" />
-            <span>Upload clip</span>
+            <Plus className="h-4 w-4" />
+            <span>New project</span>
           </Link>
         </div>
 

@@ -12,8 +12,8 @@ import {
   Loader2,
   Pencil,
   Play,
+  Plus,
   RefreshCw,
-  Upload,
   X,
 } from "lucide-react";
 import {
@@ -286,19 +286,20 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
             <Film className="h-5 w-5" />
           </div>
           <h2 className="mt-4 text-lg font-semibold text-[#F5F1E8]">
-            No private clips uploaded yet
+            No projects yet
           </h2>
           <p className="mx-auto mt-1.5 max-w-md text-sm text-[#B6B0A4]">
             Upload an MP4, MOV, MP3, or WAV clip (up to 150 MB, 3-minute
-            processing limit) using resumable TUS upload to start building your
-            library.
+            processing limit) to create your first project. Track processing
+            progress here, then click <strong className="font-semibold text-[#F5F1E8]">Open editor</strong> once it&apos;s ready.
           </p>
           <Link
             href="/upload"
+            data-testid="new-project-empty-btn"
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#49E6B3] px-5 py-2.5 text-sm font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
           >
-            <Upload className="h-4 w-4" />
-            <span>Upload your first clip</span>
+            <Plus className="h-4 w-4" />
+            <span>New project</span>
           </Link>
         </div>
       ) : (

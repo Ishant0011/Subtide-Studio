@@ -409,6 +409,13 @@ export function UploadWorkspace() {
                   Verified size: {formatBytes(completed.asset.verifiedSizeBytes)}
                   {completed.job ? ` · Job: ${completed.job.status}` : ""}
                 </p>
+                <p className="mt-1.5 text-[#B6B0A4]">
+                  Follow live processing stages in{" "}
+                  <strong className="font-semibold text-[#F5F1E8]">Projects</strong>
+                  , then click{" "}
+                  <strong className="font-semibold text-[#F5F1E8]">Open editor</strong>{" "}
+                  on your project card once it&apos;s ready.
+                </p>
               </div>
             </div>
 

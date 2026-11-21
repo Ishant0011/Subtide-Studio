@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Captions, Play, Sliders, Sparkles } from "lucide-react";
+import { ArrowRight, Captions, Play, Sliders, Sparkles, Upload } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { getVerifiedUser } from "@/lib/supabase/server";
 
@@ -41,19 +41,27 @@ export default async function HomePage() {
               click.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3.5">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-2.5 rounded-xl bg-[#49E6B3] px-6 py-3.5 text-sm font-semibold text-[#070B10] shadow-[0_8px_30px_rgba(73,230,179,0.28)] transition hover:bg-[#2FD49F]"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Upload a clip</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
               <Link
                 href="/studio"
-                className="inline-flex items-center gap-2.5 rounded-xl bg-[#49E6B3] px-6 py-3.5 text-sm font-semibold text-[#070B10] shadow-[0_8px_30px_rgba(73,230,179,0.28)] transition hover:bg-[#2FD49F]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#F5F1E8]/15 bg-[#0D131C] px-5 py-3.5 text-sm font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3]"
               >
                 <Play className="h-4 w-4 fill-current" />
                 <span>Try a sample</span>
-                <ArrowRight className="h-4 w-4" />
               </Link>
-              <span className="text-xs text-[#7D7A72]">
-                Bundled 9:16 clip · No sign-in required
-              </span>
             </div>
+            <p className="mt-3 text-xs text-[#7D7A72]">
+              MP4, MOV, MP3 &amp; WAV up to 150 MB · Sample studio works without
+              signing in
+            </p>
 
             {/* Compact Feature Strip */}
             <div className="mt-12 grid grid-cols-1 gap-3.5 border-t border-[#F5F1E8]/10 pt-8 sm:grid-cols-3">
