@@ -477,6 +477,16 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       </button>
                     )}
 
+                    {primaryAsset && isAssetUploaded && project.status === "ready" && (
+                      <Link
+                        href={`/projects/${project.id}/editor`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span>Open editor</span>
+                      </Link>
+                    )}
+
                     {primaryAsset && isAssetUploaded && (
                       <button
                         type="button"

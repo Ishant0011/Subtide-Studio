@@ -39,6 +39,11 @@ export interface CaptionRevisionRow {
   language: string | null;
   words: NormalizedCaptionWord[];
   cues: NormalizedCaptionCue[];
+  style?: {
+    preset?: "clean" | "boxed" | "word-highlight";
+    fontSize?: "sm" | "md" | "lg";
+    verticalPosition?: number;
+  } | null;
   created_at: string;
 }
 
