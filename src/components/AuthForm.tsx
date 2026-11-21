@@ -5,25 +5,67 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, Loader2, Lock } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { EnabledOAuthProviders } from "@/lib/supabase/env";
 
 interface AuthFormProps {
   nextPath: string;
+  initialMode?: "signin" | "signup";
   initialError?: string | null;
   supabaseConfigured: boolean;
+  enabledProviders: EnabledOAuthProviders;
 }
 
 export function AuthForm({
   nextPath,
+  initialMode = "signin",
   initialError,
   supabaseConfigured,
+  enabledProviders,
 }: AuthFormProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<"google" | "discord" | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const hasSocialProviders = enabledProviders.google || enabledProviders.discord;
+
+  async function handleOAuth(provider: "google" | "discord") {
+    if (!supabaseConfigured) {
+      setError(
+        "Supabase environment variables are not configured. Copy .env.example to .env.local to sign in."
+      );
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+    setOauthLoading(provider);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setOauthLoading(null);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not start social sign-in."
+      );
+      setOauthLoading(null);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,7 +137,7 @@ export function AuthForm({
       <p className="mt-1.5 text-sm text-[#B6B0A4]">
         {mode === "signin"
           ? "Access your private projects and resumable video uploads."
-          : "Start uploading portrait MP4 and MOV clips to your private library."}
+          : "Start uploading portrait MP4, MOV, MP3, and WAV clips to your private library."}
       </p>
 
       {/* Mode Switcher */}
@@ -136,7 +178,7 @@ export function AuthForm({
               : "text-[#B6B0A4] hover:text-[#F5F1E8]"
           }`}
         >
-          Create account
+          Sign up
         </button>
       </div>
 
@@ -166,6 +208,61 @@ export function AuthForm({
         <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-[#49E6B3]/35 bg-[#102E28] p-3 text-xs text-[#49E6B3]">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{notice}</span>
+        </div>
+      )}
+
+      {/* OAuth Providers (rendered only when explicitly enabled for the environment) */}
+      {hasSocialProviders && (
+        <div className="mt-5 space-y-2.5">
+          {enabledProviders.google && (
+            <button
+              type="button"
+              disabled={loading || oauthLoading !== null}
+              onClick={() => void handleOAuth("google")}
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2.5 text-sm font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:bg-[#172231] disabled:opacity-60"
+            >
+              {oauthLoading === "google" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="#EA4335"
+                    d="M12 10.2v3.9h5.5c-.2 1.2-1.5 3.6-5.5 3.6-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5l2.6-2.5C16.8 3.1 14.6 2 12 2 6.5 2 2 6.5 2 12s4.5 10 10 10c5.8 0 9.6-4.1 9.6-9.8 0-.7-.1-1.2-.2-1.7H12z"
+                  />
+                </svg>
+              )}
+              <span>Continue with Google</span>
+            </button>
+          )}
+
+          {enabledProviders.discord && (
+            <button
+              type="button"
+              disabled={loading || oauthLoading !== null}
+              onClick={() => void handleOAuth("discord")}
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2.5 text-sm font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:bg-[#172231] disabled:opacity-60"
+            >
+              {oauthLoading === "discord" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="#5865F2"
+                    d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.2a18.2 18.2 0 0 0-5.6 0L8.6 3a19.8 19.8 0 0 0-4.9 1.4C.6 9-.2 13.5.2 17.9a20 20 0 0 0 6 3l1.3-2.1a13 13 0 0 1-2-.9l.5-.4a14.1 14.1 0 0 0 12 0l.5.4a13 13 0 0 1-2 .9l1.3 2.1a20 20 0 0 0 6-3c.5-5.1-.8-9.5-3.5-13.5zM8.5 15.2c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4zm7 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4z"
+                  />
+                </svg>
+              )}
+              <span>Continue with Discord</span>
+            </button>
+          )}
+
+          <div className="relative flex items-center py-1">
+            <div className="flex-grow border-t border-[#F5F1E8]/10" />
+            <span className="mx-3 text-[11px] text-[#7D7A72]">
+              or continue with email
+            </span>
+            <div className="flex-grow border-t border-[#F5F1E8]/10" />
+          </div>
         </div>
       )}
 
@@ -211,7 +308,7 @@ export function AuthForm({
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || oauthLoading !== null}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#49E6B3] px-4 py-3 text-sm font-semibold text-[#070B10] transition hover:bg-[#2FD49F] disabled:opacity-60"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}

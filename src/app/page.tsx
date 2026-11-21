@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { ArrowRight, Captions, Play, Sliders, Sparkles } from "lucide-react";
+import { PublicHeader } from "@/components/PublicHeader";
+import { getVerifiedUser } from "@/lib/supabase/server";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const user = await getVerifiedUser();
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#070B10] text-[#F5F1E8]">
       {/* Subtle Ambient Mint Glow */}
@@ -10,34 +16,8 @@ export default function HomePage() {
         className="pointer-events-none absolute -top-40 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[#49E6B3]/10 blur-[130px]"
       />
 
-      {/* Header */}
-      <header className="relative z-10 border-b border-[#F5F1E8]/8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]">
-              <Captions className="h-4 w-4" />
-            </span>
-            <span className="text-base font-semibold tracking-tight text-[#F5F1E8]">
-              Subtide Studio
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/projects"
-              className="rounded-xl border border-[#F5F1E8]/12 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/50 hover:text-[#F5F1E8]"
-            >
-              Projects
-            </Link>
-            <Link
-              href="/studio"
-              className="rounded-xl border border-[#F5F1E8]/12 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3]"
-            >
-              Open Studio
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* Public Header (Sign in / Sign up when signed out; Projects + Account menu when signed in) */}
+      <PublicHeader userEmail={user?.email ?? null} />
 
       {/* Hero Section */}
       <main className="relative z-10 mx-auto max-w-6xl px-4 pb-20 pt-12 sm:px-6 lg:pt-20">

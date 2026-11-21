@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Captions, FolderKanban, LogOut, Play, Upload } from "lucide-react";
+import { Captions, FolderKanban, Play, Upload } from "lucide-react";
+import { AccountMenu } from "@/components/AccountMenu";
 
 interface AppHeaderProps {
   userEmail: string;
@@ -55,24 +56,7 @@ export function AppHeader({ userEmail, activeNav }: AppHeaderProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <span
-            data-testid="user-email"
-            className="hidden max-w-[200px] truncate rounded-full border border-[#F5F1E8]/10 bg-[#0D131C] px-3 py-1 text-xs text-[#B6B0A4] md:inline-block"
-          >
-            {userEmail}
-          </span>
-
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] px-3 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#F5F1E8]/25 hover:text-[#F5F1E8]"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Sign out</span>
-            </button>
-          </form>
-        </div>
+        <AccountMenu userEmail={userEmail} />
       </div>
     </header>
   );

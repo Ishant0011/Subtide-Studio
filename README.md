@@ -65,6 +65,12 @@ Word-synced caption studio for short-form portrait clips, built with Next.js App
    pnpm dev
    ```
 
+5. *(Optional)* Enable Google or Discord social login:
+   - In your Supabase Dashboard, open **Authentication → URL Configuration** and add `http://localhost:3000/auth/callback` to **Redirect URLs**.
+   - In **Authentication → Providers**, enable **Google** and/or **Discord** and paste each provider's Client ID and Client Secret **only in the Supabase Dashboard** (never in `.env.local` or Git).
+   - Register Supabase's callback URL (`https://<your-project-ref>.supabase.co/auth/v1/callback`) in Google Cloud Console and/or the Discord Developer Portal.
+   - Set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` and/or `NEXT_PUBLIC_AUTH_DISCORD_ENABLED=true` in `.env.local` to expose the matching **Continue with Google** / **Continue with Discord** buttons on `/login`.
+
 ## Running the Phase 3 Worker
 
 ### Option A — Docker (Linux container with system FFmpeg & FFprobe)

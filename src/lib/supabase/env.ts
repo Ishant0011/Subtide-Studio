@@ -1,3 +1,15 @@
+export interface EnabledOAuthProviders {
+  google: boolean;
+  discord: boolean;
+}
+
+export function getEnabledOAuthProviders(): EnabledOAuthProviders {
+  return {
+    google: process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true",
+    discord: process.env.NEXT_PUBLIC_AUTH_DISCORD_ENABLED === "true",
+  };
+}
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

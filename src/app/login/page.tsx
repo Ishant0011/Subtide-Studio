@@ -2,18 +2,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Captions } from "lucide-react";
 import { AuthForm } from "@/components/AuthForm";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  getEnabledOAuthProviders,
+  isSupabaseConfigured,
+} from "@/lib/supabase/env";
 import { getVerifiedUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sign in — Subtide Studio",
-  description: "Sign in to access your private Subtide Studio projects and uploads.",
+  description:
+    "Sign in or create an account to access your private Subtide Studio projects and uploads.",
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; mode?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -22,6 +26,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     params.next && params.next.startsWith("/") && !params.next.startsWith("//")
       ? params.next
       : "/projects";
+
+  const initialMode = params.mode === "signup" ? "signup" : "signin";
 
   const user = await getVerifiedUser();
   if (user) {
@@ -54,12 +60,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <main className="mx-auto flex max-w-6xl justify-center px-4 py-12 sm:px-6 sm:py-16">
         <AuthForm
           nextPath={nextPath}
+          initialMode={initialMode}
           initialError={
             params.error === "auth_callback_failed"
               ? "Sign-in callback failed. Please try signing in again."
               : null
           }
           supabaseConfigured={isSupabaseConfigured()}
+          enabledProviders={getEnabledOAuthProviders()}
         />
       </main>
     </div>

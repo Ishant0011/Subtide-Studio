@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const isProtected = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
@@ -50,7 +50,8 @@ export async function middleware(request: NextRequest) {
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("next", pathname);
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -60,10 +61,7 @@ export async function middleware(request: NextRequest) {
       nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
         ? nextPath
         : "/projects";
-    const dest = request.nextUrl.clone();
-    dest.pathname = safeNext;
-    dest.search = "";
-    return NextResponse.redirect(dest);
+    return NextResponse.redirect(new URL(safeNext, request.url));
   }
 
   return response;
