@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicEnv, isSupabaseConfigured } from "@/lib/supabase/env";
 import {
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 1. Server-verified authentication
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -56,12 +58,27 @@ export async function POST(request: NextRequest) {
       ? body.title.trim().slice(0, 120)
       : deriveProjectTitle(validation.sanitizedFilename);
 
-  // Server-assigned IDs and collision-free object key (no client-chosen key, no overwrite)
+  let admin;
+  try {
+    admin = createSupabaseAdminClient();
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : "Server allocation credentials are not configured.",
+      },
+      { status: 503 }
+    );
+  }
+
+  // 2. Server-assigned IDs and collision-free object key (strictly server-controlled)
   const projectId = randomUUID();
   const assetId = randomUUID();
   const objectKey = `${user.id}/${projectId}/${assetId}.${validation.extension}`;
 
-  const { error: projectError } = await supabase.from("projects").insert({
+  const { error: projectError } = await admin.from("projects").insert({
     id: projectId,
     user_id: user.id,
     title: projectTitle,
@@ -75,7 +92,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { error: assetError } = await supabase.from("media_assets").insert({
+  const { error: assetError } = await admin.from("media_assets").insert({
     id: assetId,
     project_id: projectId,
     user_id: user.id,
@@ -89,7 +106,7 @@ export async function POST(request: NextRequest) {
 
   if (assetError) {
     // Clean up orphaned project row if asset insert fails
-    await supabase.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
+    await admin.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
     return NextResponse.json(
       { error: "Failed to initialize media asset.", detail: assetError.message },
       { status: 500 }

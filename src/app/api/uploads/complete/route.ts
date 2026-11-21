@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 1. Verify ownership via RLS-scoped query + explicit user_id check
+  // 1. Server-verified ownership via RLS-scoped read + explicit user_id check
   const { data: asset, error: assetError } = await supabase
     .from("media_assets")
     .select(
@@ -169,10 +169,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Finalize media asset and project records
+  // 5. Finalize server-controlled media asset & project status via privileged client
+  //    (ownership already verified above and re-asserted in the WHERE clause)
   const completedAt = new Date().toISOString();
 
-  const { data: updatedAsset, error: updateAssetError } = await supabase
+  const { data: updatedAsset, error: updateAssetError } = await admin
     .from("media_assets")
     .update({
       status: "uploaded",
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
 
   // Handle race condition where a concurrent completion already finalized the asset
   if (!updatedAsset) {
-    const { data: currentAsset } = await supabase
+    const { data: currentAsset } = await admin
       .from("media_assets")
       .select("id, object_key, status, verified_size_bytes, completed_at")
       .eq("id", asset.id)
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: updatedProject, error: updateProjectError } = await supabase
+  const { data: updatedProject, error: updateProjectError } = await admin
     .from("projects")
     .update({ status: "ready" })
     .eq("id", project.id)
