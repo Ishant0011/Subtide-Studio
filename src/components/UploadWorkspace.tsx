@@ -16,6 +16,7 @@ import {
   Upload,
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
 import {
   MAX_DURATION_MINUTES,
   MAX_UPLOAD_BYTES,
@@ -123,6 +124,7 @@ export function UploadWorkspace() {
         throw new Error("Your session expired. Please sign in again.");
       }
 
+      const { anonKey } = getSupabasePublicEnv();
       const upload = new tus.Upload(file, {
         endpoint: initMeta.tusEndpoint,
         retryDelays: [0, 1000, 3000, 5000],
@@ -130,6 +132,7 @@ export function UploadWorkspace() {
         uploadDataDuringCreation: true,
         removeFingerprintOnSuccess: true,
         headers: {
+          apikey: anonKey,
           authorization: `Bearer ${session.access_token}`,
           "x-upsert": "false",
         },
