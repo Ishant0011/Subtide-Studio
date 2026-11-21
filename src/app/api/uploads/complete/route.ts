@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Fetch parent project (also RLS-scoped to owner)
   const { data: project, error: projectFetchError } = await supabase
     .from("projects")
     .select("id, title, status, user_id")
@@ -82,33 +81,6 @@ export async function POST(request: NextRequest) {
   if (projectFetchError || !project || project.user_id !== user.id) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }
-
-  // 3. Idempotent completion: repeated completion calls on an already-finalized asset succeed safely
-  if (asset.status === "uploaded") {
-    const idempotentPayload: UploadCompleteResponse = {
-      status: "uploaded",
-      idempotent: true,
-      project: {
-        id: project.id,
-        title: project.title,
-        status: project.status,
-      },
-      asset: {
-        id: asset.id,
-        objectKey: asset.object_key,
-        status: asset.status,
-        verifiedSizeBytes: asset.verified_size_bytes ?? asset.expected_size_bytes,
-        completedAt: asset.completed_at,
-      },
-    };
-    return NextResponse.json(idempotentPayload, { status: 200 });
-  }
-
-  // 4. Verify stored object existence and exact byte size in the private bucket (server-only)
-  const lastSlash = asset.object_key.lastIndexOf("/");
-  const folder = lastSlash > 0 ? asset.object_key.slice(0, lastSlash) : "";
-  const fileName =
-    lastSlash >= 0 ? asset.object_key.slice(lastSlash + 1) : asset.object_key;
 
   let admin;
   try {
@@ -125,139 +97,97 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: objects, error: listError } = await admin.storage
-    .from(MEDIA_BUCKET)
-    .list(folder, { limit: 100, search: fileName });
+  // 3. If pending, verify stored object existence and exact byte size in the private bucket
+  let verifiedSize = asset.verified_size_bytes ?? asset.expected_size_bytes;
 
-  if (listError) {
-    return NextResponse.json(
-      { error: "Could not verify uploaded object in storage.", detail: listError.message },
-      { status: 502 }
-    );
-  }
+  if (asset.status !== "uploaded") {
+    const lastSlash = asset.object_key.lastIndexOf("/");
+    const folder = lastSlash > 0 ? asset.object_key.slice(0, lastSlash) : "";
+    const fileName =
+      lastSlash >= 0 ? asset.object_key.slice(lastSlash + 1) : asset.object_key;
 
-  const stored = (objects ?? []).find((entry) => entry.name === fileName);
-  if (!stored) {
-    return NextResponse.json(
-      { error: "Uploaded object was not found at the expected storage key." },
-      { status: 409 }
-    );
-  }
+    const { data: objects, error: listError } = await admin.storage
+      .from(MEDIA_BUCKET)
+      .list(folder, { limit: 100, search: fileName });
 
-  const rawSize = (stored.metadata as { size?: number | string } | null)?.size;
-  const storedSize = typeof rawSize === "number" ? rawSize : Number(rawSize);
-
-  if (
-    !Number.isFinite(storedSize) ||
-    storedSize <= 0 ||
-    storedSize > MAX_UPLOAD_BYTES
-  ) {
-    return NextResponse.json(
-      { error: "Stored file size is invalid or exceeds the 150 MB limit." },
-      { status: 422 }
-    );
-  }
-
-  if (storedSize !== asset.expected_size_bytes) {
-    return NextResponse.json(
-      {
-        error: "Stored file size does not match the expected upload size.",
-        expectedSizeBytes: asset.expected_size_bytes,
-        storedSizeBytes: storedSize,
-      },
-      { status: 422 }
-    );
-  }
-
-  // 5. Finalize server-controlled media asset & project status via privileged client
-  //    (ownership already verified above and re-asserted in the WHERE clause)
-  const completedAt = new Date().toISOString();
-
-  const { data: updatedAsset, error: updateAssetError } = await admin
-    .from("media_assets")
-    .update({
-      status: "uploaded",
-      verified_size_bytes: storedSize,
-      completed_at: completedAt,
-    })
-    .eq("id", asset.id)
-    .eq("user_id", user.id)
-    .eq("status", "pending")
-    .select("id, object_key, status, verified_size_bytes, completed_at")
-    .maybeSingle();
-
-  if (updateAssetError) {
-    return NextResponse.json(
-      { error: "Failed to finalize media asset.", detail: updateAssetError.message },
-      { status: 500 }
-    );
-  }
-
-  // Handle race condition where a concurrent completion already finalized the asset
-  if (!updatedAsset) {
-    const { data: currentAsset } = await admin
-      .from("media_assets")
-      .select("id, object_key, status, verified_size_bytes, completed_at")
-      .eq("id", asset.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (currentAsset?.status === "uploaded") {
-      const racePayload: UploadCompleteResponse = {
-        status: "uploaded",
-        idempotent: true,
-        project: {
-          id: project.id,
-          title: project.title,
-          status: "ready",
-        },
-        asset: {
-          id: currentAsset.id,
-          objectKey: currentAsset.object_key,
-          status: currentAsset.status,
-          verifiedSizeBytes: currentAsset.verified_size_bytes ?? storedSize,
-          completedAt: currentAsset.completed_at,
-        },
-      };
-      return NextResponse.json(racePayload, { status: 200 });
+    if (listError) {
+      return NextResponse.json(
+        { error: "Could not verify uploaded object in storage.", detail: listError.message },
+        { status: 502 }
+      );
     }
 
-    return NextResponse.json(
-      { error: "Asset could not be finalized from its current state." },
-      { status: 409 }
-    );
+    const stored = (objects ?? []).find((entry) => entry.name === fileName);
+    if (!stored) {
+      return NextResponse.json(
+        { error: "Uploaded object was not found at the expected storage key." },
+        { status: 409 }
+      );
+    }
+
+    const rawSize = (stored.metadata as { size?: number | string } | null)?.size;
+    const storedSize = typeof rawSize === "number" ? rawSize : Number(rawSize);
+
+    if (
+      !Number.isFinite(storedSize) ||
+      storedSize <= 0 ||
+      storedSize > MAX_UPLOAD_BYTES
+    ) {
+      return NextResponse.json(
+        { error: "Stored file size is invalid or exceeds the 150 MB limit." },
+        { status: 422 }
+      );
+    }
+
+    if (storedSize !== asset.expected_size_bytes) {
+      return NextResponse.json(
+        {
+          error: "Stored file size does not match the expected upload size.",
+          expectedSizeBytes: asset.expected_size_bytes,
+          storedSizeBytes: storedSize,
+        },
+        { status: 422 }
+      );
+    }
+
+    verifiedSize = storedSize;
   }
 
-  const { data: updatedProject, error: updateProjectError } = await admin
-    .from("projects")
-    .update({ status: "ready" })
-    .eq("id", project.id)
-    .eq("user_id", user.id)
-    .select("id, title, status")
-    .single();
+  // 4. Atomically finalize upload and enqueue one logical ingest job in a single Postgres transaction
+  const { data: rpcData, error: rpcError } = await admin.rpc(
+    "finalize_upload_and_enqueue_ingest",
+    {
+      p_user_id: user.id,
+      p_project_id: project.id,
+      p_asset_id: asset.id,
+      p_verified_size_bytes: verifiedSize,
+      p_completed_at: new Date().toISOString(),
+    }
+  );
 
-  if (updateProjectError) {
+  if (rpcError || !rpcData) {
     return NextResponse.json(
-      { error: "Asset verified, but failed to update project status." },
+      {
+        error: "Failed to finalize upload and enqueue ingest job.",
+        detail: rpcError?.message,
+      },
       { status: 500 }
     );
   }
+
+  const result = rpcData as {
+    idempotent: boolean;
+    project: UploadCompleteResponse["project"];
+    asset: UploadCompleteResponse["asset"];
+    job: NonNullable<UploadCompleteResponse["job"]>;
+  };
 
   const payload: UploadCompleteResponse = {
     status: "uploaded",
-    idempotent: false,
-    project: {
-      id: updatedProject.id,
-      title: updatedProject.title,
-      status: updatedProject.status,
-    },
-    asset: {
-      id: updatedAsset.id,
-      objectKey: updatedAsset.object_key,
-      status: updatedAsset.status,
-      verifiedSizeBytes: updatedAsset.verified_size_bytes ?? storedSize,
-      completedAt: updatedAsset.completed_at,
-    },
+    idempotent: Boolean(result.idempotent),
+    project: result.project,
+    asset: result.asset,
+    job: result.job,
   };
 
   return NextResponse.json(payload, { status: 200 });

@@ -23,7 +23,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, user_id, title, status, created_at, updated_at, media_assets(id, project_id, user_id, bucket_id, object_key, original_filename, mime_type, expected_size_bytes, verified_size_bytes, status, completed_at, created_at, updated_at)"
+      "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_mime_type, preview_width, preview_height, active_revision_id, last_error_code, last_error_message, created_at, updated_at, media_assets(id, project_id, user_id, bucket_id, object_key, original_filename, mime_type, expected_size_bytes, verified_size_bytes, status, media_kind, duration_ms, width, height, rotation_deg, has_audio, completed_at, created_at, updated_at), ingest_jobs(id, project_id, media_asset_id, user_id, status, stage_message, attempt_count, max_attempts, error_code, error_message, started_at, completed_at, created_at, updated_at), caption_revisions!caption_revisions_project_id_fkey(id, project_id, user_id, revision_number, source, speech_status, language, words, cues, created_at)"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });

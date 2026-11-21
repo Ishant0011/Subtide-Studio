@@ -27,8 +27,9 @@ export default async function UploadPage() {
             Upload a Clip
           </h1>
           <p className="mt-1 text-sm text-[#B6B0A4]">
-            Direct resumable TUS upload to your private storage bucket. Clips up
-            to 150 MB and 3 minutes long are supported.
+            Direct resumable TUS upload to your private storage bucket. MP4,
+            MOV, MP3, and WAV clips up to 150 MB and 3 minutes long are
+            supported.
           </p>
         </div>
 

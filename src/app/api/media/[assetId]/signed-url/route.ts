@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { MEDIA_BUCKET } from "@/lib/uploads";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ assetId: string }> }
 ) {
   if (!isSupabaseConfigured()) {
@@ -15,6 +15,8 @@ export async function GET(
   }
 
   const { assetId } = await context.params;
+  const kind = request.nextUrl.searchParams.get("kind");
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -27,7 +29,7 @@ export async function GET(
 
   const { data: asset, error: assetError } = await supabase
     .from("media_assets")
-    .select("id, user_id, object_key, status")
+    .select("id, project_id, user_id, object_key, status")
     .eq("id", assetId)
     .maybeSingle();
 
@@ -42,9 +44,25 @@ export async function GET(
     );
   }
 
+  let targetKey = asset.object_key;
+  let targetKind: "source" | "preview" = "source";
+
+  if (kind === "preview") {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("preview_object_key, user_id")
+      .eq("id", asset.project_id)
+      .maybeSingle();
+
+    if (project && project.user_id === user.id && project.preview_object_key) {
+      targetKey = project.preview_object_key;
+      targetKind = "preview";
+    }
+  }
+
   const { data: signed, error: signError } = await supabase.storage
     .from(MEDIA_BUCKET)
-    .createSignedUrl(asset.object_key, 60);
+    .createSignedUrl(targetKey, 60);
 
   if (signError || !signed?.signedUrl) {
     return NextResponse.json(
@@ -55,6 +73,7 @@ export async function GET(
 
   return NextResponse.json({
     signedUrl: signed.signedUrl,
+    kind: targetKind,
     expiresInSeconds: 60,
   });
 }

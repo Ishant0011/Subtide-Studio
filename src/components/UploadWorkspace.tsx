@@ -255,7 +255,7 @@ export function UploadWorkspace() {
             <FileVideo className="h-3.5 w-3.5" />
             <span>Formats</span>
           </div>
-          <p className="mt-1 text-xs text-[#B6B0A4]">MP4 and QuickTime MOV</p>
+          <p className="mt-1 text-xs text-[#B6B0A4]">MP4, MOV, MP3, and WAV</p>
         </div>
 
         <div className="rounded-xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5">
@@ -294,9 +294,9 @@ export function UploadWorkspace() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="video/mp4,video/quicktime,.mp4,.mov"
+            accept="video/mp4,video/quicktime,audio/mpeg,audio/wav,.mp4,.mov,.mp3,.wav"
             onChange={(e) => handleFilePicked(e.target.files?.[0] ?? null)}
-            aria-label="Choose MP4 or MOV video file"
+            aria-label="Choose MP4, MOV, MP3, or WAV media file"
             className="sr-only"
           />
 
@@ -305,12 +305,12 @@ export function UploadWorkspace() {
           </div>
 
           <p className="mt-3 text-sm font-semibold text-[#F5F1E8]">
-            {selectedFile ? selectedFile.name : "Drop an MP4 or MOV clip here"}
+            {selectedFile ? selectedFile.name : "Drop an MP4, MOV, MP3, or WAV clip here"}
           </p>
           <p className="mt-1 text-xs text-[#7D7A72]">
             {selectedFile
-              ? `${formatBytes(selectedFile.size)} · ${selectedFile.type || "video"}`
-              : `MP4 or MOV up to ${formatBytes(MAX_UPLOAD_BYTES)} · ${MAX_DURATION_MINUTES}-minute processing limit`}
+              ? `${formatBytes(selectedFile.size)} · ${selectedFile.type || "media"}`
+              : `MP4, MOV, MP3, or WAV up to ${formatBytes(MAX_UPLOAD_BYTES)} · ${MAX_DURATION_MINUTES}-minute processing limit`}
           </p>
 
           <button
@@ -319,7 +319,7 @@ export function UploadWorkspace() {
             onClick={() => fileInputRef.current?.click()}
             className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-50"
           >
-            <span>{selectedFile ? "Choose a different file" : "Select video file"}</span>
+            <span>{selectedFile ? "Choose a different file" : "Select media file"}</span>
           </button>
         </div>
 
@@ -403,10 +403,11 @@ export function UploadWorkspace() {
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#49E6B3]" />
               <div className="text-xs">
                 <p className="font-semibold text-[#F5F1E8]">
-                  {completed.project.title} is ready in your private Projects.
+                  {completed.project.title} uploaded and queued for processing.
                 </p>
                 <p className="mt-1 font-mono text-[#B6B0A4]">
                   Verified size: {formatBytes(completed.asset.verifiedSizeBytes)}
+                  {completed.job ? ` · Job: ${completed.job.status}` : ""}
                 </p>
               </div>
             </div>

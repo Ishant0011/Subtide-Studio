@@ -1,12 +1,15 @@
 # dependencies
 /node_modules
+/worker/node_modules
 /.pnp
 .pnp.*
 .yarn/*
 
-# next.js
+# next.js & worker build outputs
 /.next/
 /out/
+/worker/dist/
+/worker/.tmp/
 
 # production
 /build
