@@ -29,8 +29,14 @@ export function EditorCaptionOverlay({
   const containerStyle = {
     bottom: `${layout.bottomPercent}%`,
   };
+  const responsiveFontSize =
+    layout.fontSize === "sm"
+      ? "clamp(0.62rem, 4.4cqw, 0.96rem)"
+      : layout.fontSize === "lg"
+        ? "clamp(0.8rem, 6.1cqw, 1.32rem)"
+        : "clamp(0.7rem, 5.2cqw, 1.12rem)";
   const textStyle = {
-    fontSize: `${layout.previewFontSizeRem}rem`,
+    fontSize: responsiveFontSize,
     maxWidth: `${layout.maxWidthPercent}%`,
   };
 
@@ -97,7 +103,7 @@ export function EditorCaptionOverlay({
           className="rounded-2xl border border-[#F5F1E8]/15 bg-[#070B10]/82 px-4 py-2.5 text-center shadow-[0_12px_32px_rgba(0,0,0,0.55)] backdrop-blur-md"
         >
           <p
-            style={{ fontSize: `${layout.previewFontSizeRem}rem` }}
+            style={{ fontSize: responsiveFontSize }}
             className="font-semibold leading-snug tracking-[-0.01em]"
           >
             {useWordTiming ? (
@@ -146,7 +152,7 @@ export function EditorCaptionOverlay({
     >
       <p
         style={textStyle}
-        className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-center font-extrabold uppercase leading-tight tracking-[0.01em]"
+        className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 text-center font-extrabold uppercase leading-tight tracking-[0.01em]"
       >
         {useWordTiming ? (
           activeCue.words.map((word) => {
@@ -156,9 +162,9 @@ export function EditorCaptionOverlay({
               <span
                 key={word.id}
                 data-active-word={isActive ? "true" : "false"}
-                className={`inline-block rounded-lg px-2 py-0.5 transition-all duration-100 ${
+                className={`inline-block rounded-lg px-1.5 py-0.5 transition-all duration-100 ${
                   isActive
-                    ? "scale-[1.06] bg-[#49E6B3] text-[#070B10] shadow-[0_4px_18px_rgba(73,230,179,0.45)]"
+                    ? "scale-[1.05] bg-[#49E6B3] text-[#070B10] shadow-[0_4px_18px_rgba(73,230,179,0.45)]"
                     : isPast
                       ? "bg-[#070B10]/55 text-[#F5F1E8] [text-shadow:0_2px_6px_rgba(7,11,16,0.9)]"
                       : "bg-[#070B10]/40 text-[#F5F1E8]/75 [text-shadow:0_2px_6px_rgba(7,11,16,0.9)]"

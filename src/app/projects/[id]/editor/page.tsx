@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { AppHeader } from "@/components/AppHeader";
 import { ProjectCaptionEditor } from "@/components/ProjectCaptionEditor";
 import {
   DEFAULT_CAPTION_STYLE,
@@ -89,19 +88,17 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
     project.duration_ms ?? primaryAsset?.duration_ms ?? 15000;
 
   return (
-    <div className="min-h-screen bg-[#070B10] text-[#F5F1E8]">
-      <AppHeader userEmail={user.email ?? "Signed in"} activeNav="projects" />
-      <ProjectCaptionEditor
-        projectId={project.id}
-        projectTitle={project.title}
-        mediaKind={isAudio ? "audio" : "video"}
-        previewUrl={signed.signedUrl}
-        durationMs={durationMs}
-        initialRevisionId={activeRevision?.id ?? null}
-        initialRevisionNumber={activeRevision?.revision_number ?? 0}
-        initialCues={initialCues}
-        initialStyle={initialStyle}
-      />
-    </div>
+    <ProjectCaptionEditor
+      userEmail={user.email ?? "Signed in"}
+      projectId={project.id}
+      projectTitle={project.title}
+      mediaKind={isAudio ? "audio" : "video"}
+      previewUrl={signed.signedUrl}
+      durationMs={durationMs}
+      initialRevisionId={activeRevision?.id ?? null}
+      initialRevisionNumber={activeRevision?.revision_number ?? 0}
+      initialCues={initialCues}
+      initialStyle={initialStyle}
+    />
   );
 }

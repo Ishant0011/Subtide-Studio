@@ -160,8 +160,10 @@ export function getActiveWord(
 
 export function formatTime(seconds: number): string {
   const safe = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
-  const mins = Math.floor(safe / 60);
-  const secs = Math.floor(safe % 60);
-  const tenths = Math.floor((safe % 1) * 10);
+  const totalTenths = Math.round(safe * 10);
+  const totalSecs = Math.floor(totalTenths / 10);
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  const tenths = totalTenths % 10;
   return `${mins}:${secs.toString().padStart(2, "0")}.${tenths}`;
 }
