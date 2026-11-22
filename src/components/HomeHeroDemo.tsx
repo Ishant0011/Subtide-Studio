@@ -1,28 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Captions, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import {
-  CAPTION_PRESETS,
   SAMPLE_CAPTIONS,
   SAMPLE_CLIP,
   formatTime,
   getActiveCue,
   getActiveWord,
-  type CaptionPresetId,
 } from "@/lib/captions";
+import {
+  BUILTIN_STYLE_TEMPLATES,
+  type BuiltInStyleTemplate,
+} from "@/lib/caption-editor";
 import { CaptionOverlay } from "@/components/CaptionOverlay";
+
+type CompareMode = "split" | "after" | "before";
 
 export function HomeHeroDemo() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [captionsEnabled, setCaptionsEnabled] = useState(true);
-  const [preset, setPreset] = useState<CaptionPresetId>("word-highlight");
-  const [currentTime, setCurrentTime] = useState(0.55);
+  const [compareMode, setCompareMode] = useState<CompareMode>("split");
+  const [splitPercent, setSplitPercent] = useState(34);
+  const [templateId, setTemplateId] = useState<string>(
+    BUILTIN_STYLE_TEMPLATES[0].id
+  );
+  const [currentTime, setCurrentTime] = useState(0.5);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
+
+  const selectedTemplate: BuiltInStyleTemplate = useMemo(
+    () =>
+      BUILTIN_STYLE_TEMPLATES.find((t) => t.id === templateId) ??
+      BUILTIN_STYLE_TEMPLATES[0],
+    [templateId]
+  );
 
   const activeCue = useMemo(
     () => getActiveCue(SAMPLE_CAPTIONS, currentTime),
@@ -33,7 +47,7 @@ export function HomeHeroDemo() {
     [activeCue, currentTime]
   );
 
-  // Smooth 60fps caption word tracking while playing (strictly user-initiated playback)
+  // Smooth 60fps word tracking while playing (strictly user-initiated playback)
   useEffect(() => {
     if (!isPlaying) return;
     let rafId = 0;
@@ -90,20 +104,25 @@ export function HomeHeroDemo() {
       setDuration(video.duration);
     }
     if (!initialized) {
-      video.currentTime = 0.55;
-      setCurrentTime(0.55);
+      video.currentTime = 0.5;
+      setCurrentTime(0.5);
       setInitialized(true);
     }
   }, [initialized]);
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const showCaptionsLayer = compareMode !== "before";
+  const clipStyle =
+    compareMode === "split"
+      ? { clipPath: `inset(0 0 0 ${splitPercent}%)` }
+      : undefined;
 
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[322px] rounded-[1.85rem] border border-accent/25 bg-panel p-3 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[332px]"
+      className="relative mx-auto w-full max-w-[336px] rounded-[1.85rem] border border-accent/25 bg-panel p-3 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[352px]"
     >
-      {/* Top interactive bar: live cue state + Captions toggle */}
+      {/* Top Synchronized Before / After Switcher */}
       <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
           <span
@@ -111,26 +130,43 @@ export function HomeHeroDemo() {
               isPlaying ? "animate-pulse bg-accent" : "bg-accent/70"
             }`}
           />
-          <span>Live 9:16 preview</span>
+          <span>Before / After</span>
         </span>
 
-        <button
-          type="button"
-          data-testid="hero-captions-toggle"
-          aria-pressed={captionsEnabled}
-          onClick={() => setCaptionsEnabled((v) => !v)}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-            captionsEnabled
-              ? "border-accent/50 bg-accent-soft text-accent-hover"
-              : "border-ink/15 bg-page text-ink-secondary hover:text-ink"
-          }`}
+        <div
+          role="group"
+          aria-label="Before and after caption comparison mode"
+          className="inline-flex rounded-full border border-ink/12 bg-page p-0.5 text-[10px] font-semibold"
         >
-          <Captions className="h-3.5 w-3.5" />
-          <span>{captionsEnabled ? "Captions on" : "Captions off"}</span>
-        </button>
+          {(
+            [
+              { id: "before", label: "Before" },
+              { id: "split", label: "Split" },
+              { id: "after", label: "After" },
+            ] as const
+          ).map((mode) => {
+            const active = compareMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                data-testid={`before-after-mode-${mode.id}`}
+                aria-pressed={active}
+                onClick={() => setCompareMode(mode.id)}
+                className={`rounded-full px-2.5 py-0.5 transition ${
+                  active
+                    ? "bg-accent text-page"
+                    : "text-ink-secondary hover:text-ink"
+                }`}
+              >
+                {mode.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Playable 9:16 Portrait Stage */}
+      {/* Synchronized Single-Video 9:16 Stage */}
       <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.45rem] border border-ink/12 bg-page">
         <video
           ref={videoRef}
@@ -140,7 +176,11 @@ export function HomeHeroDemo() {
           muted={isMuted}
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={(e) => {
-            if (!initialized && e.currentTarget.paused && e.currentTarget.currentTime === 0) {
+            if (
+              !initialized &&
+              e.currentTarget.paused &&
+              e.currentTarget.currentTime === 0
+            ) {
               return;
             }
             setCurrentTime(e.currentTarget.currentTime);
@@ -153,35 +193,95 @@ export function HomeHeroDemo() {
           className="h-full w-full cursor-pointer object-cover"
         />
 
-        {/* Scrims for caption readability */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-page/60 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-page/88 via-page/32 to-transparent" />
+        {/* Scrims for caption legibility */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-page/65 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
 
-        {/* Live Word-Synced Caption Overlay (toggleable, violet accent) */}
-        {captionsEnabled && (
-          <CaptionOverlay
-            activeCue={activeCue}
-            activeWord={activeWord}
-            preset={preset}
-            accent="violet"
-            currentTime={currentTime}
-          />
+        {/* Before / After Corner Labels */}
+        <div className="pointer-events-none absolute inset-x-2.5 top-2.5 z-20 flex items-center justify-between text-[10px] font-semibold">
+          {compareMode !== "after" ? (
+            <span className="rounded-full border border-ink/15 bg-page/80 px-2 py-0.5 text-ink-secondary backdrop-blur-md">
+              Before · Raw
+            </span>
+          ) : (
+            <span />
+          )}
+          {compareMode !== "before" && (
+            <span className="rounded-full border border-accent/45 bg-accent-soft/90 px-2 py-0.5 text-accent-hover backdrop-blur-md">
+              After · {selectedTemplate.name}
+            </span>
+          )}
+        </div>
+
+        {/* Synchronized Caption Overlay Layer (clipped live in Split mode) */}
+        {showCaptionsLayer && (
+          <div
+            data-testid="before-after-captioned-layer"
+            style={clipStyle}
+            className="pointer-events-none absolute inset-0 z-20"
+          >
+            <CaptionOverlay
+              activeCue={activeCue}
+              activeWord={activeWord}
+              preset={selectedTemplate.style.preset}
+              fontSize={selectedTemplate.style.fontSize}
+              verticalPosition={selectedTemplate.style.verticalPosition}
+              accent={selectedTemplate.style.accent}
+              styleConfig={selectedTemplate.style}
+              currentTime={currentTime}
+            />
+          </div>
         )}
 
-        {/* Non-focusable center play affordance */}
+        {/* Split Divider Line in Split mode */}
+        {compareMode === "split" && (
+          <div
+            aria-hidden="true"
+            style={{ left: `${splitPercent}%` }}
+            className="pointer-events-none absolute bottom-0 top-0 z-30 -translate-x-1/2"
+          >
+            <div className="h-full w-0.5 bg-accent shadow-[0_0_12px_rgba(167,139,250,0.9)]" />
+            <div className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent bg-page text-[9px] font-bold text-accent-hover shadow-lg">
+              ↔
+            </div>
+          </div>
+        )}
+
+        {/* Center play affordance */}
         {!isPlaying && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[43%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
+            className="pointer-events-none absolute left-1/2 top-[38%] z-10 flex h-13 w-13 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
           >
-            <Play className="ml-0.5 h-6 w-6 fill-current" />
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
           </div>
         )}
       </div>
 
-      {/* User-controlled Playback Bar */}
-      <div className="mt-3 rounded-xl border border-ink/10 bg-page px-3 py-2">
-        <div className="relative flex h-5 items-center">
+      {/* Accessible Split Position Slider (shown in Split mode) */}
+      {compareMode === "split" && (
+        <div className="mt-2 flex items-center gap-2 px-1">
+          <span className="text-[10px] font-medium text-ink-muted">Before</span>
+          <input
+            type="range"
+            min={5}
+            max={95}
+            step={1}
+            value={splitPercent}
+            data-testid="before-after-slider"
+            onChange={(e) => setSplitPercent(Number(e.target.value))}
+            aria-label="Adjust before and after split position"
+            className="studio-scrubber h-4 flex-1"
+          />
+          <span className="text-[10px] font-medium text-accent-hover">
+            After
+          </span>
+        </div>
+      )}
+
+      {/* Playback Bar */}
+      <div className="mt-2 rounded-xl border border-ink/10 bg-page px-3 py-2">
+        <div className="relative flex h-4 items-center">
           <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
             <div
               className="h-full rounded-full bg-accent"
@@ -237,31 +337,31 @@ export function HomeHeroDemo() {
         </div>
       </div>
 
-      {/* Live Preset Switcher (no sign-in required) */}
+      {/* Live Style Preset Switcher (no sign-in required) */}
       <div
         role="group"
         aria-label="Demo caption style presets"
         data-testid="hero-preset-group"
-        className="mt-2.5 grid grid-cols-3 gap-1.5"
+        className="mt-2 flex flex-wrap gap-1.5"
       >
-        {CAPTION_PRESETS.map((item) => {
-          const selected = preset === item.id;
+        {BUILTIN_STYLE_TEMPLATES.map((tpl) => {
+          const selected = templateId === tpl.id;
           return (
             <button
-              key={item.id}
+              key={tpl.id}
               type="button"
               aria-pressed={selected}
               onClick={() => {
-                setPreset(item.id);
-                if (!captionsEnabled) setCaptionsEnabled(true);
+                setTemplateId(tpl.id);
+                if (compareMode === "before") setCompareMode("after");
               }}
-              className={`rounded-xl border px-2 py-2 text-[11px] font-semibold transition ${
+              className={`flex-1 basis-[30%] rounded-xl border px-2 py-1.5 text-[11px] font-semibold transition ${
                 selected
                   ? "border-accent bg-accent-soft text-accent-hover"
                   : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
               }`}
             >
-              {item.name}
+              {tpl.name}
             </button>
           );
         })}

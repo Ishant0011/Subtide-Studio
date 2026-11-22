@@ -62,22 +62,21 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} />
 
       <main className="relative z-10">
-        {/* Hero Section: Playable Demo Centerpiece */}
+        {/* Hero Section: Synchronized Before / After Playable Demo */}
         <section className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6 lg:pb-16 lg:pt-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            {/* Editorial Headline & Primary Actions */}
             <div>
-              <h1 className="text-4xl font-extrabold leading-[1.04] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.65rem]">
+              <h1 className="text-4xl font-extrabold leading-[1.04] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.6rem]">
                 {HOMEPAGE_HEADLINE}
               </h1>
 
               <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-secondary sm:text-lg">
-                Upload a video or audio clip, tighten word-level cues on a real
-                timeline, and export burned-in MP4, UTF-8 SRT, or transparent
-                ProRes 4444 overlays.
+                Upload a video or audio clip, refine words and split or merge
+                cues on a full-width timeline, save personal brand presets, and
+                export burned-in MP4, UTF-8 SRT, or transparent ProRes 4444 MOV.
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Link
                   href="/upload"
                   data-testid="home-upload-cta"
@@ -97,13 +96,13 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              <p className="mt-6 text-xs text-ink-muted">
-                MP4, MOV, MP3 &amp; WAV up to 150 MB / 3 min · Play the live
-                demo and switch presets without signing in.
+              <p className="mt-5 text-xs text-ink-muted">
+                MP4, MOV, MP3 &amp; WAV up to 150 MB / 3 min · Edit the sample
+                transcript and download a free UTF-8 SRT without signing in.
               </p>
             </div>
 
-            {/* Playable Interactive Portrait Demo (Main Attraction) */}
+            {/* Synchronized Before / After Interactive Demo */}
             <div className="flex justify-center lg:justify-end">
               <HomeHeroDemo />
             </div>
@@ -121,7 +120,7 @@ export default async function HomePage() {
                 Upload → Edit → Export
               </p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                Built around a real caption workflow.
+                Built for fast creator turnarounds.
               </h2>
             </div>
 
@@ -139,7 +138,6 @@ export default async function HomePage() {
                     </span>
                   </div>
 
-                  {/* Product UI visual: upload dropzone + progress */}
                   <div
                     aria-hidden="true"
                     className="mt-4 rounded-xl border border-ink/10 bg-page p-3.5"
@@ -173,41 +171,37 @@ export default async function HomePage() {
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
                     Private resumable uploads recover from drops while the
-                    worker normalizes your preview and generates word-level
-                    timestamps.
+                    worker normalizes your preview and aligns word timestamps.
                   </p>
                 </div>
               </article>
 
-              {/* Step 2: Edit Visual */}
+              {/* Step 2: Edit & Style Visual */}
               <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
                       <SlidersHorizontal className="h-4 w-4 text-accent" />
-                      <span>2. Edit</span>
+                      <span>2. Correct &amp; Style</span>
                     </span>
                     <span className="font-mono text-[11px] text-ink-muted">
-                      Timeline + Inspector
+                      Timeline + Presets
                     </span>
                   </div>
 
-                  {/* Product UI visual: zoomed timeline + draggable cue handles */}
                   <div
                     aria-hidden="true"
                     className="mt-4 rounded-xl border border-ink/10 bg-page p-3.5"
                   >
                     <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
-                      <span>0:00</span>
-                      <span>0:03</span>
-                      <span>0:06</span>
-                      <span>0:09</span>
+                      <span>Split · Merge · Word Edit</span>
+                      <span className="text-accent-hover">Safe Guide</span>
                     </div>
-                    <div className="relative mt-1.5 flex h-9 items-center gap-1.5 rounded-lg bg-inset px-1.5">
+                    <div className="relative mt-2 flex h-9 items-center gap-1.5 rounded-lg bg-inset px-1.5">
                       <div className="flex h-6 w-[38%] items-center justify-between rounded border border-ink/15 bg-elevated px-1.5 text-[10px] text-ink-secondary">
                         <span className="truncate">#1 Hook</span>
                       </div>
-                      <div className="flex h-6 w-[44%] items-center justify-between rounded border border-accent bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-hover">
+                      <div className="flex h-6 w-[46%] items-center justify-between rounded border border-accent bg-accent-soft px-1.5 text-[10px] font-semibold text-accent-hover">
                         <span className="h-3.5 w-1 rounded-full bg-accent" />
                         <span className="truncate">#2 Sound off</span>
                         <span className="h-3.5 w-1 rounded-full bg-accent" />
@@ -215,15 +209,14 @@ export default async function HomePage() {
                       <span className="absolute bottom-0 left-[54%] top-0 w-0.5 bg-accent shadow-[0_0_8px_#A78BFA]" />
                     </div>
                     <div className="mt-2.5 flex items-center justify-between text-[10px] text-ink-secondary">
-                      <span>Search · Undo / Redo</span>
-                      <span className="text-accent-hover">Autosaved</span>
+                      <span>Poppins · Bebas · DM Serif</span>
+                      <span className="text-accent-hover">Saved preset</span>
                     </div>
                   </div>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                    Drag cue boundaries on a zoomable timeline, search
-                    transcripts, undo edits, and style Clean, Boxed, or Word
-                    Highlight presets.
+                    Split at the playhead, merge cues, fix single timed words,
+                    preview safe areas, and reuse your own saved brand presets.
                   </p>
                 </div>
               </article>
@@ -237,11 +230,10 @@ export default async function HomePage() {
                       <span>3. Export</span>
                     </span>
                     <span className="rounded-full border border-accent/35 bg-accent-soft px-2 py-0.5 font-mono text-[10px] font-semibold text-accent-hover">
-                      Saved Rev #3
+                      Pinned Rev #3
                     </span>
                   </div>
 
-                  {/* Product UI visual: pinned export rows */}
                   <div
                     aria-hidden="true"
                     className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-page p-3"
@@ -266,8 +258,8 @@ export default async function HomePage() {
                   </div>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                    Every export pins to a saved caption revision and renders on
-                    the worker with private short-lived download links.
+                    Every export stores your applied style by value on an
+                    immutable revision so later edits never alter earlier files.
                   </p>
                 </div>
               </article>
@@ -275,24 +267,30 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Export Outputs Visual Showcase */}
+        {/* Real Export Format Examples */}
         <section id="exports" className="border-t border-ink/8 py-16 lg:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                Three production outputs from one revision.
-              </h2>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                  Three production outputs, one saved revision.
+                </h2>
+                <p className="mt-1.5 text-sm text-ink-secondary">
+                  Preview and rendered video share the same bundled fonts,
+                  colors, outlines, and timing.
+                </p>
+              </div>
               <Link
-                href="/upload"
+                href="/studio"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition hover:text-accent-hover"
               >
-                <span>Start a project</span>
+                <span>Edit sample &amp; download SRT</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {/* MP4 Card */}
+              {/* MP4 Real Example */}
               <div className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -305,9 +303,16 @@ export default async function HomePage() {
                     </span>
                   </div>
 
-                  <div className="mt-4 flex h-28 flex-col justify-end rounded-xl border border-ink/10 bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-3">
-                    <p className="flex flex-wrap items-center justify-center gap-1 text-center text-xs font-extrabold uppercase">
-                      <span className="rounded bg-page/60 px-1.5 py-0.5 text-ink">
+                  <div className="mt-4 flex h-32 flex-col justify-between rounded-xl border border-ink/10 bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-3">
+                    <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
+                      <span>launch-hook-rev3.mp4</span>
+                      <span>720×1280 · 30fps</span>
+                    </div>
+                    <p
+                      style={{ fontFamily: '"Poppins", sans-serif' }}
+                      className="flex flex-wrap items-center justify-center gap-1 text-center text-xs font-extrabold uppercase"
+                    >
+                      <span className="rounded bg-page/65 px-1.5 py-0.5 text-ink">
                         HOOK
                       </span>
                       <span className="rounded bg-accent px-1.5 py-0.5 text-page">
@@ -320,13 +325,14 @@ export default async function HomePage() {
                   </div>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                    Burned-in captions preserving source aspect ratio and AAC
-                    audio, plus a 9:16 stage for audio-only uploads.
+                    Ready for Reels, Shorts, and TikTok with burned-in styling,
+                    preserved source aspect ratio and AAC audio, or a 9:16 stage
+                    for audio-only clips.
                   </p>
                 </div>
               </div>
 
-              {/* SRT Card */}
+              {/* SRT Real Example */}
               <div className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -339,21 +345,25 @@ export default async function HomePage() {
                     </span>
                   </div>
 
-                  <pre className="mt-4 h-28 overflow-hidden rounded-xl border border-ink/10 bg-page p-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
+                  <pre className="mt-4 h-32 overflow-hidden rounded-xl border border-ink/10 bg-page p-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
 {`1
-00:00:00,400 --> 00:00:03,100
-Great short-form clips
-hook viewers in two seconds.`}
+00:00:00,350 --> 00:00:02,830
+Great short-form clips hook
+viewers in two seconds.
+
+2
+00:00:03,150 --> 00:00:05,080`}
                   </pre>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                    Deterministic UTF-8 SubRip with exact millisecond timing,
-                    multiline cues, Unicode text, and silence gaps preserved.
+                    Deterministic UTF-8 SubRip with exact millisecond timestamps,
+                    multiline cues, Unicode characters, and silence gaps for
+                    YouTube, LinkedIn, or NLE import.
                   </p>
                 </div>
               </div>
 
-              {/* Transparent MOV Card */}
+              {/* Transparent MOV Real Example */}
               <div className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -366,11 +376,19 @@ hook viewers in two seconds.`}
                     </span>
                   </div>
 
-                  <div className="alpha-checkerboard mt-4 flex h-28 flex-col justify-between rounded-xl border border-ink/10 p-3">
-                    <span className="self-start rounded-full border border-ink/15 bg-page/80 px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      Real alpha · No audio
-                    </span>
-                    <div className="mx-auto rounded-lg border border-ink/15 bg-page/85 px-3 py-1.5 text-center text-xs font-semibold text-ink">
+                  <div className="alpha-checkerboard mt-4 flex h-32 flex-col justify-between rounded-xl border border-ink/10 p-3">
+                    <div className="flex items-center justify-between font-mono text-[10px] text-ink-secondary">
+                      <span className="rounded-full border border-ink/15 bg-page/85 px-2 py-0.5">
+                        yuva444p10le · No audio
+                      </span>
+                      <span className="rounded bg-page/80 px-1.5 py-0.5 text-accent-hover">
+                        Alpha
+                      </span>
+                    </div>
+                    <div
+                      style={{ fontFamily: '"DM Serif Display", serif' }}
+                      className="mx-auto rounded-lg border border-ink/15 bg-page/88 px-3 py-1.5 text-center text-sm text-ink"
+                    >
                       Keep{" "}
                       <span className="text-accent underline">your</span>{" "}
                       style.
@@ -378,8 +396,9 @@ hook viewers in two seconds.`}
                   </div>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                    Captions-only ProRes 4444 with clean transparent gaps ready
-                    to composite in Premiere, DaVinci, or Final Cut.
+                    Captions-only Apple ProRes 4444 with real alpha transparency
+                    and clean transparent gaps ready to layer over timelines in
+                    Premiere, DaVinci, or Final Cut.
                   </p>
                 </div>
               </div>

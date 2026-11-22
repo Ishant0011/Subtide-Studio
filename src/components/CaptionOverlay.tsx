@@ -2,9 +2,12 @@
 
 import type { CaptionCue, CaptionPresetId, CaptionWord } from "@/lib/captions";
 import {
+  applyCaptionCasing,
   computeCaptionLayout,
+  hexToRgba,
   type CaptionAccentId,
   type CaptionFontSize,
+  type CaptionStyleConfig,
 } from "@/lib/caption-editor";
 
 interface CaptionOverlayProps {
@@ -15,6 +18,30 @@ interface CaptionOverlayProps {
   fontSize?: CaptionFontSize;
   verticalPosition?: number;
   accent?: CaptionAccentId;
+  styleConfig?: Partial<CaptionStyleConfig>;
+}
+
+function buildTextShadow(
+  outlineWidth: number,
+  outlineColor: string,
+  shadowStrength: "none" | "soft" | "strong"
+): string | undefined {
+  const shadows: string[] = [];
+  if (outlineWidth > 0) {
+    const px = Math.min(3, Math.max(1, Math.round(outlineWidth * 0.6)));
+    shadows.push(
+      `-${px}px -${px}px 0 ${outlineColor}`,
+      `${px}px -${px}px 0 ${outlineColor}`,
+      `-${px}px ${px}px 0 ${outlineColor}`,
+      `${px}px ${px}px 0 ${outlineColor}`
+    );
+  }
+  if (shadowStrength === "strong") {
+    shadows.push("0 3px 12px rgba(7,11,16,0.95)", "0 1px 3px rgba(7,11,16,0.95)");
+  } else if (shadowStrength === "soft") {
+    shadows.push("0 2px 8px rgba(7,11,16,0.85)");
+  }
+  return shadows.length > 0 ? shadows.join(", ") : undefined;
 }
 
 export function CaptionOverlay({
@@ -25,6 +52,7 @@ export function CaptionOverlay({
   fontSize = "md",
   verticalPosition = 14,
   accent = "violet",
+  styleConfig,
 }: CaptionOverlayProps) {
   if (!activeCue) {
     return null;
@@ -35,6 +63,7 @@ export function CaptionOverlay({
     fontSize,
     verticalPosition,
     accent,
+    ...styleConfig,
   });
 
   const containerStyle = {
@@ -46,13 +75,25 @@ export function CaptionOverlay({
       : layout.fontSize === "lg"
         ? "clamp(0.8rem, 6.1cqw, 1.32rem)"
         : "clamp(0.7rem, 5.2cqw, 1.12rem)";
+  const textShadow = buildTextShadow(
+    layout.outlineWidth,
+    layout.outlineColor,
+    layout.shadowStrength
+  );
+  const bgRgba = layout.backgroundEnabled
+    ? hexToRgba(layout.backgroundColor, layout.backgroundOpacity / 100)
+    : "transparent";
+  const bgDimRgba = layout.backgroundEnabled
+    ? hexToRgba(layout.backgroundColor, (layout.backgroundOpacity * 0.72) / 100)
+    : "transparent";
 
-  if (preset === "clean") {
+  if (layout.preset === "clean") {
     return (
       <div
         data-testid="caption-overlay"
         data-preset="clean"
         data-accent={layout.accent}
+        data-font-family={layout.fontFamily}
         data-font-size={layout.fontSize}
         data-vertical-position={String(layout.bottomPercent)}
         style={containerStyle}
@@ -60,10 +101,15 @@ export function CaptionOverlay({
       >
         <p
           style={{
+            fontFamily: layout.cssFontFamily,
             fontSize: responsiveFontSize,
             maxWidth: `${layout.maxWidthPercent}%`,
+            textShadow,
+            backgroundColor: layout.backgroundEnabled ? bgRgba : undefined,
           }}
-          className="text-center font-semibold leading-snug tracking-[-0.01em] text-ink [text-shadow:0_2px_10px_rgba(7,11,16,0.95),0_1px_2px_rgba(7,11,16,0.9)]"
+          className={`text-center font-bold leading-snug tracking-[-0.01em] ${
+            layout.backgroundEnabled ? "rounded-xl px-3 py-1.5" : ""
+          }`}
         >
           {activeCue.words.map((word, index) => {
             const isActive = activeWord?.id === word.id;
@@ -72,18 +118,15 @@ export function CaptionOverlay({
               <span
                 key={word.id}
                 data-active-word={isActive ? "true" : "false"}
-                style={isActive ? { color: layout.accentHex } : undefined}
+                style={{
+                  color: isActive ? layout.activeWordColor : layout.textColor,
+                  opacity: isActive || isPast ? 1 : 0.8,
+                }}
                 className={`inline-block transition-all duration-100 ${
                   index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
-                } ${
-                  isActive
-                    ? "scale-[1.04]"
-                    : isPast
-                      ? "text-ink"
-                      : "text-ink/80"
-                }`}
+                } ${isActive ? "scale-[1.04]" : ""}`}
               >
-                {word.text}
+                {applyCaptionCasing(word.text, layout.casing)}
               </span>
             );
           })}
@@ -92,24 +135,36 @@ export function CaptionOverlay({
     );
   }
 
-  if (preset === "boxed") {
+  if (layout.preset === "boxed") {
     return (
       <div
         data-testid="caption-overlay"
         data-preset="boxed"
         data-accent={layout.accent}
+        data-font-family={layout.fontFamily}
         data-font-size={layout.fontSize}
         data-vertical-position={String(layout.bottomPercent)}
         style={containerStyle}
         className="pointer-events-none absolute inset-x-3 z-20 flex justify-center"
       >
         <div
-          style={{ maxWidth: `${layout.maxWidthPercent}%` }}
-          className="rounded-2xl border border-ink/15 bg-page/82 px-3.5 py-2 text-center shadow-[0_12px_32px_rgba(0,0,0,0.55)] backdrop-blur-md"
+          style={{
+            maxWidth: `${layout.maxWidthPercent}%`,
+            backgroundColor: bgRgba,
+          }}
+          className={`rounded-2xl px-3.5 py-2 text-center ${
+            layout.backgroundEnabled
+              ? "border border-ink/15 shadow-[0_12px_32px_rgba(0,0,0,0.55)] backdrop-blur-md"
+              : ""
+          }`}
         >
           <p
-            style={{ fontSize: responsiveFontSize }}
-            className="font-semibold leading-snug tracking-[-0.01em]"
+            style={{
+              fontFamily: layout.cssFontFamily,
+              fontSize: responsiveFontSize,
+              textShadow,
+            }}
+            className="font-bold leading-snug tracking-[-0.01em]"
           >
             {activeCue.words.map((word, index) => {
               const isActive = activeWord?.id === word.id;
@@ -118,25 +173,16 @@ export function CaptionOverlay({
                 <span
                   key={word.id}
                   data-active-word={isActive ? "true" : "false"}
-                  style={
-                    isActive
-                      ? {
-                          color: layout.accentHex,
-                          textDecorationColor: layout.accentHex,
-                        }
-                      : undefined
-                  }
+                  style={{
+                    color: isActive ? layout.activeWordColor : layout.textColor,
+                    textDecorationColor: isActive ? layout.activeWordColor : undefined,
+                    opacity: isActive || isPast ? 1 : 0.72,
+                  }}
                   className={`inline-block transition-colors duration-100 ${
                     index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
-                  } ${
-                    isActive
-                      ? "underline decoration-2 underline-offset-4"
-                      : isPast
-                        ? "text-ink"
-                        : "text-ink/72"
-                  }`}
+                  } ${isActive ? "underline decoration-2 underline-offset-4" : ""}`}
                 >
-                  {word.text}
+                  {applyCaptionCasing(word.text, layout.casing)}
                 </span>
               );
             })}
@@ -152,6 +198,7 @@ export function CaptionOverlay({
       data-testid="caption-overlay"
       data-preset="word-highlight"
       data-accent={layout.accent}
+      data-font-family={layout.fontFamily}
       data-font-size={layout.fontSize}
       data-vertical-position={String(layout.bottomPercent)}
       style={containerStyle}
@@ -159,10 +206,11 @@ export function CaptionOverlay({
     >
       <p
         style={{
+          fontFamily: layout.cssFontFamily,
           fontSize: responsiveFontSize,
           maxWidth: `${layout.maxWidthPercent}%`,
         }}
-        className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 text-center font-extrabold uppercase leading-tight tracking-[0.01em]"
+        className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 text-center font-extrabold leading-tight tracking-[0.01em]"
       >
         {activeCue.words.map((word) => {
           const isActive = activeWord?.id === word.id;
@@ -174,21 +222,22 @@ export function CaptionOverlay({
               style={
                 isActive
                   ? {
-                      backgroundColor: layout.accentHex,
-                      color: "#070B10",
+                      backgroundColor: layout.activeWordColor,
+                      color: layout.activeWordContrastText,
                       boxShadow: `0 4px 18px ${layout.accentShadowRgba}`,
                     }
-                  : undefined
+                  : {
+                      backgroundColor: isPast ? bgRgba : bgDimRgba,
+                      color: layout.textColor,
+                      opacity: isPast ? 1 : 0.78,
+                      textShadow,
+                    }
               }
               className={`inline-block rounded-lg px-1.5 py-0.5 transition-all duration-100 ${
-                isActive
-                  ? "scale-[1.05]"
-                  : isPast
-                    ? "bg-page/55 text-ink [text-shadow:0_2px_6px_rgba(7,11,16,0.9)]"
-                    : "bg-page/40 text-ink/75 [text-shadow:0_2px_6px_rgba(7,11,16,0.9)]"
+                isActive ? "scale-[1.05]" : ""
               }`}
             >
-              {word.text}
+              {applyCaptionCasing(word.text, layout.casing)}
             </span>
           );
         })}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
+  ArrowUpDown,
   AudioLines,
   CheckCircle2,
   Clock,
@@ -14,6 +15,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Search,
   X,
 } from "lucide-react";
 import { computeCaptionLayout } from "@/lib/caption-editor";
@@ -35,6 +37,9 @@ interface PreviewState {
   mediaKind: "video" | "audio";
   revision: CaptionRevisionRow | null;
 }
+
+type ProjectFilterStatus = "all" | "ready" | "processing" | "failed" | "uploaded";
+type ProjectSortOrder = "newest" | "oldest" | "title_asc" | "duration_desc";
 
 const ACTIVE_JOB_STATUSES = new Set([
   "queued",
@@ -60,6 +65,21 @@ function formatErrorLabel(code: string | null | undefined): string {
     default:
       return "Processing failed";
   }
+}
+
+function getRealFilterBucket(project: ProjectWithMedia): Exclude<ProjectFilterStatus, "all"> {
+  const job = project.ingest_jobs?.[0] ?? null;
+  if (job) {
+    if (ACTIVE_JOB_STATUSES.has(job.status)) return "processing";
+    if (job.status === "failed") return "failed";
+    if (job.status === "completed") return "ready";
+  }
+  if (project.status === "failed") return "failed";
+  if (project.status === "queued" || project.status === "processing") return "processing";
+  if (project.status === "ready" && (project.active_revision_id || project.preview_object_key)) {
+    return "ready";
+  }
+  return "uploaded";
 }
 
 function getStageDisplay(
@@ -122,6 +142,10 @@ function findActiveCueMs(
 
 export function ProjectsList({ initialProjects }: ProjectsListProps) {
   const [projects, setProjects] = useState<ProjectWithMedia[]>(initialProjects);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ProjectFilterStatus>("all");
+  const [sortOrder, setSortOrder] = useState<ProjectSortOrder>("newest");
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -174,6 +198,45 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
     };
   }, [hasActiveJobs]);
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<ProjectFilterStatus, number> = {
+      all: projects.length,
+      ready: 0,
+      processing: 0,
+      failed: 0,
+      uploaded: 0,
+    };
+    for (const project of projects) {
+      counts[getRealFilterBucket(project)] += 1;
+    }
+    return counts;
+  }, [projects]);
+
+  const filteredProjects = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = projects.filter((project) => {
+      if (statusFilter !== "all" && getRealFilterBucket(project) !== statusFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const filename = project.media_assets?.[0]?.original_filename?.toLowerCase() ?? "";
+      return project.title.toLowerCase().includes(q) || filename.includes(q);
+    });
+
+    return [...list].sort((a, b) => {
+      if (sortOrder === "oldest") {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (sortOrder === "title_asc") {
+        return a.title.localeCompare(b.title);
+      }
+      if (sortOrder === "duration_desc") {
+        return (b.duration_ms ?? 0) - (a.duration_ms ?? 0);
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [projects, searchQuery, statusFilter, sortOrder]);
+
   async function saveTitle(projectId: string) {
     const trimmed = draftTitle.trim();
     if (!trimmed) return;
@@ -216,7 +279,6 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
         return;
       }
 
-      // Immediately refresh projects list so polling kicks in
       const listRes = await fetch("/api/projects", { cache: "no-store" });
       if (listRes.ok) {
         const listData = await listRes.json();
@@ -270,8 +332,8 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
     return findActiveCueMs(preview.revision.cues, previewTimeMs);
   }, [preview, previewTimeMs]);
 
-  const previewAccentHex = useMemo(
-    () => computeCaptionLayout(preview?.revision?.style).accentHex,
+  const previewLayout = useMemo(
+    () => computeCaptionLayout(preview?.revision?.style),
     [preview]
   );
 
@@ -286,6 +348,98 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
         </div>
       )}
 
+      {/* Search, Real-Status Filters & Sort Bar */}
+      {projects.length > 0 && (
+        <div
+          data-testid="projects-controls"
+          className="mb-5 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-panel p-3 sm:p-3.5"
+        >
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            {/* Search by title or filename */}
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-ink/12 bg-page px-3 py-2 focus-within:border-accent">
+              <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+              <input
+                type="text"
+                data-testid="projects-search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search projects by title or filename..."
+                aria-label="Search projects"
+                className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear project search"
+                  className="text-ink-muted hover:text-ink"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Sort dropdown */}
+            <label className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-ink/12 bg-page px-3 py-2 text-xs text-ink-secondary">
+              <ArrowUpDown className="h-3.5 w-3.5 text-accent" />
+              <span className="sr-only">Sort projects</span>
+              <select
+                data-testid="projects-sort-select"
+                aria-label="Sort projects"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as ProjectSortOrder)}
+                className="bg-page text-xs font-medium text-ink focus:outline-none"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="title_asc">Title (A–Z)</option>
+                <option value="duration_desc">Longest clip</option>
+              </select>
+            </label>
+          </div>
+
+          {/* Real-status filter chips */}
+          <div
+            role="group"
+            aria-label="Filter projects by status"
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            {(
+              [
+                { id: "all", label: "All" },
+                { id: "ready", label: "Ready" },
+                { id: "processing", label: "Processing" },
+                { id: "failed", label: "Failed" },
+                { id: "uploaded", label: "Uploaded" },
+              ] as const
+            ).map((chip) => {
+              const active = statusFilter === chip.id;
+              const count = statusCounts[chip.id];
+              if (chip.id === "uploaded" && count === 0) return null;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  data-testid={`projects-filter-${chip.id}`}
+                  aria-pressed={active}
+                  onClick={() => setStatusFilter(chip.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    active
+                      ? "border-accent bg-accent-soft text-accent-hover"
+                      : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
+                  }`}
+                >
+                  <span>{chip.label}</span>
+                  <span className="font-mono text-[10px] opacity-80">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {projects.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink/15 bg-panel/70 px-6 py-14 text-center">
           <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/35 bg-accent-soft text-accent">
@@ -297,7 +451,9 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           <p className="mx-auto mt-1.5 max-w-md text-sm text-ink-secondary">
             Upload an MP4, MOV, MP3, or WAV clip (up to 150 MB, 3-minute
             processing limit) to create your first project. Track processing
-            progress here, then click <strong className="font-semibold text-ink">Open editor</strong> once it&apos;s ready.
+            progress here, then click{" "}
+            <strong className="font-semibold text-ink">Open editor</strong> once
+            it&apos;s ready.
           </p>
           <Link
             href="/upload"
@@ -308,9 +464,28 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
             <span>New project</span>
           </Link>
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-ink/15 bg-panel/70 px-6 py-12 text-center">
+          <p className="text-sm font-semibold text-ink">
+            No matching projects
+          </p>
+          <p className="mt-1 text-xs text-ink-secondary">
+            Try clearing your search or switching back to all statuses.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }}
+            className="mt-4 rounded-xl border border-accent/45 bg-accent-soft px-4 py-2 text-xs font-semibold text-accent-hover hover:bg-accent hover:text-page"
+          >
+            Reset filters
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const primaryAsset = project.media_assets?.[0] ?? null;
             const job = project.ingest_jobs?.[0] ?? null;
             const revision =
@@ -348,6 +523,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               <article
                 key={project.id}
                 data-testid={`project-card-${project.id}`}
+                data-project-title={project.title}
                 className="flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition hover:border-accent/30"
               >
                 {/* Project Visual Thumbnail / Audio Artwork */}
@@ -397,7 +573,6 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                     </div>
                   )}
 
-                  {/* Top overlay status pill */}
                   <span
                     data-testid={`project-stage-${project.id}`}
                     className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md ${badgeClass}`}
@@ -470,7 +645,6 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       )}
                     </div>
 
-                    {/* Error details when failed */}
                     {(job?.error_message || project.last_error_message) &&
                       (job?.status === "failed" || project.status === "failed") && (
                         <p className="mt-2.5 rounded-lg border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
@@ -585,7 +759,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
         </div>
       )}
 
-      {/* Owner-only Signed Media Preview Modal (Video + Audio Portrait Stage) */}
+      {/* Owner-only Signed Media Preview Modal */}
       {preview && (
         <div
           role="dialog"
@@ -642,7 +816,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                               key={w.id}
                               style={
                                 isWordActive
-                                  ? { backgroundColor: previewAccentHex, color: "#070B10" }
+                                  ? {
+                                      backgroundColor: previewLayout.activeWordColor,
+                                      color: previewLayout.activeWordContrastText,
+                                    }
                                   : undefined
                               }
                               className={`rounded px-1.5 py-0.5 ${
@@ -689,7 +866,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                             key={w.id}
                             style={
                               isWordActive
-                                ? { backgroundColor: previewAccentHex, color: "#070B10" }
+                                ? {
+                                    backgroundColor: previewLayout.activeWordColor,
+                                    color: previewLayout.activeWordContrastText,
+                                  }
                                 : undefined
                             }
                             className={`rounded px-1 ${
