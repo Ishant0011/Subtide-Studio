@@ -35,7 +35,7 @@ export const CAPTION_PRESETS: CaptionPreset[] = [
   {
     id: "word-highlight",
     name: "Word Highlight",
-    description: "Kinetic mint pill tracking every spoken word in real time.",
+    description: "Kinetic violet pill tracking every spoken word in real time.",
   },
 ];
 

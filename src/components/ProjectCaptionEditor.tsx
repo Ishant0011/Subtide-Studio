@@ -9,15 +9,22 @@ import {
   AudioLines,
   Captions,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Download,
+  Keyboard,
   Loader2,
   Pause,
   Play,
+  Redo2,
   RefreshCw,
   RotateCcw,
   RotateCw,
+  Search,
+  Undo2,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import {
   findActiveEditorCue,
@@ -32,6 +39,7 @@ import {
 } from "@/lib/caption-editor";
 import { AccountMenu } from "@/components/AccountMenu";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
+import { EditorTimeline } from "@/components/EditorTimeline";
 import { ProjectExportModal } from "@/components/ProjectExportModal";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
@@ -45,12 +53,19 @@ interface ConflictRevisionPayload {
   cues?: unknown;
 }
 
+interface EditorHistorySnapshot {
+  cues: EditorCue[];
+  style: CaptionStyleConfig;
+}
+
 interface ProjectCaptionEditorProps {
   userEmail: string;
   projectId: string;
   projectTitle: string;
   mediaKind: "video" | "audio";
   previewUrl: string;
+  previewWidth?: number | null;
+  previewHeight?: number | null;
   durationMs: number;
   initialRevisionId: string | null;
   initialRevisionNumber: number;
@@ -58,12 +73,16 @@ interface ProjectCaptionEditorProps {
   initialStyle: CaptionStyleConfig;
 }
 
+const MAX_HISTORY_DEPTH = 50;
+
 export function ProjectCaptionEditor({
   userEmail,
   projectId,
   projectTitle,
   mediaKind,
   previewUrl,
+  previewWidth = null,
+  previewHeight = null,
   durationMs,
   initialRevisionId,
   initialRevisionNumber,
@@ -72,6 +91,10 @@ export function ProjectCaptionEditor({
 }: ProjectCaptionEditorProps) {
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const playButtonRef = useRef<HTMLButtonElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const shortcutsRef = useRef<HTMLDivElement | null>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const cueCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -81,16 +104,35 @@ export function ProjectCaptionEditor({
   const [clipDurationMs, setClipDurationMs] = useState(
     durationMs > 0 ? durationMs : 15000
   );
+  const [videoDims, setVideoDims] = useState<{ w: number; h: number } | null>(
+    previewWidth && previewHeight
+      ? { w: previewWidth, h: previewHeight }
+      : null
+  );
   const [hasInitializedSeek, setHasInitializedSeek] = useState(false);
   const [mobileTab, setMobileTab] = useState<StudioMobileTab>("captions");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const [cues, setCues] = useState<EditorCue[]>(initialCues);
   const [style, setStyle] = useState<CaptionStyleConfig>(initialStyle);
+  const [selectedCueId, setSelectedCueId] = useState<string | null>(
+    initialCues[0]?.id ?? null
+  );
   const [revisionNumber, setRevisionNumber] = useState(initialRevisionNumber);
   const [savedRevisionId, setSavedRevisionId] = useState<string | null>(
     initialRevisionId
   );
   const [exportModalOpen, setExportModalOpen] = useState(false);
+
+  // Transcript Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeMatchIdx, setActiveMatchIdx] = useState(0);
+
+  // Undo / Redo history stacks
+  const undoStackRef = useRef<EditorHistorySnapshot[]>([]);
+  const redoStackRef = useRef<EditorHistorySnapshot[]>([]);
+  const lastCoalesceRef = useRef<{ key: string; at: number } | null>(null);
+  const [historyCounts, setHistoryCounts] = useState({ undo: 0, redo: 0 });
 
   // Concurrency & autosave refs
   const baseRevisionIdRef = useRef<string | null>(initialRevisionId);
@@ -120,6 +162,55 @@ export function ProjectCaptionEditor({
     latestStyleRef.current = style;
   }, [style]);
 
+  const syncHistoryCounts = useCallback(() => {
+    setHistoryCounts({
+      undo: undoStackRef.current.length,
+      redo: redoStackRef.current.length,
+    });
+  }, []);
+
+  const recordUndoSnapshot = useCallback(
+    (
+      snapshot: EditorHistorySnapshot,
+      coalesceKey?: string
+    ) => {
+      const now = Date.now();
+      if (
+        coalesceKey &&
+        lastCoalesceRef.current &&
+        lastCoalesceRef.current.key === coalesceKey &&
+        now - lastCoalesceRef.current.at < 700
+      ) {
+        lastCoalesceRef.current.at = now;
+        return;
+      }
+
+      undoStackRef.current = [
+        ...undoStackRef.current.slice(-(MAX_HISTORY_DEPTH - 1)),
+        snapshot,
+      ];
+      redoStackRef.current = [];
+      lastCoalesceRef.current = coalesceKey
+        ? { key: coalesceKey, at: now }
+        : null;
+      syncHistoryCounts();
+    },
+    [syncHistoryCounts]
+  );
+
+  const isLandscapeVideo = useMemo(() => {
+    if (mediaKind !== "video" || !videoDims) return false;
+    return videoDims.w > videoDims.h;
+  }, [mediaKind, videoDims]);
+
+  const mediaAspectBadge = useMemo(() => {
+    if (mediaKind === "audio") return "Audio 9:16";
+    if (!videoDims) return "Video";
+    if (videoDims.w > videoDims.h) return "Video 16:9";
+    if (videoDims.w === videoDims.h) return "Video 1:1";
+    return "Video 9:16";
+  }, [mediaKind, videoDims]);
+
   const activeCue = useMemo(
     () => findActiveEditorCue(cues, currentTimeMs),
     [cues, currentTimeMs]
@@ -138,6 +229,21 @@ export function ProjectCaptionEditor({
     return "Clean";
   }, [style.preset]);
 
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const matchingCueIds = useMemo(() => {
+    if (!trimmedQuery) return [];
+    return cues
+      .filter((cue) => cue.text.toLowerCase().includes(trimmedQuery))
+      .map((cue) => cue.id);
+  }, [cues, trimmedQuery]);
+
+  const boundedMatchIdx =
+    matchingCueIds.length > 0
+      ? Math.min(activeMatchIdx, matchingCueIds.length - 1)
+      : 0;
+  const currentMatchedCueId =
+    matchingCueIds.length > 0 ? matchingCueIds[boundedMatchIdx] : null;
+
   const clientValidation = useMemo(
     () =>
       validateCaptionRevisionInput({
@@ -148,7 +254,29 @@ export function ProjectCaptionEditor({
     [cues, style, clipDurationMs]
   );
 
-  // 60fps media clock sync while playing (does not alter keyboard focus)
+  // Close shortcuts popover on outside click / Escape
+  useEffect(() => {
+    if (!shortcutsOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        shortcutsRef.current &&
+        !shortcutsRef.current.contains(event.target as Node)
+      ) {
+        setShortcutsOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShortcutsOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [shortcutsOpen]);
+
+  // 60fps media clock sync while playing (strictly avoids focus or scroll hijacking)
   useEffect(() => {
     if (!isPlaying) return;
     let frameId = 0;
@@ -174,6 +302,23 @@ export function ProjectCaptionEditor({
     },
     [clipDurationMs]
   );
+
+  const scrollCueCardIntoContainer = useCallback((cueId: string) => {
+    const container = transcriptScrollRef.current;
+    const card = cueCardRefs.current[cueId];
+    if (!container || !card) return;
+
+    const cardTop = card.offsetTop;
+    const cardBottom = cardTop + card.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+    if (cardTop < viewTop + 12 || cardBottom > viewBottom - 12) {
+      container.scrollTo({
+        top: Math.max(0, cardTop - 24),
+        behavior: "smooth",
+      });
+    }
+  }, []);
 
   const togglePlay = useCallback(async () => {
     const el = mediaRef.current;
@@ -208,6 +353,9 @@ export function ProjectCaptionEditor({
     if (Number.isFinite(el.duration) && el.duration > 0) {
       setClipDurationMs(Math.round(el.duration * 1000));
     }
+    if (el instanceof HTMLVideoElement && el.videoWidth > 0 && el.videoHeight > 0) {
+      setVideoDims({ w: el.videoWidth, h: el.videoHeight });
+    }
     if (!hasInitializedSeek && initialCues[0]) {
       el.currentTime = initialCues[0].start_ms / 1000;
       setCurrentTimeMs(initialCues[0].start_ms);
@@ -217,43 +365,17 @@ export function ProjectCaptionEditor({
 
   const handleTimeUpdate = useCallback(() => {
     const el = mediaRef.current;
-    if (el) {
-      setCurrentTimeMs(Math.round(el.currentTime * 1000));
+    if (!el) return;
+    if (
+      !hasInitializedSeek &&
+      el.paused &&
+      el.currentTime === 0 &&
+      initialCues[0]
+    ) {
+      return;
     }
-  }, []);
-
-  // Keyboard shortcuts when focus is outside interactive controls
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "BUTTON" ||
-          target.tagName === "SELECT" ||
-          target.tagName === "A" ||
-          target.getAttribute("role") === "tab" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (event.code === "Space") {
-        event.preventDefault();
-        void togglePlay();
-      } else if (event.code === "ArrowLeft") {
-        event.preventDefault();
-        seekToMs(currentTimeMs - 1000);
-      } else if (event.code === "ArrowRight") {
-        event.preventDefault();
-        seekToMs(currentTimeMs + 1000);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [currentTimeMs, seekToMs, togglePlay]);
+    setCurrentTimeMs(Math.round(el.currentTime * 1000));
+  }, [hasInitializedSeek, initialCues]);
 
   // Core save runner preserving newer local edits across in-flight saves, conflicts, and failures
   const performSave = useCallback(async () => {
@@ -294,7 +416,6 @@ export function ProjectCaptionEditor({
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 409) {
-        // Stale base revision: keep local edits untouched and surface conflict resolution
         setConflictRevision(
           (data.currentRevision as ConflictRevisionPayload | null) ?? null
         );
@@ -322,7 +443,6 @@ export function ProjectCaptionEditor({
       setRevisionNumber(savedRev.revision_number);
       setConflictRevision(null);
 
-      // If newer local edits arrived while this save was in flight, keep them and save again
       if (localVersionRef.current > snapshotVersion) {
         setSaveStatusSynced("saving");
       } else {
@@ -353,7 +473,6 @@ export function ProjectCaptionEditor({
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    // Do not auto-overwrite a conflict; user explicitly chooses Reload or Save as new
     if (saveStatusRef.current === "conflict") {
       return;
     }
@@ -370,9 +489,166 @@ export function ProjectCaptionEditor({
     };
   }, []);
 
+  const handleUndo = useCallback(() => {
+    const stack = undoStackRef.current;
+    if (stack.length === 0) return;
+
+    const previous = stack[stack.length - 1];
+    undoStackRef.current = stack.slice(0, -1);
+    redoStackRef.current = [
+      ...redoStackRef.current.slice(-(MAX_HISTORY_DEPTH - 1)),
+      { cues: latestCuesRef.current, style: latestStyleRef.current },
+    ];
+    lastCoalesceRef.current = null;
+
+    latestCuesRef.current = previous.cues;
+    latestStyleRef.current = previous.style;
+    setCues(previous.cues);
+    setStyle(previous.style);
+    syncHistoryCounts();
+    scheduleAutosave();
+  }, [scheduleAutosave, syncHistoryCounts]);
+
+  const handleRedo = useCallback(() => {
+    const stack = redoStackRef.current;
+    if (stack.length === 0) return;
+
+    const next = stack[stack.length - 1];
+    redoStackRef.current = stack.slice(0, -1);
+    undoStackRef.current = [
+      ...undoStackRef.current.slice(-(MAX_HISTORY_DEPTH - 1)),
+      { cues: latestCuesRef.current, style: latestStyleRef.current },
+    ];
+    lastCoalesceRef.current = null;
+
+    latestCuesRef.current = next.cues;
+    latestStyleRef.current = next.style;
+    setCues(next.cues);
+    setStyle(next.style);
+    syncHistoryCounts();
+    scheduleAutosave();
+  }, [scheduleAutosave, syncHistoryCounts]);
+
+  // Keyboard shortcuts (playback, seek, undo/redo, search) safely scoped around active typing
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isSearchField = target === searchInputRef.current;
+      const isMod = event.ctrlKey || event.metaKey;
+
+      // Ctrl/Cmd+F focuses transcript search
+      if (isMod && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setMobileTab("captions");
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Unified Undo / Redo across caption & style edits (leave search input native)
+      if (isMod && !isSearchField) {
+        const lower = event.key.toLowerCase();
+        if (lower === "z" && !event.shiftKey) {
+          if (undoStackRef.current.length > 0) {
+            event.preventDefault();
+            handleUndo();
+          }
+          return;
+        }
+        if ((lower === "z" && event.shiftKey) || lower === "y") {
+          if (redoStackRef.current.length > 0) {
+            event.preventDefault();
+            handleRedo();
+          }
+          return;
+        }
+      }
+
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "BUTTON" ||
+          target.tagName === "SELECT" ||
+          target.tagName === "A" ||
+          target.getAttribute("role") === "tab" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        void togglePlay();
+      } else if (event.code === "ArrowLeft") {
+        event.preventDefault();
+        seekToMs(currentTimeMs - (event.shiftKey ? 5000 : 1000));
+      } else if (event.code === "ArrowRight") {
+        event.preventDefault();
+        seekToMs(currentTimeMs + (event.shiftKey ? 5000 : 1000));
+      } else if (event.key === "?") {
+        event.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [currentTimeMs, handleRedo, handleUndo, seekToMs, togglePlay]);
+
+  const navigateSearchMatch = useCallback(
+    (direction: 1 | -1) => {
+      if (matchingCueIds.length === 0) return;
+      const nextIdx =
+        (boundedMatchIdx + direction + matchingCueIds.length) %
+        matchingCueIds.length;
+      const targetId = matchingCueIds[nextIdx];
+      setActiveMatchIdx(nextIdx);
+      setSelectedCueId(targetId);
+      const found = cues.find((c) => c.id === targetId);
+      if (found) {
+        seekToMs(found.start_ms);
+        scrollCueCardIntoContainer(found.id);
+      }
+    },
+    [boundedMatchIdx, cues, matchingCueIds, scrollCueCardIntoContainer, seekToMs]
+  );
+
+  const handleSelectTimelineCue = useCallback(
+    (cueId: string, startMs: number) => {
+      setSelectedCueId(cueId);
+      seekToMs(startMs);
+      // Do not hijack scroll if user is actively typing in an input/textarea
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag !== "TEXTAREA" && activeTag !== "INPUT") {
+        scrollCueCardIntoContainer(cueId);
+      }
+    },
+    [scrollCueCardIntoContainer, seekToMs]
+  );
+
+  const handleTimelinePreviewCues = useCallback((nextCues: EditorCue[]) => {
+    latestCuesRef.current = nextCues;
+    setCues(nextCues);
+  }, []);
+
+  const handleTimelineCommitCues = useCallback(
+    (beforeCues: EditorCue[], afterCues: EditorCue[]) => {
+      recordUndoSnapshot({ cues: beforeCues, style: latestStyleRef.current });
+      latestCuesRef.current = afterCues;
+      setCues(afterCues);
+      scheduleAutosave();
+    },
+    [recordUndoSnapshot, scheduleAutosave]
+  );
+
   const updateCueText = (cueId: string, nextText: string) => {
-    setCues((prev) =>
-      prev.map((cue) => {
+    recordUndoSnapshot(
+      { cues: latestCuesRef.current, style: latestStyleRef.current },
+      `text:${cueId}`
+    );
+    setCues((prev) => {
+      const next = prev.map((cue) => {
         if (cue.id !== cueId) return cue;
         const reconciled = reconcileCueWords(
           cue,
@@ -386,8 +662,10 @@ export function ProjectCaptionEditor({
           words: reconciled.words,
           timing_mode: reconciled.timing_mode,
         };
-      })
-    );
+      });
+      latestCuesRef.current = next;
+      return next;
+    });
     scheduleAutosave();
   };
 
@@ -400,8 +678,13 @@ export function ProjectCaptionEditor({
     if (!Number.isFinite(parsedSec)) return;
     const nextMs = Math.round(parsedSec * 1000);
 
-    setCues((prev) =>
-      prev.map((cue) => {
+    recordUndoSnapshot(
+      { cues: latestCuesRef.current, style: latestStyleRef.current },
+      `timing:${cueId}:${field}`
+    );
+
+    setCues((prev) => {
+      const next = prev.map((cue) => {
         if (cue.id !== cueId) return cue;
         const nextStart = field === "start_ms" ? nextMs : cue.start_ms;
         const nextEnd = field === "end_ms" ? nextMs : cue.end_ms;
@@ -416,13 +699,25 @@ export function ProjectCaptionEditor({
           words: reconciled.words,
           timing_mode: reconciled.timing_mode,
         };
-      })
-    );
+      });
+      latestCuesRef.current = next;
+      return next;
+    });
     scheduleAutosave();
   };
 
   const updateStyle = (patch: Partial<CaptionStyleConfig>) => {
-    setStyle((prev) => normalizeCaptionStyle({ ...prev, ...patch }));
+    const coalesceKey =
+      patch.verticalPosition !== undefined ? "style:vpos" : undefined;
+    recordUndoSnapshot(
+      { cues: latestCuesRef.current, style: latestStyleRef.current },
+      coalesceKey
+    );
+    setStyle((prev) => {
+      const next = normalizeCaptionStyle({ ...prev, ...patch });
+      latestStyleRef.current = next;
+      return next;
+    });
     scheduleAutosave();
   };
 
@@ -433,8 +728,13 @@ export function ProjectCaptionEditor({
     baseRevisionIdRef.current = conflictRevision.id;
     setSavedRevisionId(conflictRevision.id);
     setRevisionNumber(conflictRevision.revision_number);
+    latestCuesRef.current = nextCues;
+    latestStyleRef.current = nextStyle;
     setCues(nextCues);
     setStyle(nextStyle);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    syncHistoryCounts();
     savedVersionRef.current = localVersionRef.current;
     setConflictRevision(null);
     setSaveError(null);
@@ -450,44 +750,69 @@ export function ProjectCaptionEditor({
     void performSave();
   };
 
-  const progressPercent =
-    clipDurationMs > 0 ? (currentTimeMs / clipDurationMs) * 100 : 0;
-
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#070B10] text-[#F5F1E8]">
-      {/* Compact Project Header (single semantic DOM tree for mobile & desktop) */}
-      <header className="sticky top-0 z-30 border-b border-[#F5F1E8]/10 bg-[#070B10]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
+    <div className="min-h-screen overflow-x-clip bg-page text-ink">
+      {/* Compact Project Header */}
+      <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
           {/* Back link */}
           <Link
             href="/projects"
-            className="order-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] px-2.5 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/50 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+            className="order-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Projects</span>
           </Link>
 
-          {/* Project Title & Metadata (second row on phones, middle on desktop) */}
+          {/* Project Title & Metadata */}
           <div className="order-3 flex w-full min-w-0 items-center justify-between gap-2 sm:order-2 sm:w-auto sm:flex-1 sm:justify-start">
             <span
               aria-hidden="true"
-              className="hidden h-4 w-px shrink-0 bg-[#F5F1E8]/12 sm:inline-block"
+              className="hidden h-4 w-px shrink-0 bg-ink/12 sm:inline-block"
             />
-            <h1 className="truncate text-sm font-bold tracking-tight text-[#F5F1E8] lg:text-base">
+            <h1 className="truncate text-sm font-bold tracking-tight text-ink lg:text-base">
               {projectTitle}
             </h1>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="rounded-full border border-[#F5F1E8]/10 bg-[#0D131C] px-2 py-0.5 font-mono text-[11px] tabular-nums text-[#B6B0A4]">
+              <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
                 Rev #{revisionNumber}
               </span>
-              <span className="rounded-full border border-[#49E6B3]/25 bg-[#102E28]/70 px-2 py-0.5 text-[11px] font-medium text-[#49E6B3]">
-                {mediaKind === "audio" ? "Audio 9:16" : "Video 9:16"}
+              <span
+                data-testid="editor-media-aspect"
+                className="rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover"
+              >
+                {mediaAspectBadge}
               </span>
             </div>
           </div>
 
-          {/* Save Status Pill + Retry + AccountMenu */}
+          {/* Undo/Redo + Save Status + Export + AccountMenu */}
           <div className="order-2 flex shrink-0 items-center gap-1.5 sm:order-3 sm:gap-2">
+            <div className="hidden items-center gap-1 sm:flex">
+              <button
+                type="button"
+                data-testid="editor-undo-btn"
+                disabled={historyCounts.undo === 0}
+                onClick={handleUndo}
+                title="Undo (Ctrl+Z)"
+                aria-label="Undo"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/55 hover:text-ink disabled:opacity-35"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                data-testid="editor-redo-btn"
+                disabled={historyCounts.redo === 0}
+                onClick={handleRedo}
+                title="Redo (Ctrl+Shift+Z)"
+                aria-label="Redo"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/55 hover:text-ink disabled:opacity-35"
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
             <span
               role="status"
               aria-live="polite"
@@ -495,7 +820,7 @@ export function ProjectCaptionEditor({
               data-status={saveStatus}
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs ${
                 saveStatus === "saved"
-                  ? "border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]"
+                  ? "border border-accent/40 bg-accent-soft text-accent-hover"
                   : saveStatus === "saving"
                     ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
                     : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
@@ -528,7 +853,7 @@ export function ProjectCaptionEditor({
               <button
                 type="button"
                 onClick={() => void performSave()}
-                className="inline-flex items-center gap-1 rounded-lg border border-[#F5F1E8]/15 bg-[#131C28] px-2.5 py-1 text-xs font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2.5 py-1 text-xs font-medium text-ink transition hover:border-accent/55"
               >
                 <RefreshCw className="h-3 w-3" />
                 <span>Retry</span>
@@ -539,7 +864,7 @@ export function ProjectCaptionEditor({
               type="button"
               data-testid="open-export-btn"
               onClick={() => setExportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-2.5 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] sm:px-3"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-3"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Export</span>
@@ -551,7 +876,7 @@ export function ProjectCaptionEditor({
       </header>
 
       {/* Main Studio Workspace */}
-      <main className="mx-auto w-full max-w-[1400px] px-3 py-3 sm:px-5 lg:px-6 lg:py-4">
+      <main className="mx-auto w-full max-w-[1440px] px-3 py-3 sm:px-5 lg:px-6 lg:py-4">
         {/* Conflict Banner (keeps newer local edits intact!) */}
         {saveStatus === "conflict" && (
           <div
@@ -577,7 +902,7 @@ export function ProjectCaptionEditor({
                 <button
                   type="button"
                   onClick={reloadLatestFromConflict}
-                  className="rounded-lg border border-amber-300/35 bg-[#0D131C] px-3 py-1.5 font-semibold text-amber-100 transition hover:bg-[#131C28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                  className="rounded-lg border border-amber-300/35 bg-panel px-3 py-1.5 font-semibold text-amber-100 transition hover:bg-elevated"
                 >
                   Reload latest (Rev #{conflictRevision.revision_number})
                 </button>
@@ -586,7 +911,7 @@ export function ProjectCaptionEditor({
                 <button
                   type="button"
                   onClick={saveLocalOverConflict}
-                  className="rounded-lg bg-[#49E6B3] px-3 py-1.5 font-semibold text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                  className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-page transition hover:bg-accent-hover"
                 >
                   Save my edits as new
                 </button>
@@ -613,7 +938,7 @@ export function ProjectCaptionEditor({
                 <button
                   type="button"
                   onClick={() => void performSave()}
-                  className="inline-flex items-center gap-1 rounded-lg border border-rose-300/30 bg-[#0D131C] px-2.5 py-1 text-xs font-semibold text-rose-100 hover:border-[#49E6B3]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-rose-300/30 bg-panel px-2.5 py-1 text-xs font-semibold text-rose-100 hover:border-accent/55"
                 >
                   <RefreshCw className="h-3 w-3" />
                   <span>Retry save</span>
@@ -622,16 +947,24 @@ export function ProjectCaptionEditor({
             </div>
           )}
 
-        {/* 3-Zone Desktop Grid: Preview+Playback | Editable Captions (Main) | Style Panel */}
-        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[304px_minmax(0,1fr)_280px] lg:items-start lg:gap-5 xl:grid-cols-[316px_minmax(0,1fr)_296px]">
-          {/* Column 1: Preview Stage + Playback & Timeline directly underneath */}
+        {/* 3-Panel Studio Grid: Preview+Transport+Timeline (Anchor) | Transcript | Style Inspector */}
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_272px] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_288px] xl:gap-5">
+          {/* Column 1: Visual Preview Anchor + Transport + Zoomable Interactive Timeline */}
           <section
-            aria-label="Caption preview and playback"
-            className="flex min-w-0 flex-col lg:sticky lg:top-[68px]"
+            aria-label="Caption preview, transport, and timeline"
+            className="flex min-w-0 flex-col lg:sticky lg:top-[64px]"
           >
             {/* Stage Well */}
-            <div className="flex justify-center rounded-2xl border border-[#F5F1E8]/10 bg-[#0A1018] p-2.5 sm:p-3 lg:border-0 lg:bg-transparent lg:p-0">
-              <div className="studio-stage-container relative aspect-[9/16] w-[196px] overflow-hidden rounded-[1.35rem] border border-[#F5F1E8]/12 bg-[#0D131C] shadow-[0_20px_60px_rgba(0,0,0,0.65)] sm:w-[236px] lg:w-[292px] lg:rounded-3xl xl:w-[304px]">
+            <div className="flex justify-center rounded-2xl border border-ink/10 bg-inset p-2.5 sm:p-3">
+              <div
+                data-testid="editor-preview-stage"
+                data-orientation={isLandscapeVideo ? "landscape" : "portrait"}
+                className={`studio-stage-container relative overflow-hidden rounded-[1.35rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] ${
+                  isLandscapeVideo
+                    ? "aspect-video w-full max-w-[520px]"
+                    : "aspect-[9/16] w-[192px] sm:w-[216px] lg:w-[206px] xl:w-[230px]"
+                }`}
+              >
                 {mediaKind === "video" ? (
                   <video
                     ref={(el) => {
@@ -648,21 +981,21 @@ export function ProjectCaptionEditor({
                     onPause={() => setIsPlaying(false)}
                     onEnded={() => setIsPlaying(false)}
                     onClick={() => void togglePlay()}
-                    className="h-full w-full cursor-pointer bg-[#070B10] object-contain"
+                    className="h-full w-full cursor-pointer bg-page object-contain"
                   />
                 ) : (
                   <div
                     data-testid="editor-audio-stage"
                     onClick={() => void togglePlay()}
-                    className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center bg-gradient-to-b from-[#112635] via-[#0B1722] to-[#070B10] p-5 text-center"
+                    className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-5 text-center"
                   >
-                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3] shadow-[0_0_24px_rgba(73,230,179,0.2)]">
+                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent shadow-[0_0_24px_rgba(167,139,250,0.24)]">
                       <AudioLines className="h-7 w-7" />
                     </span>
-                    <p className="mt-3 max-w-full truncate text-xs font-semibold text-[#F5F1E8]">
+                    <p className="mt-3 max-w-full truncate text-xs font-semibold text-ink">
                       {projectTitle}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-[#7D7A72]">
+                    <p className="mt-0.5 text-[11px] text-ink-muted">
                       Audio portrait stage
                     </p>
                     <audio
@@ -683,17 +1016,17 @@ export function ProjectCaptionEditor({
                 )}
 
                 {/* Top playback status badge */}
-                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-[#F5F1E8]/15 bg-[#070B10]/70 px-2 py-0.5 text-[10px] font-medium text-[#F5F1E8]/90 backdrop-blur-md">
+                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-ink/15 bg-page/70 px-2 py-0.5 text-[10px] font-medium text-ink/90 backdrop-blur-md">
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
-                      isPlaying ? "animate-pulse bg-[#49E6B3]" : "bg-[#B6B0A4]"
+                      isPlaying ? "animate-pulse bg-accent" : "bg-ink-secondary"
                     }`}
                   />
                   <span>{isPlaying ? "Playing" : "Paused"}</span>
                 </div>
 
                 {/* Subtle scrim for caption readability */}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#070B10]/85 via-[#070B10]/30 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
 
                 {/* Live Caption Overlay */}
                 <EditorCaptionOverlay
@@ -703,11 +1036,11 @@ export function ProjectCaptionEditor({
                   currentTimeMs={currentTimeMs}
                 />
 
-                {/* Non-focusable center play affordance so keyboard focus never drops on play */}
+                {/* Non-focusable center play affordance */}
                 {!isPlaying && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#49E6B3]/50 bg-[#070B10]/70 text-[#49E6B3] shadow-xl backdrop-blur-md"
+                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-xl backdrop-blur-md"
                   >
                     <Play className="ml-0.5 h-5 w-5 fill-current" />
                   </div>
@@ -715,87 +1048,9 @@ export function ProjectCaptionEditor({
               </div>
             </div>
 
-            {/* Playback & Segmented Cue Timeline directly under Preview */}
-            <div className="mt-2.5 rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3">
-              {/* Scannable Time + Active Cue Readout */}
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <div
-                  data-testid="editor-time-readout"
-                  className="font-mono font-semibold tabular-nums text-[#B6B0A4]"
-                >
-                  <span className="text-[#F5F1E8]">
-                    {formatMsClock(currentTimeMs)}
-                  </span>
-                  <span className="mx-1 text-[#7D7A72]">/</span>
-                  <span>{formatMsClock(clipDurationMs)}</span>
-                </div>
-
-                <span
-                  data-testid="active-cue-indicator"
-                  className={`truncate rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums ${
-                    activeCueIndex >= 0
-                      ? "border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]"
-                      : "border border-[#F5F1E8]/10 bg-[#131C28] text-[#7D7A72]"
-                  }`}
-                >
-                  {activeCueIndex >= 0
-                    ? `Cue #${activeCueIndex + 1} / ${cues.length}`
-                    : `${cues.length} cues`}
-                </span>
-              </div>
-
-              {/* Segmented Cue Timeline Scrubber */}
-              <div className="relative mt-2 flex h-7 items-center">
-                <div className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-[#16202E]">
-                  {/* Cue segments */}
-                  {cues.map((cue) => {
-                    const leftPct =
-                      clipDurationMs > 0
-                        ? (cue.start_ms / clipDurationMs) * 100
-                        : 0;
-                    const widthPct =
-                      clipDurationMs > 0
-                        ? ((cue.end_ms - cue.start_ms) / clipDurationMs) * 100
-                        : 0;
-                    const isCueActive = activeCue?.id === cue.id;
-                    return (
-                      <span
-                        key={cue.id}
-                        style={{
-                          left: `${Math.min(100, Math.max(0, leftPct))}%`,
-                          width: `${Math.max(1.2, Math.min(100 - leftPct, widthPct))}%`,
-                        }}
-                        className={`absolute top-0 h-full rounded-sm transition-colors ${
-                          isCueActive
-                            ? "bg-[#49E6B3]/50"
-                            : "bg-[#F5F1E8]/18"
-                        }`}
-                      />
-                    );
-                  })}
-                  {/* Playhead progress bar */}
-                  <div
-                    className="relative h-full rounded-full bg-[#49E6B3]"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, progressPercent))}%`,
-                    }}
-                  />
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={clipDurationMs}
-                  step={20}
-                  value={currentTimeMs}
-                  onChange={(e) => seekToMs(Number(e.target.value))}
-                  aria-label="Seek timeline"
-                  aria-valuetext={`${formatMsClock(currentTimeMs)} of ${formatMsClock(clipDurationMs)}`}
-                  className="studio-scrubber relative z-10 w-full"
-                />
-              </div>
-
-              {/* Transport Controls */}
-              <div className="mt-2 flex items-center justify-between gap-2">
+            {/* Transport Controls directly under Preview */}
+            <div className="mt-2 rounded-2xl border border-ink/10 bg-panel px-3 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
                     ref={playButtonRef}
@@ -803,61 +1058,159 @@ export function ProjectCaptionEditor({
                     data-testid="play-pause-btn"
                     onClick={() => void togglePlay()}
                     aria-label={isPlaying ? "Pause" : "Play"}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#49E6B3] text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D131C]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
                   >
                     {isPlaying ? (
-                      <Pause className="h-4 w-4 fill-current" />
+                      <Pause className="h-3.5 w-3.5 fill-current" />
                     ) : (
-                      <Play className="ml-0.5 h-4 w-4 fill-current" />
+                      <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
                     )}
                   </button>
                   <button
                     type="button"
                     onClick={() => seekToMs(currentTimeMs - 2000)}
                     aria-label="Rewind 2 seconds"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    <RotateCcw className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={() => seekToMs(currentTimeMs + 2000)}
                     aria-label="Forward 2 seconds"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
                   >
-                    <RotateCw className="h-4 w-4" />
+                    <RotateCw className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
                     onClick={toggleMute}
                     aria-label={isMuted ? "Unmute" : "Mute"}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
                   >
                     {isMuted ? (
-                      <VolumeX className="h-4 w-4" />
+                      <VolumeX className="h-3.5 w-3.5" />
                     ) : (
-                      <Volume2 className="h-4 w-4" />
+                      <Volume2 className="h-3.5 w-3.5" />
                     )}
                   </button>
                 </div>
 
-                {/* Active word quick pill */}
-                <div className="min-w-0 truncate text-right">
-                  {activeWord ? (
+                {/* Time Readout + Active Cue + Discoverable Shortcuts */}
+                <div className="flex items-center gap-1.5">
+                  <div
+                    data-testid="editor-time-readout"
+                    className="font-mono text-xs font-semibold tabular-nums text-ink-secondary"
+                  >
+                    <span className="text-ink">
+                      {formatMsClock(currentTimeMs)}
+                    </span>
+                    <span className="mx-1 text-ink-muted">/</span>
+                    <span>{formatMsClock(clipDurationMs)}</span>
+                  </div>
+
+                  {activeWord && (
                     <span
                       data-testid="active-word-readout"
-                      className="inline-block max-w-[110px] truncate rounded-md bg-[#102E28] px-2 py-1 text-[11px] font-semibold text-[#49E6B3]"
+                      className="hidden max-w-[96px] truncate rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover xl:inline-block"
                     >
                       {activeWord.text}
                     </span>
-                  ) : (
-                    <span className="hidden text-[11px] text-[#7D7A72] sm:inline">
-                      Space · ←/→
-                    </span>
                   )}
+
+                  <span
+                    data-testid="active-cue-indicator"
+                    className={`hidden truncate rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums sm:inline-block ${
+                      activeCueIndex >= 0
+                        ? "border border-accent/35 bg-accent-soft text-accent-hover"
+                        : "border border-ink/10 bg-elevated text-ink-muted"
+                    }`}
+                  >
+                    {activeCueIndex >= 0
+                      ? `Cue #${activeCueIndex + 1}/${cues.length}`
+                      : `${cues.length} cues`}
+                  </span>
+
+                  {/* Discoverable Keyboard Shortcuts Popover */}
+                  <div ref={shortcutsRef} className="relative">
+                    <button
+                      type="button"
+                      data-testid="shortcuts-toggle-btn"
+                      aria-expanded={shortcutsOpen}
+                      aria-label="Keyboard shortcuts"
+                      onClick={() => setShortcutsOpen((prev) => !prev)}
+                      className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2 text-[11px] font-medium transition ${
+                        shortcutsOpen
+                          ? "border-accent bg-accent-soft text-accent-hover"
+                          : "border-ink/12 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink"
+                      }`}
+                    >
+                      <Keyboard className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Shortcuts</span>
+                    </button>
+
+                    {shortcutsOpen && (
+                      <div
+                        role="dialog"
+                        aria-label="Keyboard shortcuts reference"
+                        data-testid="shortcuts-popover"
+                        className="absolute bottom-10 right-0 z-40 w-60 rounded-xl border border-ink/15 bg-panel p-3 text-xs shadow-[0_18px_50px_rgba(0,0,0,0.75)]"
+                      >
+                        <p className="font-semibold text-ink">
+                          Playback &amp; Edit Shortcuts
+                        </p>
+                        <dl className="mt-2 space-y-1.5 text-[11px]">
+                          <div className="flex items-center justify-between gap-2">
+                            <dt className="text-ink-secondary">Play / Pause</dt>
+                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                              Space
+                            </dd>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <dt className="text-ink-secondary">Seek ±1s</dt>
+                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                              ← / →
+                            </dd>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <dt className="text-ink-secondary">Seek ±5s</dt>
+                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                              Shift + ← / →
+                            </dd>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <dt className="text-ink-secondary">Undo / Redo</dt>
+                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                              Ctrl+Z / Shift+Z
+                            </dd>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <dt className="text-ink-secondary">Search cues</dt>
+                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                              Ctrl+F
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Interactive Zoomable Timeline directly below Transport */}
+            <EditorTimeline
+              cues={cues}
+              style={style}
+              durationMs={clipDurationMs}
+              currentTimeMs={currentTimeMs}
+              activeCueId={activeCue?.id ?? null}
+              selectedCueId={selectedCueId}
+              onSeekMs={seekToMs}
+              onSelectCue={handleSelectTimelineCue}
+              onPreviewCuesChange={handleTimelinePreviewCues}
+              onCommitCuesChange={handleTimelineCommitCues}
+            />
           </section>
 
           {/* Mobile Accessible Captions / Style Tab Switcher */}
@@ -869,7 +1222,7 @@ export function ProjectCaptionEditor({
             idPrefix="editor"
           />
 
-          {/* Column 2: Main Editable Captions Workspace */}
+          {/* Column 2: Distinct Transcript Panel with Search + Undo/Redo + Numeric Timing */}
           <section
             id="editor-panel-captions"
             role="tabpanel"
@@ -879,55 +1232,179 @@ export function ProjectCaptionEditor({
               mobileTab === "captions" ? "flex" : "hidden lg:flex"
             }`}
           >
-            <div className="flex flex-col rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5 sm:p-4">
-              {/* Captions Panel Header */}
-              <div className="flex items-start justify-between gap-2 border-b border-[#F5F1E8]/8 pb-3">
+            <div className="flex flex-col rounded-2xl border border-ink/10 bg-panel p-3.5 sm:p-4">
+              {/* Transcript Header */}
+              <div className="flex items-center justify-between gap-2 border-b border-ink/8 pb-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
                     <Captions className="h-3.5 w-3.5" />
                   </span>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-semibold tracking-tight text-[#F5F1E8]">
-                      Editable Captions
-                    </h2>
-                    <p className="text-[11px] text-[#7D7A72]">
-                      Tap a timestamp or word to seek. Changes autosave.
-                    </p>
-                  </div>
+                  <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
+                    Transcript
+                  </h2>
                 </div>
-                <span className="shrink-0 rounded-full border border-[#F5F1E8]/10 bg-[#131C28] px-2.5 py-0.5 font-mono text-[11px] tabular-nums text-[#B6B0A4]">
-                  {cues.length} {cues.length === 1 ? "cue" : "cues"}
-                </span>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {/* Mobile Undo/Redo controls */}
+                  <div className="flex items-center gap-1 sm:hidden">
+                    <button
+                      type="button"
+                      disabled={historyCounts.undo === 0}
+                      onClick={handleUndo}
+                      aria-label="Undo"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={historyCounts.redo === 0}
+                      onClick={handleRedo}
+                      aria-label="Redo"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
+                    >
+                      <Redo2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <span className="rounded-full border border-ink/10 bg-elevated px-2.5 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
+                    {cues.length} {cues.length === 1 ? "cue" : "cues"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Transcript Search Bar with Prev/Next Match Navigation */}
+              <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-ink/10 bg-page px-2.5 py-1.5 focus-within:border-accent">
+                <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  data-testid="transcript-search-input"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setSearchQuery(nextVal);
+                    setActiveMatchIdx(0);
+                    const q = nextVal.trim().toLowerCase();
+                    if (q) {
+                      const first = cues.find((c) =>
+                        c.text.toLowerCase().includes(q)
+                      );
+                      if (first) {
+                        setSelectedCueId(first.id);
+                        scrollCueCardIntoContainer(first.id);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      navigateSearchMatch(e.shiftKey ? -1 : 1);
+                    } else if (e.key === "Escape") {
+                      setSearchQuery("");
+                      setActiveMatchIdx(0);
+                    }
+                  }}
+                  placeholder="Search transcript..."
+                  aria-label="Search transcript"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
+                />
+
+                {trimmedQuery && (
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span
+                      data-testid="transcript-search-count"
+                      className="font-mono text-[11px] tabular-nums text-ink-secondary"
+                    >
+                      {matchingCueIds.length > 0
+                        ? `${boundedMatchIdx + 1}/${matchingCueIds.length}`
+                        : "0/0"}
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="transcript-search-prev"
+                      disabled={matchingCueIds.length === 0}
+                      onClick={() => navigateSearchMatch(-1)}
+                      aria-label="Previous match"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="transcript-search-next"
+                      disabled={matchingCueIds.length === 0}
+                      onClick={() => navigateSearchMatch(1)}
+                      aria-label="Next match"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setActiveMatchIdx(0);
+                      }}
+                      aria-label="Clear search"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink-muted hover:text-ink"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {cues.length === 0 ? (
-                <p className="mt-4 rounded-xl border border-dashed border-[#F5F1E8]/12 bg-[#070B10] px-4 py-8 text-center text-xs text-[#7D7A72]">
+                <p className="mt-4 rounded-xl border border-dashed border-ink/12 bg-page px-4 py-8 text-center text-xs text-ink-muted">
                   No speech cues were detected for this clip.
                 </p>
               ) : (
-                <div className="studio-scroll mt-3 space-y-3 lg:max-h-[calc(100vh-164px)] lg:overflow-y-auto lg:pr-1">
+                <div
+                  ref={transcriptScrollRef}
+                  className="studio-scroll relative mt-3 space-y-3 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-1"
+                >
                   {cues.map((cue, idx) => {
                     const isActive = activeCue?.id === cue.id;
+                    const isSelected = selectedCueId === cue.id;
+                    const isSearchMatch =
+                      Boolean(trimmedQuery) && matchingCueIds.includes(cue.id);
+                    const isCurrentMatch = currentMatchedCueId === cue.id;
                     const hasWordSync =
                       cue.timing_mode === "word" && cue.words.length > 0;
 
                     return (
                       <div
                         key={cue.id}
+                        ref={(el) => {
+                          cueCardRefs.current[cue.id] = el;
+                        }}
                         data-testid={`editor-cue-${idx + 1}`}
                         data-active-cue={isActive ? "true" : "false"}
+                        data-selected-cue={isSelected ? "true" : "false"}
+                        data-search-match={isSearchMatch ? "true" : "false"}
+                        data-search-current={isCurrentMatch ? "true" : "false"}
                         data-timing-mode={cue.timing_mode}
+                        onClick={() => setSelectedCueId(cue.id)}
                         className={`relative overflow-hidden rounded-xl border p-3 transition ${
-                          isActive
-                            ? "border-[#49E6B3]/55 bg-[#131C28] shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
-                            : "border-[#F5F1E8]/10 bg-[#0A1018] hover:border-[#F5F1E8]/20"
+                          isCurrentMatch
+                            ? "border-accent bg-elevated ring-1 ring-accent/55"
+                            : isActive
+                              ? "border-accent/60 bg-elevated shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
+                              : isSelected
+                                ? "border-accent/40 bg-elevated/60"
+                                : isSearchMatch
+                                  ? "border-accent/35 bg-inset"
+                                  : "border-ink/10 bg-inset hover:border-ink/20"
                         }`}
                       >
                         {/* Active left accent bar */}
                         <span
                           aria-hidden="true"
                           className={`absolute bottom-2.5 left-0 top-2.5 w-1 rounded-r-full transition ${
-                            isActive ? "bg-[#49E6B3]" : "bg-transparent"
+                            isActive || isCurrentMatch
+                              ? "bg-accent"
+                              : "bg-transparent"
                           }`}
                         />
 
@@ -935,11 +1412,14 @@ export function ProjectCaptionEditor({
                         <div className="flex flex-wrap items-center justify-between gap-2 pl-1">
                           <button
                             type="button"
-                            onClick={() => seekToMs(cue.start_ms)}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                            onClick={() => {
+                              setSelectedCueId(cue.id);
+                              seekToMs(cue.start_ms);
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                               isActive
-                                ? "border-[#49E6B3]/40 bg-[#102E28] text-[#49E6B3]"
-                                : "border-[#F5F1E8]/10 bg-[#070B10] text-[#B6B0A4] hover:border-[#49E6B3]/40 hover:text-[#F5F1E8]"
+                                ? "border-accent/45 bg-accent-soft text-accent-hover"
+                                : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
                             }`}
                           >
                             <span className="font-semibold">#{idx + 1}</span>
@@ -953,10 +1433,15 @@ export function ProjectCaptionEditor({
                           </button>
 
                           <div className="flex items-center gap-1.5">
+                            {isCurrentMatch && (
+                              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-page">
+                                Match
+                              </span>
+                            )}
                             {isActive && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#49E6B3]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#49E6B3]">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-hover">
                                 <span
-                                  className={`h-1.5 w-1.5 rounded-full bg-[#49E6B3] ${
+                                  className={`h-1.5 w-1.5 rounded-full bg-accent ${
                                     isPlaying ? "animate-pulse" : ""
                                   }`}
                                 />
@@ -966,8 +1451,8 @@ export function ProjectCaptionEditor({
                             <span
                               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                                 cue.timing_mode === "word"
-                                  ? "bg-[#102E28] text-[#49E6B3]"
-                                  : "bg-[#1A2636] text-[#B6B0A4]"
+                                  ? "bg-accent-soft text-accent-hover"
+                                  : "bg-track text-ink-secondary"
                               }`}
                             >
                               {cue.timing_mode === "word"
@@ -995,16 +1480,19 @@ export function ProjectCaptionEditor({
                                   data-active-word={
                                     isWordActive ? "true" : "false"
                                   }
-                                  onClick={() => seekToMs(word.start_ms)}
+                                  onClick={() => {
+                                    setSelectedCueId(cue.id);
+                                    seekToMs(word.start_ms);
+                                  }}
                                   title={`Seek to ${formatMsClock(word.start_ms)}`}
-                                  className={`rounded-md px-1.5 py-0.5 text-xs leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                                  className={`rounded-md px-1.5 py-0.5 text-xs leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                                     isWordActive
-                                      ? "bg-[#49E6B3] font-semibold text-[#070B10] shadow-[0_0_12px_rgba(73,230,179,0.35)]"
+                                      ? "bg-accent font-semibold text-page shadow-[0_0_12px_rgba(167,139,250,0.4)]"
                                       : isWordPast
-                                        ? "bg-[#1A2636]/70 text-[#F5F1E8] hover:bg-[#1A2636]"
+                                        ? "bg-track/70 text-ink hover:bg-track"
                                         : isActive
-                                          ? "bg-[#070B10]/60 text-[#B6B0A4] hover:text-[#F5F1E8]"
-                                          : "text-[#B6B0A4]/85 hover:bg-[#131C28] hover:text-[#F5F1E8]"
+                                          ? "bg-page/60 text-ink-secondary hover:text-ink"
+                                          : "text-ink-secondary/85 hover:bg-elevated hover:text-ink"
                                   }`}
                                 >
                                   {word.text}
@@ -1020,16 +1508,17 @@ export function ProjectCaptionEditor({
                             rows={2}
                             aria-label={`Cue ${idx + 1} text`}
                             value={cue.text}
+                            onFocus={() => setSelectedCueId(cue.id)}
                             onChange={(e) =>
                               updateCueText(cue.id, e.target.value)
                             }
-                            className="w-full resize-none rounded-lg border border-[#F5F1E8]/12 bg-[#070B10] px-3 py-2 text-sm leading-relaxed text-[#F5F1E8] transition placeholder:text-[#7D7A72] focus:border-[#49E6B3] focus:outline-none focus:ring-1 focus:ring-[#49E6B3]/50"
+                            className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-2 text-sm leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
                           />
                         </div>
 
-                        {/* Compact Inline Start / End Timing Controls */}
+                        {/* Retained Numeric Start / End Timing Controls (precise & keyboard accessible) */}
                         <div className="mt-2 grid grid-cols-2 gap-2 pl-1">
-                          <label className="flex items-center justify-between gap-2 rounded-lg border border-[#F5F1E8]/10 bg-[#070B10]/85 px-2.5 py-1 text-[11px] text-[#7D7A72] focus-within:border-[#49E6B3]">
+                          <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
                             <span className="shrink-0 font-medium">
                               Start (s)
                             </span>
@@ -1040,6 +1529,7 @@ export function ProjectCaptionEditor({
                               max={(clipDurationMs / 1000).toFixed(2)}
                               aria-label={`Cue ${idx + 1} start seconds`}
                               value={(cue.start_ms / 1000).toFixed(2)}
+                              onFocus={() => setSelectedCueId(cue.id)}
                               onChange={(e) =>
                                 updateCueTiming(
                                   cue.id,
@@ -1047,11 +1537,11 @@ export function ProjectCaptionEditor({
                                   e.target.value
                                 )
                               }
-                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-[#F5F1E8] focus:outline-none"
+                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
                             />
                           </label>
 
-                          <label className="flex items-center justify-between gap-2 rounded-lg border border-[#F5F1E8]/10 bg-[#070B10]/85 px-2.5 py-1 text-[11px] text-[#7D7A72] focus-within:border-[#49E6B3]">
+                          <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
                             <span className="shrink-0 font-medium">
                               End (s)
                             </span>
@@ -1062,6 +1552,7 @@ export function ProjectCaptionEditor({
                               max={(clipDurationMs / 1000).toFixed(2)}
                               aria-label={`Cue ${idx + 1} end seconds`}
                               value={(cue.end_ms / 1000).toFixed(2)}
+                              onFocus={() => setSelectedCueId(cue.id)}
                               onChange={(e) =>
                                 updateCueTiming(
                                   cue.id,
@@ -1069,7 +1560,7 @@ export function ProjectCaptionEditor({
                                   e.target.value
                                 )
                               }
-                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-[#F5F1E8] focus:outline-none"
+                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
                             />
                           </label>
                         </div>
@@ -1081,13 +1572,13 @@ export function ProjectCaptionEditor({
             </div>
           </section>
 
-          {/* Column 3: Separate Style Controls Panel */}
+          {/* Column 3: Distinct Style Inspector Panel */}
           <aside
             id="editor-panel-style"
             role="tabpanel"
             aria-labelledby="editor-tab-style"
             data-testid="panel-style"
-            className={`min-w-0 flex-col lg:sticky lg:top-[68px] ${
+            className={`min-w-0 flex-col lg:sticky lg:top-[64px] ${
               mobileTab === "style" ? "flex" : "hidden lg:flex"
             }`}
           >

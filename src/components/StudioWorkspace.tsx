@@ -133,10 +133,10 @@ export function StudioWorkspace() {
 
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
-    if (video) {
-      setCurrentTime(video.currentTime);
-    }
-  }, []);
+    if (!video) return;
+    if (!hasInitializedTime && video.paused && video.currentTime === 0) return;
+    setCurrentTime(video.currentTime);
+  }, [hasInitializedTime]);
 
   // Keyboard shortcuts: Space to play/pause, Left/Right arrows to nudge 1s
   useEffect(() => {
@@ -178,14 +178,14 @@ export function StudioWorkspace() {
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#070B10] text-[#F5F1E8]">
+    <div className="min-h-screen overflow-x-clip bg-page text-ink">
       {/* Compact Sample Studio Header */}
-      <header className="sticky top-0 z-30 border-b border-[#F5F1E8]/10 bg-[#070B10]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 px-3 py-2.5 sm:px-5 lg:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <Link
               href="/"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] px-2.5 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/45 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Home</span>
@@ -193,26 +193,26 @@ export function StudioWorkspace() {
 
             <div className="flex min-w-0 items-center gap-2">
               <ClipCaptionsMark size={26} className="shrink-0" />
-              <h1 className="truncate text-sm font-bold tracking-tight text-[#F5F1E8]">
-                Clip<span className="text-[#49E6B3]">Captions</span>
+              <h1 className="truncate text-sm font-bold tracking-tight text-ink">
+                Clip<span className="text-accent">Captions</span>
               </h1>
               <span
                 aria-hidden="true"
-                className="hidden h-4 w-px bg-[#F5F1E8]/12 md:inline-block"
+                className="hidden h-4 w-px bg-ink/12 md:inline-block"
               />
-              <span className="hidden truncate text-xs text-[#B6B0A4] md:inline">
+              <span className="hidden truncate text-xs text-ink-secondary md:inline">
                 {SAMPLE_CLIP.title}
               </span>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            <span className="rounded-full border border-[#49E6B3]/30 bg-[#102E28] px-2.5 py-1 text-[11px] font-medium text-[#49E6B3]">
+            <span className="rounded-full border border-accent/35 bg-accent-soft px-2.5 py-1 text-[11px] font-medium text-accent-hover">
               Sample · {SAMPLE_CLIP.aspectLabel}
             </span>
             <Link
               href="/upload"
-              className="hidden items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] sm:inline-flex"
+              className="hidden items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:inline-flex"
             >
               <Upload className="h-3.5 w-3.5" />
               <span>Upload a clip</span>
@@ -229,8 +229,8 @@ export function StudioWorkspace() {
             aria-label="Portrait video preview and playback"
             className="flex min-w-0 flex-col lg:sticky lg:top-[64px]"
           >
-            <div className="flex justify-center rounded-2xl border border-[#F5F1E8]/10 bg-[#0A1018] p-2.5 sm:p-3 lg:border-0 lg:bg-transparent lg:p-0">
-              <div className="studio-stage-container relative aspect-[9/16] w-[196px] overflow-hidden rounded-[1.35rem] border border-[#F5F1E8]/12 bg-[#0D131C] shadow-[0_20px_60px_rgba(0,0,0,0.65)] sm:w-[236px] lg:w-[292px] lg:rounded-3xl xl:w-[304px]">
+            <div className="flex justify-center rounded-2xl border border-ink/10 bg-inset p-2.5 sm:p-3 lg:border-0 lg:bg-transparent lg:p-0">
+              <div className="studio-stage-container relative aspect-[9/16] w-[196px] overflow-hidden rounded-[1.35rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] sm:w-[236px] lg:w-[292px] lg:rounded-3xl xl:w-[304px]">
                 <video
                   ref={videoRef}
                   src={SAMPLE_CLIP.src}
@@ -248,14 +248,14 @@ export function StudioWorkspace() {
                 />
 
                 {/* Top & bottom readability scrims */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#070B10]/55 to-transparent" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#070B10]/85 via-[#070B10]/35 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-page/55 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-page/85 via-page/35 to-transparent" />
 
                 {/* Top Viewport Status Pill */}
-                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-[#F5F1E8]/15 bg-[#070B10]/70 px-2 py-0.5 text-[10px] font-medium text-[#F5F1E8]/90 backdrop-blur-md">
+                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-ink/15 bg-page/70 px-2 py-0.5 text-[10px] font-medium text-ink/90 backdrop-blur-md">
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
-                      isPlaying ? "animate-pulse bg-[#49E6B3]" : "bg-[#B6B0A4]"
+                      isPlaying ? "animate-pulse bg-accent" : "bg-ink-secondary"
                     }`}
                   />
                   <span>{isPlaying ? "Playing" : "Paused"}</span>
@@ -268,6 +268,7 @@ export function StudioWorkspace() {
                   preset={style.preset}
                   fontSize={style.fontSize}
                   verticalPosition={style.verticalPosition}
+                  accent={style.accent}
                   currentTime={currentTime}
                 />
 
@@ -275,7 +276,7 @@ export function StudioWorkspace() {
                 {!isPlaying && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#49E6B3]/50 bg-[#070B10]/70 text-[#49E6B3] shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
                   >
                     <Play className="ml-0.5 h-5 w-5 fill-current" />
                   </div>
@@ -284,16 +285,16 @@ export function StudioWorkspace() {
             </div>
 
             {/* Playback & Segmented Cue Timeline directly under Preview */}
-            <div className="mt-2.5 rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3">
+            <div className="mt-2.5 rounded-2xl border border-ink/10 bg-panel p-3">
               <div className="flex items-center justify-between gap-2 text-xs">
                 <div
                   data-testid="time-readout"
-                  className="font-mono font-semibold tabular-nums text-[#B6B0A4]"
+                  className="font-mono font-semibold tabular-nums text-ink-secondary"
                 >
-                  <span className="text-[#F5F1E8]">
+                  <span className="text-ink">
                     {formatTime(currentTime)}
                   </span>
-                  <span className="mx-1 text-[#7D7A72]">/</span>
+                  <span className="mx-1 text-ink-muted">/</span>
                   <span>{formatTime(duration)}</span>
                 </div>
 
@@ -301,8 +302,8 @@ export function StudioWorkspace() {
                   data-testid="sample-active-cue-indicator"
                   className={`truncate rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums ${
                     activeCueIndex >= 0
-                      ? "border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]"
-                      : "border border-[#F5F1E8]/10 bg-[#131C28] text-[#7D7A72]"
+                      ? "border border-accent/35 bg-accent-soft text-accent-hover"
+                      : "border border-ink/10 bg-elevated text-ink-muted"
                   }`}
                 >
                   {activeCueIndex >= 0
@@ -313,7 +314,7 @@ export function StudioWorkspace() {
 
               {/* Timeline Scrubber with Cue Segments */}
               <div className="relative mt-2 flex h-7 items-center">
-                <div className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-[#16202E]">
+                <div className="pointer-events-none absolute inset-x-0 h-2 overflow-hidden rounded-full bg-track">
                   {SAMPLE_CAPTIONS.map((cue) => {
                     const leftPct =
                       duration > 0 ? (cue.start / duration) * 100 : 0;
@@ -331,14 +332,14 @@ export function StudioWorkspace() {
                         }}
                         className={`absolute top-0 h-full rounded-sm transition-colors ${
                           isCueActive
-                            ? "bg-[#49E6B3]/50"
-                            : "bg-[#F5F1E8]/18"
+                            ? "bg-accent/55"
+                            : "bg-ink/18"
                         }`}
                       />
                     );
                   })}
                   <div
-                    className="relative h-full rounded-full bg-[#49E6B3]"
+                    className="relative h-full rounded-full bg-accent"
                     style={{
                       width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                     }}
@@ -366,7 +367,7 @@ export function StudioWorkspace() {
                     data-testid="sample-play-pause-btn"
                     onClick={() => void togglePlay()}
                     aria-label={isPlaying ? "Pause" : "Play"}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#49E6B3] text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D131C]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
                   >
                     {isPlaying ? (
                       <Pause className="h-4 w-4 fill-current" />
@@ -379,7 +380,7 @@ export function StudioWorkspace() {
                     type="button"
                     onClick={() => seekTo(currentTime - 2)}
                     aria-label="Rewind 2 seconds"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/45 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <RotateCcw className="h-4 w-4" />
                   </button>
@@ -388,7 +389,7 @@ export function StudioWorkspace() {
                     type="button"
                     onClick={() => seekTo(currentTime + 2)}
                     aria-label="Forward 2 seconds"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/45 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     <RotateCw className="h-4 w-4" />
                   </button>
@@ -397,7 +398,7 @@ export function StudioWorkspace() {
                     type="button"
                     onClick={toggleMute}
                     aria-label={isMuted ? "Unmute" : "Mute"}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#F5F1E8]/10 bg-[#131C28] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/45 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     {isMuted ? (
                       <VolumeX className="h-4 w-4" />
@@ -411,12 +412,12 @@ export function StudioWorkspace() {
                   {activeWord ? (
                     <span
                       data-testid="sample-active-word-readout"
-                      className="inline-block max-w-[110px] truncate rounded-md bg-[#102E28] px-2 py-1 text-[11px] font-semibold text-[#49E6B3]"
+                      className="inline-block max-w-[110px] truncate rounded-md bg-accent-soft px-2 py-1 text-[11px] font-semibold text-accent-hover"
                     >
                       {activeWord.text}
                     </span>
                   ) : (
-                    <span className="hidden text-[11px] text-[#7D7A72] sm:inline">
+                    <span className="hidden text-[11px] text-ink-muted sm:inline">
                       Space · ←/→
                     </span>
                   )}
@@ -444,22 +445,22 @@ export function StudioWorkspace() {
               mobileTab === "captions" ? "flex" : "hidden lg:flex"
             }`}
           >
-            <div className="flex flex-col rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5 sm:p-4">
-              <div className="flex items-start justify-between gap-2 border-b border-[#F5F1E8]/8 pb-3">
+            <div className="flex flex-col rounded-2xl border border-ink/10 bg-panel p-3.5 sm:p-4">
+              <div className="flex items-start justify-between gap-2 border-b border-ink/8 pb-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
                     <Captions className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-sm font-semibold tracking-tight text-[#F5F1E8]">
-                      Caption Timeline
+                    <h2 className="text-sm font-semibold tracking-tight text-ink">
+                      Transcript
                     </h2>
-                    <p className="text-[11px] text-[#7D7A72]">
+                    <p className="text-[11px] text-ink-muted">
                       Tap any timestamp or word to jump straight to that moment.
                     </p>
                   </div>
                 </div>
-                <span className="shrink-0 rounded-full border border-[#F5F1E8]/10 bg-[#131C28] px-2.5 py-0.5 font-mono text-[11px] tabular-nums text-[#B6B0A4]">
+                <span className="shrink-0 rounded-full border border-ink/10 bg-elevated px-2.5 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
                   {SAMPLE_CAPTIONS.length} cues
                 </span>
               </div>
@@ -474,15 +475,15 @@ export function StudioWorkspace() {
                       data-active-cue={isCueActive ? "true" : "false"}
                       className={`relative overflow-hidden rounded-xl border px-3.5 py-3 transition ${
                         isCueActive
-                          ? "border-[#49E6B3]/55 bg-[#131C28] shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
-                          : "border-[#F5F1E8]/8 bg-[#0A1018] hover:border-[#F5F1E8]/20"
+                          ? "border-accent/55 bg-elevated shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
+                          : "border-ink/8 bg-inset hover:border-ink/20"
                       }`}
                     >
                       {/* Active left accent bar */}
                       <span
                         aria-hidden="true"
                         className={`absolute bottom-2.5 left-0 top-2.5 w-1 rounded-r-full transition ${
-                          isCueActive ? "bg-[#49E6B3]" : "bg-transparent"
+                          isCueActive ? "bg-accent" : "bg-transparent"
                         }`}
                       />
 
@@ -490,10 +491,10 @@ export function StudioWorkspace() {
                         <button
                           type="button"
                           onClick={() => seekTo(cue.start)}
-                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                             isCueActive
-                              ? "border-[#49E6B3]/40 bg-[#102E28] text-[#49E6B3]"
-                              : "border-[#F5F1E8]/10 bg-[#070B10] text-[#B6B0A4] hover:border-[#49E6B3]/40 hover:text-[#F5F1E8]"
+                              ? "border-accent/45 bg-accent-soft text-accent-hover"
+                              : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
                           }`}
                         >
                           <span className="font-semibold">#{cueIndex + 1}</span>
@@ -506,9 +507,9 @@ export function StudioWorkspace() {
                         </button>
 
                         {isCueActive && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#49E6B3]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#49E6B3]">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-hover">
                             <span
-                              className={`h-1.5 w-1.5 rounded-full bg-[#49E6B3] ${
+                              className={`h-1.5 w-1.5 rounded-full bg-accent ${
                                 isPlaying ? "animate-pulse" : ""
                               }`}
                             />
@@ -532,14 +533,14 @@ export function StudioWorkspace() {
                               }
                               onClick={() => seekTo(word.start)}
                               title={`Seek to ${formatTime(word.start)}`}
-                              className={`rounded-md px-1.5 py-0.5 text-sm leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                              className={`rounded-md px-1.5 py-0.5 text-sm leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                                 isWordActive
-                                  ? "bg-[#49E6B3] font-semibold text-[#070B10] shadow-[0_0_12px_rgba(73,230,179,0.35)]"
+                                  ? "bg-accent font-semibold text-page shadow-[0_0_12px_rgba(167,139,250,0.4)]"
                                   : isWordPast
-                                    ? "text-[#F5F1E8] hover:bg-[#1A2636]"
+                                    ? "text-ink hover:bg-track"
                                     : isCueActive
-                                      ? "text-[#F5F1E8]/85 hover:bg-[#1A2636]"
-                                      : "text-[#B6B0A4] hover:bg-[#131C28] hover:text-[#F5F1E8]"
+                                      ? "text-ink/85 hover:bg-track"
+                                      : "text-ink-secondary hover:bg-elevated hover:text-ink"
                               }`}
                             >
                               {word.text}

@@ -297,37 +297,37 @@ export function UploadWorkspace() {
     <div className="mx-auto max-w-2xl">
       {/* Limits & Constraints Strip */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#49E6B3]">
+        <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <FileVideo className="h-3.5 w-3.5" />
             <span>Formats</span>
           </div>
-          <p className="mt-1 text-xs text-[#B6B0A4]">MP4, MOV, MP3, and WAV</p>
+          <p className="mt-1 text-xs text-ink-secondary">MP4, MOV, MP3, and WAV</p>
         </div>
 
-        <div className="rounded-xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#49E6B3]">
+        <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Upload className="h-3.5 w-3.5" />
             <span>Max File Size</span>
           </div>
-          <p className="mt-1 text-xs text-[#B6B0A4]">
+          <p className="mt-1 text-xs text-ink-secondary">
             Up to {formatBytes(MAX_UPLOAD_BYTES)} (resumable TUS)
           </p>
         </div>
 
-        <div className="rounded-xl border border-[#F5F1E8]/10 bg-[#0D131C] p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#49E6B3]">
+        <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
             <Clock className="h-3.5 w-3.5" />
             <span>Processing Limit</span>
           </div>
-          <p className="mt-1 text-xs text-[#B6B0A4]">
+          <p className="mt-1 text-xs text-ink-secondary">
             Up to {MAX_DURATION_MINUTES} minutes per clip
           </p>
         </div>
       </div>
 
       {/* Main Upload Card */}
-      <div className="rounded-2xl border border-[#F5F1E8]/12 bg-[#0D131C] p-5 sm:p-6">
+      <div className="rounded-2xl border border-ink/12 bg-panel p-5 sm:p-6">
         {/* Dropzone */}
         <div
           onDragOver={(e) => {
@@ -343,8 +343,8 @@ export function UploadWorkspace() {
           }}
           className={`rounded-2xl border border-dashed p-6 text-center transition ${
             isDragging
-              ? "border-[#49E6B3] bg-[#102E28]/35"
-              : "border-[#F5F1E8]/20 bg-[#070B10]/70 hover:border-[#49E6B3]/50"
+              ? "border-accent bg-accent-soft/45"
+              : "border-ink/20 bg-page/70 hover:border-accent/55"
           }`}
         >
           <input
@@ -356,14 +356,14 @@ export function UploadWorkspace() {
             className="sr-only"
           />
 
-          <div className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]">
+          <div className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent">
             <Upload className="h-5 w-5" />
           </div>
 
-          <p className="mt-3 text-sm font-semibold text-[#F5F1E8]">
+          <p className="mt-3 text-sm font-semibold text-ink">
             {selectedFile ? selectedFile.name : "Drop an MP4, MOV, MP3, or WAV clip here"}
           </p>
-          <p className="mt-1 text-xs text-[#7D7A72]">
+          <p className="mt-1 text-xs text-ink-muted">
             {selectedFile
               ? `${formatBytes(selectedFile.size)} · ${selectedFile.type || "media"}`
               : `MP4, MOV, MP3, or WAV up to ${formatBytes(MAX_UPLOAD_BYTES)} · ${MAX_DURATION_MINUTES}-minute processing limit`}
@@ -373,7 +373,7 @@ export function UploadWorkspace() {
             type="button"
             disabled={phase === "uploading" || phase === "initializing" || phase === "finalizing"}
             onClick={() => fileInputRef.current?.click()}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-50"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-elevated px-4 py-2 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-50"
           >
             <span>{selectedFile ? "Choose a different file" : "Select media file"}</span>
           </button>
@@ -383,7 +383,7 @@ export function UploadWorkspace() {
         <div className="mt-5">
           <label
             htmlFor="project-title"
-            className="block text-xs font-medium text-[#B6B0A4]"
+            className="block text-xs font-medium text-ink-secondary"
           >
             Project title
           </label>
@@ -395,7 +395,7 @@ export function UploadWorkspace() {
             disabled={phase === "uploading" || phase === "finalizing"}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Launch Hook v1"
-            className="mt-1.5 w-full rounded-xl border border-[#F5F1E8]/12 bg-[#070B10] px-3.5 py-2.5 text-sm text-[#F5F1E8] placeholder:text-[#7D7A72] focus:border-[#49E6B3] focus:outline-none disabled:opacity-60"
+            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none disabled:opacity-60"
           />
         </div>
 
@@ -405,9 +405,9 @@ export function UploadWorkspace() {
           phase === "finalizing" ||
           phase === "completed" ||
           (phase === "error" && bytesTotal > 0)) && (
-          <div className="mt-5 rounded-xl border border-[#F5F1E8]/10 bg-[#070B10] p-4">
+          <div className="mt-5 rounded-xl border border-ink/10 bg-page p-4">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-[#F5F1E8]">
+              <span className="font-medium text-ink">
                 {phase === "uploading" && "Uploading directly to private storage..."}
                 {phase === "paused" && "Upload paused — ready to resume"}
                 {phase === "finalizing" && "Verifying ownership and stored file size..."}
@@ -416,20 +416,20 @@ export function UploadWorkspace() {
               </span>
               <span
                 data-testid="upload-percent"
-                className="font-mono font-semibold tabular-nums text-[#49E6B3]"
+                className="font-mono font-semibold tabular-nums text-accent"
               >
                 {percent}%
               </span>
             </div>
 
-            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-[#131C28]">
+            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-track">
               <div
-                className="h-full rounded-full bg-[#49E6B3] transition-all duration-150"
+                className="h-full rounded-full bg-accent transition-all duration-150"
                 style={{ width: `${percent}%` }}
               />
             </div>
 
-            <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-[#7D7A72]">
+            <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
               <span>
                 {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
               </span>
@@ -453,7 +453,7 @@ export function UploadWorkspace() {
         {completed && phase === "completed" && (
           <div
             data-testid="upload-complete-banner"
-            className="mt-4 rounded-xl border border-[#49E6B3]/40 bg-[#102E28]/70 p-4"
+            className="mt-4 rounded-xl border border-accent/40 bg-accent-soft/70 p-4"
           >
             {(() => {
               const liveJob = liveProject?.ingest_jobs?.[0] ?? null;
@@ -479,14 +479,14 @@ export function UploadWorkspace() {
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="flex items-start gap-2.5">
                       {isReady ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#49E6B3]" />
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                       ) : isFailed ? (
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
                       ) : (
-                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-[#49E6B3]" />
+                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent" />
                       )}
                       <div className="text-xs">
-                        <p className="font-semibold text-[#F5F1E8]">
+                        <p className="font-semibold text-ink">
                           {completed.project.title} —{" "}
                           {isReady
                             ? "captions are ready!"
@@ -494,14 +494,14 @@ export function UploadWorkspace() {
                               ? "processing needs attention"
                               : "uploaded & processing"}
                         </p>
-                        <p className="mt-1 font-mono text-[#B6B0A4]">
+                        <p className="mt-1 font-mono text-ink-secondary">
                           Verified size:{" "}
                           {formatBytes(completed.asset.verifiedSizeBytes)} ·{" "}
                           <span
                             data-testid="upload-live-stage"
                             className={
                               isReady
-                                ? "text-[#49E6B3]"
+                                ? "text-accent-hover"
                                 : isFailed
                                   ? "text-rose-200"
                                   : "text-amber-200"
@@ -519,7 +519,7 @@ export function UploadWorkspace() {
                       <Link
                         href={`/projects/${completed.project.id}/editor`}
                         data-testid="upload-open-editor-btn"
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3.5 py-2 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                         <span>Open editor</span>
@@ -529,8 +529,8 @@ export function UploadWorkspace() {
                       href="/projects"
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
                         isReady
-                          ? "border border-[#F5F1E8]/15 bg-[#0D131C] text-[#F5F1E8] hover:border-[#49E6B3]/50"
-                          : "bg-[#49E6B3] text-[#070B10] hover:bg-[#2FD49F]"
+                          ? "border border-ink/15 bg-panel text-ink hover:border-accent/55"
+                          : "bg-accent text-page hover:bg-accent-hover"
                       }`}
                     >
                       <FolderKanban className="h-3.5 w-3.5" />
@@ -539,7 +539,7 @@ export function UploadWorkspace() {
                     <button
                       type="button"
                       onClick={() => handleFilePicked(null)}
-                      className="rounded-lg border border-[#F5F1E8]/15 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] hover:border-[#F5F1E8]/30"
+                      className="rounded-lg border border-ink/15 bg-panel px-3.5 py-2 text-xs font-medium text-ink hover:border-ink/30"
                     >
                       Upload another clip
                     </button>
@@ -552,8 +552,8 @@ export function UploadWorkspace() {
 
         {/* Action Controls */}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-[#7D7A72]">
-            <ShieldCheck className="h-4 w-4 text-[#49E6B3]" />
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
+            <ShieldCheck className="h-4 w-4 text-accent" />
             <span>Server-assigned private object key</span>
           </div>
 
@@ -562,7 +562,7 @@ export function UploadWorkspace() {
               <button
                 type="button"
                 onClick={() => void pauseUpload()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2.5 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-xs font-semibold text-ink transition hover:border-accent/55"
               >
                 <Pause className="h-3.5 w-3.5" />
                 <span>Pause</span>
@@ -573,7 +573,7 @@ export function UploadWorkspace() {
               <button
                 type="button"
                 onClick={() => void resumeOrRetry()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#49E6B3] px-4 py-2.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
               >
                 {phase === "paused" ? (
                   <Play className="h-3.5 w-3.5 fill-current" />
@@ -589,7 +589,7 @@ export function UploadWorkspace() {
                 type="button"
                 disabled={!selectedFile || phase === "initializing"}
                 onClick={() => void startUpload()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#49E6B3] px-5 py-2.5 text-sm font-semibold text-[#070B10] transition hover:bg-[#2FD49F] disabled:opacity-45"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover disabled:opacity-45"
               >
                 <Upload className="h-4 w-4" />
                 <span>

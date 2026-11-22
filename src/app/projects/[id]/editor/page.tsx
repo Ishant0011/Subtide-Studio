@@ -36,7 +36,7 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
   const { data: project, error } = await supabase
     .from("projects")
     .select(
-      "id, user_id, title, status, media_kind, duration_ms, preview_object_key, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
+      "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_width, preview_height, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, width, height, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -47,7 +47,14 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
 
   const assets = Array.isArray(project.media_assets) ? project.media_assets : [];
   const primaryAsset = assets[0] as
-    | { id: string; object_key: string; mime_type: string; duration_ms: number | null }
+    | {
+        id: string;
+        object_key: string;
+        mime_type: string;
+        duration_ms: number | null;
+        width?: number | null;
+        height?: number | null;
+      }
     | undefined;
 
   const mediaObjectKey = project.preview_object_key || primaryAsset?.object_key;
@@ -89,6 +96,15 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
   const durationMs =
     project.duration_ms ?? primaryAsset?.duration_ms ?? 15000;
 
+  const previewWidth =
+    (typeof project.preview_width === "number" && project.preview_width > 0
+      ? project.preview_width
+      : primaryAsset?.width) ?? null;
+  const previewHeight =
+    (typeof project.preview_height === "number" && project.preview_height > 0
+      ? project.preview_height
+      : primaryAsset?.height) ?? null;
+
   return (
     <ProjectCaptionEditor
       userEmail={user.email ?? "Signed in"}
@@ -96,6 +112,8 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
       projectTitle={project.title}
       mediaKind={isAudio ? "audio" : "video"}
       previewUrl={signed.signedUrl}
+      previewWidth={previewWidth}
+      previewHeight={previewHeight}
       durationMs={durationMs}
       initialRevisionId={activeRevision?.id ?? null}
       initialRevisionNumber={activeRevision?.revision_number ?? 0}

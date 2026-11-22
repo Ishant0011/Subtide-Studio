@@ -22,11 +22,13 @@ export class RenderError extends Error {
 
 export type CaptionPresetId = "clean" | "boxed" | "word-highlight";
 export type CaptionFontSize = "sm" | "md" | "lg";
+export type CaptionAccentId = "violet" | "mint";
 
 export interface CaptionStyleConfig {
   preset: CaptionPresetId;
   fontSize: CaptionFontSize;
   verticalPosition: number;
+  accent?: CaptionAccentId;
 }
 
 export interface RenderCaptionWord {
@@ -81,6 +83,15 @@ const DEFAULT_STYLE: CaptionStyleConfig = {
   preset: "word-highlight",
   fontSize: "md",
   verticalPosition: 14,
+  accent: "violet",
+};
+
+const ACCENT_PALETTE: Record<
+  CaptionAccentId,
+  { hex: string; assBgr: string }
+> = {
+  violet: { hex: "#A78BFA", assBgr: "FA8BA7" },
+  mint: { hex: "#49E6B3", assBgr: "B3E649" },
 };
 
 const MIN_VERTICAL_POSITION = 8;
@@ -122,12 +133,18 @@ function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
     Math.min(MAX_VERTICAL_POSITION, rawPos)
   );
 
+  const accent: CaptionAccentId = style?.accent === "mint" ? "mint" : "violet";
+  const accentColor = ACCENT_PALETTE[accent];
+
   return {
     preset,
     fontSize,
     renderFontSizePx1080: FONT_SIZE_TABLE[fontSize].renderPx1080,
     bottomPercent,
     maxWidthPercent: preset === "word-highlight" ? 94 : 90,
+    accent,
+    accentHex: accentColor.hex,
+    accentAssBgr: accentColor.assBgr,
   };
 }
 
@@ -224,6 +241,7 @@ function detectWordLineBreaks(cueText: string, wordCount: number): Set<number> {
 function formatStyledCueRun(
   cue: RenderCaptionCue,
   preset: CaptionPresetId,
+  accentAssBgr: string,
   activeWord: RenderCaptionWord | null,
   sampleTimeMs: number
 ): string {
@@ -231,13 +249,13 @@ function formatStyledCueRun(
   const transform = (s: string) =>
     preset === "word-highlight" ? s.toUpperCase() : s;
 
-  // Deep ink #070B10 -> 100B07, Warm white #F5F1E8 -> E8F1F5, Mint #49E6B3 -> B3E649
+  // Deep ink #070B10 -> 100B07, Warm white #F5F1E8 -> E8F1F5, Violet #A78BFA -> FA8BA7 (or legacy Mint #49E6B3 -> B3E649)
   if (!useWordTiming) {
     const escaped = escapeAssText(transform(cue.text.trim()));
     if (preset === "word-highlight") {
-      return `{\\c&H100B07&\\1a&H00&\\3c&HB3E649&\\3a&H00&}${escaped}`;
+      return `{\\c&H100B07&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${escaped}`;
     }
-    return `{\\c&HB3E649&\\1a&H00&}${escaped}`;
+    return `{\\c&H${accentAssBgr}&\\1a&H00&}${escaped}`;
   }
 
   const lineBreaks = detectWordLineBreaks(cue.text, cue.words.length);
@@ -262,7 +280,7 @@ function formatStyledCueRun(
 
     if (preset === "clean") {
       if (isActive) {
-        parts.push(`{\\c&HB3E649&\\1a&H00&\\fscx104\\fscy104}${wordText}`);
+        parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\fscx104\\fscy104}${wordText}`);
       } else if (isPast) {
         parts.push(`{\\c&HE8F1F5&\\1a&H00&\\fscx100\\fscy100}${wordText}`);
       } else {
@@ -270,16 +288,16 @@ function formatStyledCueRun(
       }
     } else if (preset === "boxed") {
       if (isActive) {
-        parts.push(`{\\c&HB3E649&\\1a&H00&\\u1}${wordText}`);
+        parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\u1}${wordText}`);
       } else if (isPast) {
         parts.push(`{\\c&HE8F1F5&\\1a&H00&\\u0}${wordText}`);
       } else {
         parts.push(`{\\c&HE8F1F5&\\1a&H45&\\u0}${wordText}`);
       }
     } else {
-      // word-highlight: kinetic mint pill with dark ink text vs translucent ink pills
+      // word-highlight: kinetic accent pill with dark ink text vs translucent ink pills
       if (isActive) {
-        parts.push(`{\\c&H100B07&\\1a&H00&\\3c&HB3E649&\\3a&H00&}${wordText}`);
+        parts.push(`{\\c&H100B07&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${wordText}`);
       } else if (isPast) {
         parts.push(`{\\c&HE8F1F5&\\1a&H00&\\3c&H100B07&\\3a&H73&}${wordText}`);
       } else {
@@ -317,11 +335,11 @@ export function buildAssScript(params: {
   // Style definition tailored to preset
   let styleLine: string;
   if (layout.preset === "clean") {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00B3E649,&H10100B07,&H66100B07,-1,0,0,0,100,100,0,0,1,2.5,2,2,${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H10100B07,&H66100B07,-1,0,0,0,100,100,0,0,1,2.5,2,2,${marginH},${marginH},${marginV},1`;
   } else if (layout.preset === "boxed") {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00B3E649,&H2E100B07,&H2E100B07,-1,0,0,0,100,100,0,0,3,14,0,2,${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H2E100B07,&H2E100B07,-1,0,0,0,100,100,0,0,3,14,0,2,${marginH},${marginH},${marginV},1`;
   } else {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00B3E649,&H73100B07,&H73100B07,-1,0,0,0,100,100,0.4,0,3,8,0,2,${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H73100B07,&H73100B07,-1,0,0,0,100,100,0.4,0,3,8,0,2,${marginH},${marginH},${marginV},1`;
   }
 
   const events: string[] = [];
@@ -332,7 +350,13 @@ export function buildAssScript(params: {
       const startStr = formatAssTime(cue.start_ms);
       const endStr = formatAssTime(cue.end_ms);
       if (startStr !== endStr) {
-        const text = formatStyledCueRun(cue, layout.preset, null, cue.start_ms);
+        const text = formatStyledCueRun(
+          cue,
+          layout.preset,
+          layout.accentAssBgr,
+          null,
+          cue.start_ms
+        );
         events.push(`Dialogue: 0,${startStr},${endStr},Caption,,0,0,0,,${text}`);
       }
       continue;
@@ -359,7 +383,13 @@ export function buildAssScript(params: {
 
       const sampleMid = Math.floor((t0 + t1) / 2);
       const activeWord = findActiveWord(cue, sampleMid);
-      const text = formatStyledCueRun(cue, layout.preset, activeWord, sampleMid);
+      const text = formatStyledCueRun(
+        cue,
+        layout.preset,
+        layout.accentAssBgr,
+        activeWord,
+        sampleMid
+      );
       events.push(`Dialogue: 0,${startStr},${endStr},Caption,,0,0,0,,${text}`);
     }
   }
@@ -730,11 +760,12 @@ export async function renderExportArtifact(
   let args: string[];
   if (mediaKind === "audio") {
     // 9:16 deep-ink portrait stage matching the editor's audio stage + burned-in captions + source audio
+    const audioLayout = computeLayout(input.style);
     const accentY = Math.round(outHeight * 0.12);
     const stageVf = [
-      `drawbox=x=0:y=0:w=${outWidth}:h=${Math.round(outHeight * 0.42)}:color=#112635@0.75:t=fill`,
-      `drawbox=x=0:y=${Math.round(outHeight * 0.42)}:w=${outWidth}:h=${Math.round(outHeight * 0.3)}:color=#0B1722@0.85:t=fill`,
-      `drawbox=x=${Math.round(outWidth * 0.08)}:y=${accentY}:w=${Math.round(outWidth * 0.84)}:h=4:color=#49E6B3@0.85:t=fill`,
+      `drawbox=x=0:y=0:w=${outWidth}:h=${Math.round(outHeight * 0.42)}:color=#181529@0.85:t=fill`,
+      `drawbox=x=0:y=${Math.round(outHeight * 0.42)}:w=${outWidth}:h=${Math.round(outHeight * 0.3)}:color=#10121A@0.9:t=fill`,
+      `drawbox=x=${Math.round(outWidth * 0.08)}:y=${accentY}:w=${Math.round(outWidth * 0.84)}:h=4:color=${audioLayout.accentHex}@0.88:t=fill`,
       assFilter,
       "format=yuv420p",
     ].join(",");

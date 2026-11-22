@@ -56,7 +56,7 @@ export function StudioTabs({
       role="tablist"
       aria-label="Workspace panels"
       data-testid="mobile-panel-tabs"
-      className="grid grid-cols-2 gap-1.5 rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-1 lg:hidden"
+      className="grid grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1 lg:hidden"
     >
       <button
         ref={(el) => {
@@ -71,10 +71,10 @@ export function StudioTabs({
         tabIndex={activeTab === "captions" ? 0 : -1}
         onClick={() => onChange("captions")}
         onKeyDown={(e) => handleKeyDown(e, "captions")}
-        className={`flex min-h-[40px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+        className={`flex min-h-[40px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           activeTab === "captions"
-            ? "bg-[#102E28] text-[#49E6B3] ring-1 ring-[#49E6B3]/40 shadow-sm"
-            : "text-[#B6B0A4] hover:bg-[#131C28] hover:text-[#F5F1E8]"
+            ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40 shadow-sm"
+            : "text-ink-secondary hover:bg-elevated hover:text-ink"
         }`}
       >
         <Captions className="h-3.5 w-3.5 shrink-0" />
@@ -82,8 +82,8 @@ export function StudioTabs({
         <span
           className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums ${
             activeTab === "captions"
-              ? "bg-[#49E6B3]/20 text-[#49E6B3]"
-              : "bg-[#131C28] text-[#7D7A72]"
+              ? "bg-accent/20 text-accent-hover"
+              : "bg-elevated text-ink-muted"
           }`}
         >
           {cueCount}
@@ -103,10 +103,10 @@ export function StudioTabs({
         tabIndex={activeTab === "style" ? 0 : -1}
         onClick={() => onChange("style")}
         onKeyDown={(e) => handleKeyDown(e, "style")}
-        className={`flex min-h-[40px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+        className={`flex min-h-[40px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
           activeTab === "style"
-            ? "bg-[#102E28] text-[#49E6B3] ring-1 ring-[#49E6B3]/40 shadow-sm"
-            : "text-[#B6B0A4] hover:bg-[#131C28] hover:text-[#F5F1E8]"
+            ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40 shadow-sm"
+            : "text-ink-secondary hover:bg-elevated hover:text-ink"
         }`}
       >
         <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
@@ -114,8 +114,8 @@ export function StudioTabs({
         <span
           className={`max-w-[82px] truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
             activeTab === "style"
-              ? "bg-[#49E6B3]/20 text-[#49E6B3]"
-              : "bg-[#131C28] text-[#7D7A72]"
+              ? "bg-accent/20 text-accent-hover"
+              : "bg-elevated text-ink-muted"
           }`}
         >
           {activePresetName}

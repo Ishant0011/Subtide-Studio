@@ -38,8 +38,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#070B10] text-[#F5F1E8]">
-      <header className="border-b border-[#F5F1E8]/10 bg-[#070B10]/95 backdrop-blur-md">
+    <div className="relative min-h-screen overflow-x-clip bg-page text-ink">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 left-1/2 h-[340px] w-[620px] -translate-x-1/2 rounded-full bg-accent/10 blur-[140px]"
+      />
+
+      <header className="relative z-10 border-b border-ink/10 bg-page/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <Link href="/" aria-label="ClipCaptions home">
             <ClipCaptionsLockup markSize={30} />
@@ -47,7 +52,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] px-3 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/45 hover:text-[#F5F1E8]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Home</span>
@@ -55,7 +60,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl justify-center px-4 py-10 sm:px-6 sm:py-16">
+      <main className="relative z-10 mx-auto flex max-w-6xl justify-center px-4 py-10 sm:px-6 sm:py-16">
         <AuthForm
           nextPath={nextPath}
           initialMode={initialMode}

@@ -16,6 +16,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
+import { computeCaptionLayout } from "@/lib/caption-editor";
 import {
   formatBytes,
   type CaptionRevisionRow,
@@ -65,7 +66,7 @@ function getStageDisplay(
   project: ProjectWithMedia,
   job: IngestJobRow | null,
   revision: CaptionRevisionRow | null
-): { label: string; tone: "mint" | "amber" | "rose" | "neutral"; spinning: boolean } {
+): { label: string; tone: "accent" | "amber" | "rose" | "neutral"; spinning: boolean } {
   if (job) {
     if (job.status === "queued") {
       return {
@@ -88,9 +89,9 @@ function getStageDisplay(
     }
     if (job.status === "completed") {
       if (revision?.speech_status === "no_speech") {
-        return { label: "Ready · No speech", tone: "mint", spinning: false };
+        return { label: "Ready · No speech", tone: "accent", spinning: false };
       }
-      return { label: "Ready", tone: "mint", spinning: false };
+      return { label: "Ready", tone: "accent", spinning: false };
     }
   }
 
@@ -269,6 +270,11 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
     return findActiveCueMs(preview.revision.cues, previewTimeMs);
   }, [preview, previewTimeMs]);
 
+  const previewAccentHex = useMemo(
+    () => computeCaptionLayout(preview?.revision?.style).accentHex,
+    [preview]
+  );
+
   return (
     <div>
       {error && (
@@ -281,22 +287,22 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
       )}
 
       {projects.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#F5F1E8]/15 bg-[#0D131C]/70 px-6 py-14 text-center">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]">
+        <div className="rounded-2xl border border-dashed border-ink/15 bg-panel/70 px-6 py-14 text-center">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/35 bg-accent-soft text-accent">
             <Film className="h-5 w-5" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-[#F5F1E8]">
+          <h2 className="mt-4 text-lg font-semibold text-ink">
             No projects yet
           </h2>
-          <p className="mx-auto mt-1.5 max-w-md text-sm text-[#B6B0A4]">
+          <p className="mx-auto mt-1.5 max-w-md text-sm text-ink-secondary">
             Upload an MP4, MOV, MP3, or WAV clip (up to 150 MB, 3-minute
             processing limit) to create your first project. Track processing
-            progress here, then click <strong className="font-semibold text-[#F5F1E8]">Open editor</strong> once it&apos;s ready.
+            progress here, then click <strong className="font-semibold text-ink">Open editor</strong> once it&apos;s ready.
           </p>
           <Link
             href="/upload"
             data-testid="new-project-empty-btn"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#49E6B3] px-5 py-2.5 text-sm font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover"
           >
             <Plus className="h-4 w-4" />
             <span>New project</span>
@@ -321,13 +327,13 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
             const isEditing = editingId === project.id;
 
             const badgeClass =
-              stage.tone === "mint"
-                ? "border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]"
+              stage.tone === "accent"
+                ? "border border-accent/40 bg-accent-soft text-accent-hover"
                 : stage.tone === "amber"
                   ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
                   : stage.tone === "rose"
                     ? "border border-rose-400/35 bg-rose-500/10 text-rose-200"
-                    : "border border-[#F5F1E8]/12 bg-[#131C28] text-[#B6B0A4]";
+                    : "border border-ink/12 bg-elevated text-ink-secondary";
 
             const isAudio =
               project.media_kind === "audio" ||
@@ -342,14 +348,14 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               <article
                 key={project.id}
                 data-testid={`project-card-${project.id}`}
-                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] transition hover:border-[#F5F1E8]/22"
+                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition hover:border-accent/30"
               >
                 {/* Project Visual Thumbnail / Audio Artwork */}
-                <div className="relative h-40 w-full overflow-hidden border-b border-[#F5F1E8]/8 bg-[#070B10]">
+                <div className="relative h-40 w-full overflow-hidden border-b border-ink/8 bg-page">
                   {isAudio ? (
                     <div
                       data-testid={`project-audio-artwork-${project.id}`}
-                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#112635] via-[#0B1722] to-[#070B10] px-4"
+                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#1A1530] via-[#11121F] to-page px-4"
                     >
                       <div className="flex items-end gap-1.5">
                         {[14, 28, 42, 22, 48, 34, 20, 38, 26, 16].map((h, i) => (
@@ -357,12 +363,12 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                             key={i}
                             style={{ height: `${h}px` }}
                             className={`w-1.5 rounded-full ${
-                              i % 3 === 1 ? "bg-[#49E6B3]" : "bg-[#49E6B3]/35"
+                              i % 3 === 1 ? "bg-accent" : "bg-accent/35"
                             }`}
                           />
                         ))}
                       </div>
-                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#49E6B3]/30 bg-[#102E28]/85 px-2.5 py-0.5 text-[11px] font-medium text-[#49E6B3]">
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent-soft/90 px-2.5 py-0.5 text-[11px] font-medium text-accent-hover">
                         <AudioLines className="h-3 w-3" />
                         <span>Audio · 9:16 Portrait Stage</span>
                       </span>
@@ -370,7 +376,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   ) : project.thumbnail_url ? (
                     <div
                       data-testid={`project-video-thumbnail-${project.id}`}
-                      className="relative flex h-full w-full items-center justify-center bg-[#070B10]"
+                      className="relative flex h-full w-full items-center justify-center bg-page"
                     >
                       <video
                         src={`${project.thumbnail_url}#t=0.5`}
@@ -380,11 +386,11 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                         aria-hidden="true"
                         className="h-full w-full object-contain"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070B10]/70 via-transparent to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-page/70 via-transparent to-transparent" />
                     </div>
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#101A27] to-[#070B10] text-[#8C887F]">
-                      <Film className="h-7 w-7 text-[#49E6B3]/70" />
+                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-elevated to-page text-ink-muted">
+                      <Film className="h-7 w-7 text-accent/70" />
                       <span className="mt-1.5 text-[11px]">
                         {stage.spinning ? "Generating preview..." : "Video clip"}
                       </span>
@@ -398,7 +404,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   >
                     {stage.spinning ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : stage.tone === "mint" ? (
+                    ) : stage.tone === "accent" ? (
                       <CheckCircle2 className="h-3 w-3" />
                     ) : stage.tone === "rose" ? (
                       <AlertCircle className="h-3 w-3" />
@@ -409,7 +415,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   </span>
 
                   {durationSec && (
-                    <span className="absolute bottom-2.5 right-3 rounded-md border border-[#F5F1E8]/15 bg-[#070B10]/80 px-2 py-0.5 font-mono text-[11px] tabular-nums text-[#F5F1E8]">
+                    <span className="absolute bottom-2.5 right-3 rounded-md border border-ink/15 bg-page/80 px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink">
                       {durationSec}
                     </span>
                   )}
@@ -426,27 +432,27 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                             onChange={(e) => setDraftTitle(e.target.value)}
                             maxLength={120}
                             aria-label="Project title"
-                            className="w-full rounded-lg border border-[#49E6B3]/50 bg-[#070B10] px-2.5 py-1.5 text-sm text-[#F5F1E8] focus:outline-none"
+                            className="w-full rounded-lg border border-accent/60 bg-page px-2.5 py-1.5 text-sm text-ink focus:outline-none"
                           />
                           <button
                             type="button"
                             disabled={savingId === project.id}
                             onClick={() => void saveTitle(project.id)}
-                            className="rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10]"
+                            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page hover:bg-accent-hover"
                           >
                             {savingId === project.id ? "..." : "Save"}
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingId(null)}
-                            className="rounded-lg border border-[#F5F1E8]/12 px-2 py-1.5 text-xs text-[#B6B0A4]"
+                            className="rounded-lg border border-ink/12 px-2 py-1.5 text-xs text-ink-secondary hover:text-ink"
                           >
                             Cancel
                           </button>
                         </div>
                       ) : (
                         <div className="flex min-w-0 items-center gap-2">
-                          <h2 className="truncate text-base font-semibold tracking-tight text-[#F5F1E8]">
+                          <h2 className="truncate text-base font-semibold tracking-tight text-ink">
                             {project.title}
                           </h2>
                           <button
@@ -456,7 +462,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                               setEditingId(project.id);
                               setDraftTitle(project.title);
                             }}
-                            className="shrink-0 rounded-md p-1 text-[#8C887F] transition hover:bg-[#131C28] hover:text-[#F5F1E8]"
+                            className="shrink-0 rounded-md p-1 text-ink-muted transition hover:bg-elevated hover:text-ink"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -473,16 +479,16 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       )}
 
                     {primaryAsset && (
-                      <dl className="mt-3.5 grid grid-cols-2 gap-2.5 rounded-xl border border-[#F5F1E8]/8 bg-[#070B10]/70 p-3 text-xs">
+                      <dl className="mt-3.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-page/75 p-3 text-xs">
                         <div>
-                          <dt className="text-[#8C887F]">File</dt>
-                          <dd className="mt-0.5 truncate font-medium text-[#F5F1E8]">
+                          <dt className="text-ink-muted">File</dt>
+                          <dd className="mt-0.5 truncate font-medium text-ink">
                             {primaryAsset.original_filename}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-[#8C887F]">Verified size</dt>
-                          <dd className="mt-0.5 font-mono tabular-nums text-[#F5F1E8]">
+                          <dt className="text-ink-muted">Verified size</dt>
+                          <dd className="mt-0.5 font-mono tabular-nums text-ink">
                             {formatBytes(
                               primaryAsset.verified_size_bytes ??
                                 primaryAsset.expected_size_bytes
@@ -490,8 +496,8 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-[#8C887F]">Media</dt>
-                          <dd className="mt-0.5 font-mono text-[#B6B0A4]">
+                          <dt className="text-ink-muted">Media</dt>
+                          <dd className="mt-0.5 font-mono text-ink-secondary">
                             {isAudio
                               ? "Audio · 9:16 stage"
                               : project.preview_width && project.preview_height
@@ -500,8 +506,8 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-[#8C887F]">Captions</dt>
-                          <dd className="mt-0.5 tabular-nums text-[#B6B0A4]">
+                          <dt className="text-ink-muted">Captions</dt>
+                          <dd className="mt-0.5 tabular-nums text-ink-secondary">
                             {revision
                               ? revision.speech_status === "no_speech"
                                 ? "No speech detected"
@@ -513,8 +519,8 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                     )}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-[#F5F1E8]/8 pt-3.5">
-                    <span className="font-mono text-[11px] text-[#8C887F]">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-ink/8 pt-3.5">
+                    <span className="font-mono text-[11px] text-ink-muted">
                       {revision
                         ? `Rev #${revision.revision_number} · ${revision.source}`
                         : stage.spinning
@@ -528,7 +534,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           type="button"
                           disabled={startingId === project.id}
                           onClick={() => void startProcessing(project.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/15 bg-[#131C28] px-3 py-1.5 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-60"
                         >
                           {startingId === project.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -548,7 +554,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       {primaryAsset && isAssetUploaded && project.status === "ready" && (
                         <Link
                           href={`/projects/${project.id}/editor`}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           <span>Open editor</span>
@@ -560,7 +566,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           type="button"
                           disabled={loadingAssetId === primaryAsset.id}
                           onClick={() => void openPreview(primaryAsset.id, project, revision)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#49E6B3]/35 bg-[#102E28] px-3 py-1.5 text-xs font-semibold text-[#49E6B3] transition hover:bg-[#49E6B3] hover:text-[#070B10] disabled:opacity-60"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page disabled:opacity-60"
                         >
                           {loadingAssetId === primaryAsset.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -587,16 +593,16 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           aria-label={`Preview ${preview.title}`}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-2xl border border-[#F5F1E8]/15 bg-[#0D131C] p-4 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-ink/15 bg-panel p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="truncate text-sm font-semibold text-[#F5F1E8]">
+              <h3 className="truncate text-sm font-semibold text-ink">
                 {preview.title}
               </h3>
               <button
                 type="button"
                 aria-label="Close preview"
                 onClick={() => setPreview(null)}
-                className="rounded-lg border border-[#F5F1E8]/12 p-1.5 text-[#B6B0A4] hover:text-[#F5F1E8]"
+                className="rounded-lg border border-ink/12 p-1.5 text-ink-secondary hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -606,38 +612,41 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               <div className="flex flex-col items-center">
                 <div
                   data-testid="audio-portrait-stage"
-                  className="relative flex aspect-[9/16] w-full max-w-[290px] flex-col items-center justify-between overflow-hidden rounded-2xl border border-[#F5F1E8]/12 bg-gradient-to-b from-[#112635] via-[#0B1722] to-[#070B10] p-5"
+                  className="relative flex aspect-[9/16] w-full max-w-[290px] flex-col items-center justify-between overflow-hidden rounded-2xl border border-ink/12 bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-5"
                 >
-                  <span className="rounded-full border border-[#49E6B3]/30 bg-[#102E28]/80 px-3 py-1 text-[11px] font-medium text-[#49E6B3]">
+                  <span className="rounded-full border border-accent/35 bg-accent-soft/90 px-3 py-1 text-[11px] font-medium text-accent-hover">
                     Audio · 9:16 Stage
                   </span>
 
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]">
+                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent">
                       <AudioLines className="h-7 w-7" />
                     </span>
-                    <p className="text-xs font-medium text-[#B6B0A4]">
+                    <p className="text-xs font-medium text-ink-secondary">
                       {preview.title}
                     </p>
                   </div>
 
                   <div className="min-h-[64px] w-full text-center">
                     {preview.revision?.speech_status === "no_speech" ? (
-                      <p className="text-xs text-[#7D7A72]">
+                      <p className="text-xs text-ink-muted">
                         No speech detected in audio
                       </p>
                     ) : activePreviewCue ? (
-                      <p className="flex flex-wrap justify-center gap-1 text-sm font-bold text-[#F5F1E8]">
+                      <p className="flex flex-wrap justify-center gap-1 text-sm font-bold text-ink">
                         {activePreviewCue.words.map((w) => {
                           const isWordActive =
                             previewTimeMs >= w.start_ms && previewTimeMs <= w.end_ms;
                           return (
                             <span
                               key={w.id}
-                              className={`rounded px-1.5 py-0.5 ${
+                              style={
                                 isWordActive
-                                  ? "bg-[#49E6B3] text-[#070B10]"
-                                  : "text-[#F5F1E8]"
+                                  ? { backgroundColor: previewAccentHex, color: "#070B10" }
+                                  : undefined
+                              }
+                              className={`rounded px-1.5 py-0.5 ${
+                                isWordActive ? "" : "text-ink"
                               }`}
                             >
                               {w.text}
@@ -659,7 +668,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                 />
               </div>
             ) : (
-              <div className="relative overflow-hidden rounded-xl bg-[#070B10]">
+              <div className="relative overflow-hidden rounded-xl bg-page">
                 <video
                   src={preview.url}
                   controls
@@ -667,21 +676,24 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   onTimeUpdate={(e) =>
                     setPreviewTimeMs(Math.round(e.currentTarget.currentTime * 1000))
                   }
-                  className="max-h-[70vh] w-full rounded-xl bg-[#070B10]"
+                  className="max-h-[70vh] w-full rounded-xl bg-page"
                 />
                 {activePreviewCue && (
                   <div className="pointer-events-none absolute inset-x-4 bottom-12 flex justify-center">
-                    <p className="flex flex-wrap justify-center gap-1 rounded-xl bg-[#070B10]/80 px-3 py-1.5 text-center text-sm font-bold text-[#F5F1E8] backdrop-blur-sm">
+                    <p className="flex flex-wrap justify-center gap-1 rounded-xl bg-page/80 px-3 py-1.5 text-center text-sm font-bold text-ink backdrop-blur-sm">
                       {activePreviewCue.words.map((w) => {
                         const isWordActive =
                           previewTimeMs >= w.start_ms && previewTimeMs <= w.end_ms;
                         return (
                           <span
                             key={w.id}
-                            className={`rounded px-1 ${
+                            style={
                               isWordActive
-                                ? "bg-[#49E6B3] text-[#070B10]"
-                                : "text-[#F5F1E8]"
+                                ? { backgroundColor: previewAccentHex, color: "#070B10" }
+                                : undefined
+                            }
+                            className={`rounded px-1 ${
+                              isWordActive ? "" : "text-ink"
                             }`}
                           >
                             {w.text}
@@ -695,7 +707,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
             )}
 
             {preview.revision?.speech_status === "no_speech" && (
-              <p className="mt-3 text-center text-xs text-[#B6B0A4]">
+              <p className="mt-3 text-center text-xs text-ink-secondary">
                 Audio is valid, but no speech was detected for captions.
               </p>
             )}

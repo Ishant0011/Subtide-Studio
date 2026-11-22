@@ -5,12 +5,15 @@ import type {
 } from "@/lib/uploads";
 
 export type CaptionFontSize = "sm" | "md" | "lg";
+export type CaptionAccentId = "violet" | "mint";
 
 export interface CaptionStyleConfig {
   preset: CaptionPresetId;
   fontSize: CaptionFontSize;
   /** Vertical offset from bottom edge as a percentage (8..85). */
   verticalPosition: number;
+  /** Caption highlight accent color; defaults to ClipCaptions violet while preserving saved mint styles. */
+  accent?: CaptionAccentId;
 }
 
 export interface EditorCue extends NormalizedCaptionCue {
@@ -25,12 +28,35 @@ export interface CaptionLayoutMetrics {
   renderFontSizePx1080: number;
   bottomPercent: number;
   maxWidthPercent: number;
+  accent: CaptionAccentId;
+  accentHex: string;
+  accentAssBgr: string;
+  accentShadowRgba: string;
 }
+
+export const CAPTION_ACCENTS: Record<
+  CaptionAccentId,
+  { label: string; hex: string; assBgr: string; shadowRgba: string }
+> = {
+  violet: {
+    label: "Violet",
+    hex: "#A78BFA",
+    assBgr: "FA8BA7",
+    shadowRgba: "rgba(167,139,250,0.45)",
+  },
+  mint: {
+    label: "Mint",
+    hex: "#49E6B3",
+    assBgr: "B3E649",
+    shadowRgba: "rgba(73,230,179,0.45)",
+  },
+};
 
 export const DEFAULT_CAPTION_STYLE: CaptionStyleConfig = {
   preset: "word-highlight",
   fontSize: "md",
   verticalPosition: 14,
+  accent: "violet",
 };
 
 export const MIN_VERTICAL_POSITION = 8;
@@ -79,6 +105,10 @@ export function computeCaptionLayout(
     Math.min(MAX_VERTICAL_POSITION, rawPos)
   );
 
+  const accent: CaptionAccentId =
+    style?.accent === "mint" ? "mint" : "violet";
+  const accentMeta = CAPTION_ACCENTS[accent];
+
   const metrics = FONT_SIZE_TABLE[fontSize];
   return {
     preset,
@@ -88,6 +118,10 @@ export function computeCaptionLayout(
     renderFontSizePx1080: metrics.renderPx1080,
     bottomPercent,
     maxWidthPercent: preset === "word-highlight" ? 94 : 90,
+    accent,
+    accentHex: accentMeta.hex,
+    accentAssBgr: accentMeta.assBgr,
+    accentShadowRgba: accentMeta.shadowRgba,
   };
 }
 
@@ -99,6 +133,7 @@ export function normalizeCaptionStyle(
     preset: layout.preset,
     fontSize: layout.fontSize,
     verticalPosition: layout.bottomPercent,
+    accent: layout.accent,
   };
 }
 
@@ -273,6 +308,14 @@ export function validateCaptionRevisionInput(input: {
     };
   }
 
+  if (
+    s.accent !== undefined &&
+    s.accent !== "violet" &&
+    s.accent !== "mint"
+  ) {
+    return { ok: false, error: "Invalid caption highlight accent." };
+  }
+
   if (!Array.isArray(input.cues)) {
     return { ok: false, error: "Cues must be an array." };
   }
@@ -418,6 +461,7 @@ export function validateCaptionRevisionInput(input: {
       preset: s.preset,
       fontSize: s.fontSize,
       verticalPosition: Math.round(s.verticalPosition),
+      accent: s.accent === "mint" ? "mint" : "violet",
     },
   };
 }

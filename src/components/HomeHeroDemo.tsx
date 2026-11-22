@@ -101,17 +101,17 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="mx-auto w-full max-w-[356px] rounded-[2rem] border border-[#F5F1E8]/12 bg-[#0D131C] p-3 shadow-[0_28px_80px_rgba(0,0,0,0.68)]"
+      className="relative mx-auto w-full max-w-[322px] rounded-[1.85rem] border border-accent/25 bg-panel p-3 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[332px]"
     >
-      {/* Top interactive bar: Captions toggle + format pill */}
-      <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#B6B0A4]">
+      {/* Top interactive bar: live cue state + Captions toggle */}
+      <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
           <span
             className={`h-2 w-2 rounded-full ${
-              isPlaying ? "animate-pulse bg-[#49E6B3]" : "bg-[#49E6B3]/60"
+              isPlaying ? "animate-pulse bg-accent" : "bg-accent/70"
             }`}
           />
-          <span>Interactive 9:16 demo</span>
+          <span>Live 9:16 preview</span>
         </span>
 
         <button
@@ -121,8 +121,8 @@ export function HomeHeroDemo() {
           onClick={() => setCaptionsEnabled((v) => !v)}
           className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
             captionsEnabled
-              ? "border-[#49E6B3]/45 bg-[#102E28] text-[#49E6B3]"
-              : "border-[#F5F1E8]/15 bg-[#070B10] text-[#B6B0A4] hover:text-[#F5F1E8]"
+              ? "border-accent/50 bg-accent-soft text-accent-hover"
+              : "border-ink/15 bg-page text-ink-secondary hover:text-ink"
           }`}
         >
           <Captions className="h-3.5 w-3.5" />
@@ -131,7 +131,7 @@ export function HomeHeroDemo() {
       </div>
 
       {/* Playable 9:16 Portrait Stage */}
-      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.45rem] border border-[#F5F1E8]/10 bg-[#070B10]">
+      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.45rem] border border-ink/12 bg-page">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
@@ -139,7 +139,12 @@ export function HomeHeroDemo() {
           preload="auto"
           muted={isMuted}
           onLoadedMetadata={handleLoadedMetadata}
-          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => {
+            if (!initialized && e.currentTarget.paused && e.currentTarget.currentTime === 0) {
+              return;
+            }
+            setCurrentTime(e.currentTarget.currentTime);
+          }}
           onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
@@ -149,15 +154,16 @@ export function HomeHeroDemo() {
         />
 
         {/* Scrims for caption readability */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#070B10]/60 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#070B10]/85 via-[#070B10]/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-page/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-page/88 via-page/32 to-transparent" />
 
-        {/* Live Word-Synced Caption Overlay (toggleable) */}
+        {/* Live Word-Synced Caption Overlay (toggleable, violet accent) */}
         {captionsEnabled && (
           <CaptionOverlay
             activeCue={activeCue}
             activeWord={activeWord}
             preset={preset}
+            accent="violet"
             currentTime={currentTime}
           />
         )}
@@ -166,7 +172,7 @@ export function HomeHeroDemo() {
         {!isPlaying && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[43%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#49E6B3]/55 bg-[#070B10]/75 text-[#49E6B3] shadow-2xl backdrop-blur-md"
+            className="pointer-events-none absolute left-1/2 top-[43%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
           >
             <Play className="ml-0.5 h-6 w-6 fill-current" />
           </div>
@@ -174,11 +180,11 @@ export function HomeHeroDemo() {
       </div>
 
       {/* User-controlled Playback Bar */}
-      <div className="mt-2.5 rounded-xl border border-[#F5F1E8]/10 bg-[#070B10] px-3 py-2">
+      <div className="mt-3 rounded-xl border border-ink/10 bg-page px-3 py-2">
         <div className="relative flex h-5 items-center">
-          <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-[#1A2636]">
+          <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
             <div
-              className="h-full rounded-full bg-[#49E6B3]"
+              className="h-full rounded-full bg-accent"
               style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
             />
           </div>
@@ -201,7 +207,7 @@ export function HomeHeroDemo() {
               data-testid="hero-play-btn"
               onClick={() => void togglePlay()}
               aria-label={isPlaying ? "Pause demo clip" : "Play demo clip"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#49E6B3] text-[#070B10] transition hover:bg-[#2FD49F]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-page transition hover:bg-accent-hover"
             >
               {isPlaying ? (
                 <Pause className="h-3.5 w-3.5 fill-current" />
@@ -213,7 +219,7 @@ export function HomeHeroDemo() {
               type="button"
               onClick={toggleMute}
               aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8]"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/50 hover:text-ink"
             >
               {isMuted ? (
                 <VolumeX className="h-3.5 w-3.5" />
@@ -223,9 +229,9 @@ export function HomeHeroDemo() {
             </button>
           </div>
 
-          <span className="font-mono text-[11px] font-medium tabular-nums text-[#B6B0A4]">
-            <span className="text-[#F5F1E8]">{formatTime(currentTime)}</span>
-            <span className="mx-1 text-[#8C887F]">/</span>
+          <span className="font-mono text-[11px] font-medium tabular-nums text-ink-secondary">
+            <span className="text-ink">{formatTime(currentTime)}</span>
+            <span className="mx-1 text-ink-muted">/</span>
             <span>{formatTime(duration)}</span>
           </span>
         </div>
@@ -251,8 +257,8 @@ export function HomeHeroDemo() {
               }}
               className={`rounded-xl border px-2 py-2 text-[11px] font-semibold transition ${
                 selected
-                  ? "border-[#49E6B3] bg-[#102E28] text-[#49E6B3]"
-                  : "border-[#F5F1E8]/10 bg-[#0A1018] text-[#B6B0A4] hover:border-[#F5F1E8]/25 hover:text-[#F5F1E8]"
+                  ? "border-accent bg-accent-soft text-accent-hover"
+                  : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
               }`}
             >
               {item.name}

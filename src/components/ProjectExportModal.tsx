@@ -34,9 +34,9 @@ interface ProjectExportModalProps {
 }
 
 function FormatIcon({ format }: { format: ExportFormat }) {
-  if (format === "srt") return <FileText className="h-4 w-4 text-[#49E6B3]" />;
-  if (format === "mp4") return <Film className="h-4 w-4 text-[#49E6B3]" />;
-  return <Layers className="h-4 w-4 text-[#49E6B3]" />;
+  if (format === "srt") return <FileText className="h-4 w-4 text-accent" />;
+  if (format === "mp4") return <Film className="h-4 w-4 text-accent" />;
+  return <Layers className="h-4 w-4 text-accent" />;
 }
 
 function StatusBadge({ job }: { job: ExportJobRow }) {
@@ -69,7 +69,7 @@ function StatusBadge({ job }: { job: ExportJobRow }) {
       <span
         data-testid={`export-status-${job.format}`}
         data-status="ready"
-        className="inline-flex items-center gap-1 rounded-full border border-[#49E6B3]/35 bg-[#102E28] px-2.5 py-0.5 text-[11px] font-semibold text-[#49E6B3]"
+        className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent-soft px-2.5 py-0.5 text-[11px] font-semibold text-accent-hover"
       >
         <CheckCircle2 className="h-3 w-3" />
         <span>Ready</span>
@@ -247,24 +247,24 @@ export function ProjectExportModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-[#F5F1E8]/15 bg-[#0D131C] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.75)] sm:rounded-2xl sm:p-5">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-ink/15 bg-panel p-4 shadow-[0_24px_80px_rgba(0,0,0,0.75)] sm:rounded-2xl sm:p-5">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-[#F5F1E8]/10 pb-3.5">
+        <div className="flex items-start justify-between gap-3 border-b border-ink/10 pb-3.5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-bold tracking-tight text-[#F5F1E8]">
+              <h2 className="text-base font-bold tracking-tight text-ink">
                 Export Project
               </h2>
               <span
                 data-testid="export-bound-revision"
-                className="rounded-full border border-[#49E6B3]/35 bg-[#102E28] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[#49E6B3]"
+                className="rounded-full border border-accent/40 bg-accent-soft px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-accent-hover"
               >
                 {savedRevisionId
                   ? `Saved Rev #${savedRevisionNumber}`
                   : "No saved revision"}
               </span>
             </div>
-            <p className="mt-1 truncate text-xs text-[#B6B0A4]">
+            <p className="mt-1 truncate text-xs text-ink-secondary">
               {projectTitle} ·{" "}
               {mediaKind === "audio"
                 ? "Audio-only 9:16 portrait stage"
@@ -276,7 +276,7 @@ export function ProjectExportModal({
             type="button"
             onClick={onClose}
             aria-label="Close export dialog"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#F5F1E8]/12 bg-[#070B10] text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-page text-ink-secondary transition hover:border-accent/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <X className="h-4 w-4" />
           </button>
@@ -335,23 +335,23 @@ export function ProjectExportModal({
                 key={fmt.id}
                 data-testid={`export-format-${fmt.id}`}
                 data-revision-number={String(savedRevisionNumber)}
-                className="rounded-xl border border-[#F5F1E8]/10 bg-[#0A1018] p-3.5"
+                className="rounded-xl border border-ink/10 bg-inset p-3.5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2.5">
                   <div className="flex min-w-0 flex-1 items-start gap-2.5">
-                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#49E6B3]/25 bg-[#102E28]">
+                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent-soft">
                       <FormatIcon format={fmt.id} />
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h3 className="text-sm font-semibold text-[#F5F1E8]">
+                        <h3 className="text-sm font-semibold text-ink">
                           {fmt.label}
                         </h3>
-                        <span className="rounded-md border border-[#F5F1E8]/10 bg-[#131C28] px-1.5 py-0.5 font-mono text-[10px] text-[#B6B0A4]">
+                        <span className="rounded-md border border-ink/10 bg-elevated px-1.5 py-0.5 font-mono text-[10px] text-ink-secondary">
                           {fmt.badge}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs leading-relaxed text-[#B6B0A4]">
+                      <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
                         {fmt.id === "mp4" && mediaKind === "audio"
                           ? "9:16 portrait stage with your styled captions burned in and source audio preserved."
                           : fmt.description}
@@ -369,7 +369,7 @@ export function ProjectExportModal({
                         disabled={!canExportCurrentDraft || isRequesting}
                         data-testid={`export-trigger-${fmt.id}`}
                         onClick={() => void requestExport(fmt.id)}
-                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         {isRequesting ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -386,7 +386,7 @@ export function ProjectExportModal({
                         disabled={isDownloading}
                         data-testid={`export-download-${fmt.id}`}
                         onClick={() => void downloadExport(job)}
-                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         {isDownloading ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -403,7 +403,7 @@ export function ProjectExportModal({
                         disabled={!canExportCurrentDraft || isRequesting}
                         data-testid={`export-retry-${fmt.id}`}
                         onClick={() => void requestExport(fmt.id)}
-                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-[#F5F1E8]/15 bg-[#131C28] px-3 py-1.5 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3]"
+                        className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       >
                         {isRequesting ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -418,7 +418,7 @@ export function ProjectExportModal({
 
                 {/* Progress / Metadata / Failure subline */}
                 {job && (
-                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[#F5F1E8]/8 pt-2 text-[11px] text-[#7D7A72]">
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-ink/8 pt-2 text-[11px] text-ink-muted">
                     <span className="font-mono tabular-nums">
                       Rev #{job.revision_number}
                       {job.output_width && job.output_height
@@ -447,13 +447,13 @@ export function ProjectExportModal({
         {previousRevJobs.length > 0 && (
           <div
             data-testid="export-history-section"
-            className="mt-4 border-t border-[#F5F1E8]/10 pt-3.5"
+            className="mt-4 border-t border-ink/10 pt-3.5"
           >
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7D7A72]">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 Earlier Saved Revisions
               </h3>
-              <span className="text-[11px] text-[#7D7A72]">
+              <span className="text-[11px] text-ink-muted">
                 Immutable snapshots
               </span>
             </div>
@@ -463,13 +463,13 @@ export function ProjectExportModal({
                 <div
                   key={job.id}
                   data-testid={`export-history-item-${job.id}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#F5F1E8]/8 bg-[#070B10]/80 px-3 py-2 text-xs"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink/8 bg-page/80 px-3 py-2 text-xs"
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="rounded bg-[#131C28] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#B6B0A4]">
+                    <span className="rounded bg-elevated px-1.5 py-0.5 font-mono text-[10px] font-semibold text-ink-secondary">
                       Rev #{job.revision_number}
                     </span>
-                    <span className="font-medium text-[#F5F1E8]">
+                    <span className="font-medium text-ink">
                       {job.format === "srt"
                         ? "SRT"
                         : job.format === "mp4"
@@ -477,7 +477,7 @@ export function ProjectExportModal({
                           : "Transparent MOV"}
                     </span>
                     {job.output_size_bytes && (
-                      <span className="font-mono text-[11px] tabular-nums text-[#7D7A72]">
+                      <span className="font-mono text-[11px] tabular-nums text-ink-muted">
                         {formatBytes(job.output_size_bytes)}
                       </span>
                     )}
@@ -490,7 +490,7 @@ export function ProjectExportModal({
                         type="button"
                         disabled={downloadingId === job.id}
                         onClick={() => void downloadExport(job)}
-                        className="inline-flex items-center gap-1 rounded-md border border-[#49E6B3]/35 bg-[#102E28] px-2 py-1 text-[11px] font-semibold text-[#49E6B3] hover:bg-[#49E6B3] hover:text-[#070B10]"
+                        className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent-soft px-2 py-1 text-[11px] font-semibold text-accent-hover transition hover:bg-accent hover:text-page"
                       >
                         <Download className="h-3 w-3" />
                         <span>Download</span>
@@ -504,7 +504,7 @@ export function ProjectExportModal({
         )}
 
         {loadingList && jobs.length === 0 && (
-          <p className="mt-3 text-center text-xs text-[#7D7A72]">
+          <p className="mt-3 text-center text-xs text-ink-muted">
             Loading export status...
           </p>
         )}

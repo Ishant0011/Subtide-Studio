@@ -125,8 +125,8 @@ export function AuthForm({
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[#F5F1E8]/12 bg-[#0D131C] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
-      <div className="flex items-center gap-2 text-xs font-medium text-[#49E6B3]">
+    <div className="w-full max-w-md rounded-2xl border border-ink/12 bg-panel p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
+      <div className="flex items-center gap-2 text-xs font-medium text-accent">
         <Lock className="h-3.5 w-3.5" />
         <span>
           {nextPath.startsWith("/upload")
@@ -135,10 +135,10 @@ export function AuthForm({
         </span>
       </div>
 
-      <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-[#F5F1E8]">
+      <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-ink">
         {mode === "signin" ? "Sign in to ClipCaptions" : "Create your account"}
       </h1>
-      <p className="mt-1.5 text-sm text-[#B6B0A4]">
+      <p className="mt-1.5 text-sm text-ink-secondary">
         {mode === "signin"
           ? nextPath.startsWith("/upload")
             ? "You'll land directly on Upload right after signing in."
@@ -150,7 +150,7 @@ export function AuthForm({
       <div
         role="tablist"
         aria-label="Authentication mode"
-        className="mt-5 grid grid-cols-2 rounded-xl border border-[#F5F1E8]/10 bg-[#070B10] p-1"
+        className="mt-5 grid grid-cols-2 rounded-xl border border-ink/10 bg-page p-1"
       >
         <button
           type="button"
@@ -163,8 +163,8 @@ export function AuthForm({
           }}
           className={`rounded-lg py-2 text-xs font-semibold transition ${
             mode === "signin"
-              ? "bg-[#131C28] text-[#49E6B3]"
-              : "text-[#B6B0A4] hover:text-[#F5F1E8]"
+              ? "bg-accent-soft text-accent-hover"
+              : "text-ink-secondary hover:text-ink"
           }`}
         >
           Sign in
@@ -180,8 +180,8 @@ export function AuthForm({
           }}
           className={`rounded-lg py-2 text-xs font-semibold transition ${
             mode === "signup"
-              ? "bg-[#131C28] text-[#49E6B3]"
-              : "text-[#B6B0A4] hover:text-[#F5F1E8]"
+              ? "bg-accent-soft text-accent-hover"
+              : "text-ink-secondary hover:text-ink"
           }`}
         >
           Sign up
@@ -211,7 +211,7 @@ export function AuthForm({
       )}
 
       {notice && (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-[#49E6B3]/35 bg-[#102E28] p-3 text-xs text-[#49E6B3]">
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent-soft p-3 text-xs text-accent-hover">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{notice}</span>
         </div>
@@ -225,7 +225,7 @@ export function AuthForm({
               type="button"
               disabled={loading || oauthLoading !== null}
               onClick={() => void handleOAuth("google")}
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2.5 text-sm font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:bg-[#172231] disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-sm font-medium text-ink transition hover:border-accent/55 hover:bg-track disabled:opacity-60"
             >
               {oauthLoading === "google" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -246,7 +246,7 @@ export function AuthForm({
               type="button"
               disabled={loading || oauthLoading !== null}
               onClick={() => void handleOAuth("discord")}
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#F5F1E8]/15 bg-[#131C28] px-4 py-2.5 text-sm font-medium text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:bg-[#172231] disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-sm font-medium text-ink transition hover:border-accent/55 hover:bg-track disabled:opacity-60"
             >
               {oauthLoading === "discord" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -263,11 +263,11 @@ export function AuthForm({
           )}
 
           <div className="relative flex items-center py-1">
-            <div className="flex-grow border-t border-[#F5F1E8]/10" />
-            <span className="mx-3 text-[11px] text-[#7D7A72]">
+            <div className="flex-grow border-t border-ink/10" />
+            <span className="mx-3 text-[11px] text-ink-muted">
               or continue with email
             </span>
-            <div className="flex-grow border-t border-[#F5F1E8]/10" />
+            <div className="flex-grow border-t border-ink/10" />
           </div>
         </div>
       )}
@@ -276,7 +276,7 @@ export function AuthForm({
         <div>
           <label
             htmlFor="auth-email"
-            className="block text-xs font-medium text-[#B6B0A4]"
+            className="block text-xs font-medium text-ink-secondary"
           >
             Email address
           </label>
@@ -288,14 +288,14 @@ export function AuthForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@studio.dev"
-            className="mt-1.5 w-full rounded-xl border border-[#F5F1E8]/12 bg-[#070B10] px-3.5 py-2.5 text-sm text-[#F5F1E8] placeholder:text-[#7D7A72] focus:border-[#49E6B3] focus:outline-none"
+            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         <div>
           <label
             htmlFor="auth-password"
-            className="block text-xs font-medium text-[#B6B0A4]"
+            className="block text-xs font-medium text-ink-secondary"
           >
             Password
           </label>
@@ -308,23 +308,23 @@ export function AuthForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 6 characters"
-            className="mt-1.5 w-full rounded-xl border border-[#F5F1E8]/12 bg-[#070B10] px-3.5 py-2.5 text-sm text-[#F5F1E8] placeholder:text-[#7D7A72] focus:border-[#49E6B3] focus:outline-none"
+            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading || oauthLoading !== null}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#49E6B3] px-4 py-3 text-sm font-semibold text-[#070B10] transition hover:bg-[#2FD49F] disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-page transition hover:bg-accent-hover disabled:opacity-60"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           <span>{mode === "signin" ? "Sign in" : "Create account"}</span>
         </button>
       </form>
 
-      <div className="mt-6 border-t border-[#F5F1E8]/10 pt-4 text-center text-xs text-[#7D7A72]">
+      <div className="mt-6 border-t border-ink/10 pt-4 text-center text-xs text-ink-muted">
         Want to try the studio first?{" "}
-        <Link href="/studio" className="font-medium text-[#49E6B3] hover:underline">
+        <Link href="/studio" className="font-medium text-accent hover:text-accent-hover hover:underline">
           Open the public sample
         </Link>
       </div>

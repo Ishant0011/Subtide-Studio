@@ -3,8 +3,11 @@
 import { Sparkles } from "lucide-react";
 import { CAPTION_PRESETS, type CaptionPresetId } from "@/lib/captions";
 import {
+  CAPTION_ACCENTS,
   MAX_VERTICAL_POSITION,
   MIN_VERTICAL_POSITION,
+  computeCaptionLayout,
+  type CaptionAccentId,
   type CaptionFontSize,
   type CaptionStyleConfig,
 } from "@/lib/caption-editor";
@@ -22,16 +25,26 @@ const FONT_SIZE_OPTIONS: Array<{ id: CaptionFontSize; label: string }> = [
   { id: "lg", label: "Large" },
 ];
 
-function PresetSwatch({ id }: { id: CaptionPresetId }) {
+const ACCENT_OPTIONS: CaptionAccentId[] = ["violet", "mint"];
+
+function PresetSwatch({
+  id,
+  accentHex,
+}: {
+  id: CaptionPresetId;
+  accentHex: string;
+}) {
   if (id === "clean") {
     return (
       <div
         aria-hidden="true"
-        className="flex h-8 w-full items-center justify-center rounded-lg bg-[#070B10]/85 px-2 text-[11px] font-semibold tracking-tight"
+        className="flex h-8 w-full items-center justify-center rounded-lg bg-page/90 px-2 text-[11px] font-semibold tracking-tight"
       >
-        <span className="text-[#F5F1E8]/80">Keep</span>
-        <span className="mx-1 text-[#49E6B3]">your</span>
-        <span className="text-[#F5F1E8]/80">style</span>
+        <span className="text-ink/80">Keep</span>
+        <span className="mx-1" style={{ color: accentHex }}>
+          your
+        </span>
+        <span className="text-ink/80">style</span>
       </div>
     );
   }
@@ -39,10 +52,17 @@ function PresetSwatch({ id }: { id: CaptionPresetId }) {
     return (
       <div
         aria-hidden="true"
-        className="flex h-8 w-full items-center justify-center rounded-lg bg-[#070B10]/85 px-2"
+        className="flex h-8 w-full items-center justify-center rounded-lg bg-page/90 px-2"
       >
-        <span className="rounded-md border border-[#F5F1E8]/15 bg-[#0D131C] px-2 py-0.5 text-[11px] font-semibold text-[#F5F1E8]">
-          Keep <span className="text-[#49E6B3] underline decoration-[#49E6B3]/70 underline-offset-2">your</span> style
+        <span className="rounded-md border border-ink/15 bg-panel px-2 py-0.5 text-[11px] font-semibold text-ink">
+          Keep{" "}
+          <span
+            className="underline underline-offset-2"
+            style={{ color: accentHex, textDecorationColor: accentHex }}
+          >
+            your
+          </span>{" "}
+          style
         </span>
       </div>
     );
@@ -50,11 +70,16 @@ function PresetSwatch({ id }: { id: CaptionPresetId }) {
   return (
     <div
       aria-hidden="true"
-      className="flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-[#070B10]/85 px-2 text-[10px] font-extrabold uppercase tracking-wide"
+      className="flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-page/90 px-2 text-[10px] font-extrabold uppercase tracking-wide"
     >
-      <span className="text-[#F5F1E8]/75">KEEP</span>
-      <span className="rounded bg-[#49E6B3] px-1.5 py-0.5 text-[#070B10]">YOUR</span>
-      <span className="text-[#F5F1E8]/75">STYLE</span>
+      <span className="text-ink/75">KEEP</span>
+      <span
+        className="rounded px-1.5 py-0.5 text-page"
+        style={{ backgroundColor: accentHex }}
+      >
+        YOUR
+      </span>
+      <span className="text-ink/75">STYLE</span>
     </div>
   );
 }
@@ -65,28 +90,29 @@ export function StudioStylePanel({
   showSizeAndPosition = true,
   subtitle = "Live preview",
 }: StudioStylePanelProps) {
+  const layout = computeCaptionLayout(style);
   const positionPercent =
     ((style.verticalPosition - MIN_VERTICAL_POSITION) /
       (MAX_VERTICAL_POSITION - MIN_VERTICAL_POSITION)) *
     100;
 
   return (
-    <div className="rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-4">
-      <div className="flex items-center justify-between gap-2 border-b border-[#F5F1E8]/8 pb-3">
+    <div className="rounded-2xl border border-ink/10 bg-panel p-4">
+      <div className="flex items-center justify-between gap-2 border-b border-ink/8 pb-3">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-[#49E6B3]/30 bg-[#102E28] text-[#49E6B3]">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-accent/30 bg-accent-soft text-accent">
             <Sparkles className="h-3.5 w-3.5" />
           </span>
-          <h2 className="text-sm font-semibold tracking-tight text-[#F5F1E8]">
-            Caption Style
+          <h2 className="text-sm font-semibold tracking-tight text-ink">
+            Style Inspector
           </h2>
         </div>
-        <span className="text-[11px] text-[#7D7A72]">{subtitle}</span>
+        <span className="text-[11px] text-ink-muted">{subtitle}</span>
       </div>
 
       {/* Presets */}
       <div className="mt-3.5">
-        <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#7D7A72]">
+        <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
           Preset
         </span>
         <div
@@ -104,16 +130,16 @@ export function StudioStylePanel({
                 onClick={() =>
                   onUpdateStyle({ preset: item.id as CaptionPresetId })
                 }
-                className={`group flex flex-col gap-2 rounded-xl border p-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                className={`group flex flex-col gap-2 rounded-xl border p-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   selected
-                    ? "border-[#49E6B3] bg-[#102E28]/65 shadow-[0_0_0_1px_rgba(73,230,179,0.2)]"
-                    : "border-[#F5F1E8]/10 bg-[#0A1018] hover:border-[#F5F1E8]/25 hover:bg-[#131C28]/70"
+                    ? "border-accent bg-accent-soft/75 shadow-[0_0_0_1px_rgba(167,139,250,0.22)]"
+                    : "border-ink/10 bg-inset hover:border-ink/25 hover:bg-elevated/70"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
                     className={`text-xs font-semibold ${
-                      selected ? "text-[#49E6B3]" : "text-[#F5F1E8]"
+                      selected ? "text-accent-hover" : "text-ink"
                     }`}
                   >
                     {item.name}
@@ -121,15 +147,58 @@ export function StudioStylePanel({
                   <span
                     className={`h-2 w-2 rounded-full transition ${
                       selected
-                        ? "bg-[#49E6B3] shadow-[0_0_8px_rgba(73,230,179,0.85)]"
-                        : "bg-[#F5F1E8]/20 group-hover:bg-[#F5F1E8]/40"
+                        ? "bg-accent shadow-[0_0_8px_rgba(167,139,250,0.85)]"
+                        : "bg-ink/20 group-hover:bg-ink/40"
                     }`}
                   />
                 </div>
-                <PresetSwatch id={item.id} />
-                <p className="text-[11px] leading-snug text-[#B6B0A4]">
+                <PresetSwatch id={item.id} accentHex={layout.accentHex} />
+                <p className="text-[11px] leading-snug text-ink-secondary">
                   {item.description}
                 </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Highlight Accent (preserves saved legacy styles while defaulting new projects to violet) */}
+      <div className="mt-4 border-t border-ink/8 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+            Highlight color
+          </span>
+          <span className="font-mono text-[10px] text-ink-secondary">
+            {layout.accentHex}
+          </span>
+        </div>
+        <div
+          role="group"
+          aria-label="Caption highlight color"
+          className="mt-2 grid grid-cols-2 gap-1.5"
+        >
+          {ACCENT_OPTIONS.map((accentId) => {
+            const meta = CAPTION_ACCENTS[accentId];
+            const selected = layout.accent === accentId;
+            return (
+              <button
+                key={accentId}
+                type="button"
+                data-testid={`style-accent-${accentId}`}
+                aria-pressed={selected}
+                onClick={() => onUpdateStyle({ accent: accentId })}
+                className={`inline-flex min-h-[34px] items-center justify-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                  selected
+                    ? "border-accent bg-accent-soft text-accent-hover"
+                    : "border-ink/10 bg-page text-ink-secondary hover:border-ink/25 hover:text-ink"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-full border border-ink/20"
+                  style={{ backgroundColor: meta.hex }}
+                />
+                <span>{meta.label}</span>
               </button>
             );
           })}
@@ -139,8 +208,8 @@ export function StudioStylePanel({
       {showSizeAndPosition && (
         <>
           {/* Font Size */}
-          <div className="mt-4 border-t border-[#F5F1E8]/8 pt-4">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#7D7A72]">
+          <div className="mt-4 border-t border-ink/8 pt-4">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               Font size
             </span>
             <div
@@ -156,10 +225,10 @@ export function StudioStylePanel({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => onUpdateStyle({ fontSize: opt.id })}
-                    className={`min-h-[36px] rounded-xl border py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] ${
+                    className={`min-h-[36px] rounded-xl border py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       selected
-                        ? "border-[#49E6B3] bg-[#102E28] text-[#49E6B3]"
-                        : "border-[#F5F1E8]/10 bg-[#070B10] text-[#B6B0A4] hover:border-[#F5F1E8]/25 hover:text-[#F5F1E8]"
+                        ? "border-accent bg-accent-soft text-accent-hover"
+                        : "border-ink/10 bg-page text-ink-secondary hover:border-ink/25 hover:text-ink"
                     }`}
                   >
                     {opt.label}
@@ -170,23 +239,23 @@ export function StudioStylePanel({
           </div>
 
           {/* Vertical Position */}
-          <div className="mt-4 border-t border-[#F5F1E8]/8 pt-4">
+          <div className="mt-4 border-t border-ink/8 pt-4">
             <div className="flex items-center justify-between gap-2">
               <label
                 htmlFor="vertical-position-slider"
-                className="text-[11px] font-semibold uppercase tracking-wider text-[#7D7A72]"
+                className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted"
               >
                 Vertical position
               </label>
-              <span className="rounded-md border border-[#49E6B3]/30 bg-[#102E28] px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[#49E6B3]">
+              <span className="rounded-md border border-accent/30 bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-accent-hover">
                 {style.verticalPosition}%
               </span>
             </div>
 
             <div className="relative mt-2.5 flex h-6 items-center">
-              <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-[#1A2636]">
+              <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
                 <div
-                  className="h-full rounded-full bg-[#49E6B3]"
+                  className="h-full rounded-full bg-accent"
                   style={{
                     width: `${Math.min(100, Math.max(0, positionPercent))}%`,
                   }}
@@ -208,7 +277,7 @@ export function StudioStylePanel({
               />
             </div>
 
-            <div className="mt-1 flex items-center justify-between text-[10px] text-[#7D7A72]">
+            <div className="mt-1 flex items-center justify-between text-[10px] text-ink-muted">
               <span>Lower ({MIN_VERTICAL_POSITION}%)</span>
               <span>Mid</span>
               <span>Upper ({MAX_VERTICAL_POSITION}%)</span>

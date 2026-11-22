@@ -16,6 +16,8 @@ export default function OpenGraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           backgroundColor: "#070B10",
+          backgroundImage:
+            "radial-gradient(circle at 80% 15%, rgba(167, 139, 250, 0.22), transparent 52%)",
           color: "#F5F1E8",
           padding: "64px 72px",
           fontFamily: "sans-serif",
@@ -28,8 +30,8 @@ export default function OpenGraphImage() {
               width: "56px",
               height: "56px",
               borderRadius: "14px",
-              border: "3px solid #49E6B3",
-              backgroundColor: "#0D131C",
+              border: "3px solid #A78BFA",
+              backgroundColor: "#10121A",
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
@@ -61,7 +63,7 @@ export default function OpenGraphImage() {
                   width: "18px",
                   height: "6px",
                   borderRadius: "4px",
-                  backgroundColor: "#49E6B3",
+                  backgroundColor: "#A78BFA",
                 }}
               />
               <div
@@ -76,7 +78,7 @@ export default function OpenGraphImage() {
           </div>
           <div style={{ fontSize: "34px", fontWeight: 700, display: "flex" }}>
             <span>Clip</span>
-            <span style={{ color: "#49E6B3" }}>Captions</span>
+            <span style={{ color: "#A78BFA" }}>Captions</span>
           </div>
         </div>
 
@@ -96,7 +98,7 @@ export default function OpenGraphImage() {
           <div
             style={{
               fontSize: "26px",
-              color: "#B6B0A4",
+              color: "#A7A5B3",
               maxWidth: "880px",
             }}
           >
@@ -113,9 +115,9 @@ export default function OpenGraphImage() {
                 key={item}
                 style={{
                   borderRadius: "999px",
-                  border: "1px solid rgba(73,230,179,0.4)",
-                  backgroundColor: "#102E28",
-                  color: "#49E6B3",
+                  border: "1px solid rgba(167,139,250,0.45)",
+                  backgroundColor: "#201A36",
+                  color: "#C4B5FD",
                   padding: "10px 22px",
                   fontWeight: 600,
                 }}

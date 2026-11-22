@@ -43,6 +43,7 @@ export interface CaptionRevisionRow {
     preset?: "clean" | "boxed" | "word-highlight";
     fontSize?: "sm" | "md" | "lg";
     verticalPosition?: number;
+    accent?: "violet" | "mint";
   } | null;
   created_at: string;
 }
