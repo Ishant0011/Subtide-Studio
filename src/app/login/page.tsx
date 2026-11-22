@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Captions } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { AuthForm } from "@/components/AuthForm";
+import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
+import { PRIVATE_PAGE_ROBOTS } from "@/lib/site";
 import {
   getEnabledOAuthProviders,
   isSupabaseConfigured,
@@ -11,9 +13,10 @@ import { getVerifiedUser } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Sign in — Subtide Studio",
+  title: "Sign in",
   description:
-    "Sign in or create an account to access your private Subtide Studio projects and uploads.",
+    "Sign in or create an account to access your private ClipCaptions projects and uploads.",
+  robots: PRIVATE_PAGE_ROBOTS,
 };
 
 interface LoginPageProps {
@@ -36,20 +39,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <div className="min-h-screen bg-[#070B10] text-[#F5F1E8]">
-      <header className="border-b border-[#F5F1E8]/8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-[#49E6B3]/35 bg-[#102E28] text-[#49E6B3]">
-              <Captions className="h-4 w-4" />
-            </span>
-            <span className="text-sm font-semibold tracking-tight text-[#F5F1E8]">
-              Subtide Studio
-            </span>
+      <header className="border-b border-[#F5F1E8]/10 bg-[#070B10]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
+          <Link href="/" aria-label="ClipCaptions home">
+            <ClipCaptionsLockup markSize={30} />
           </Link>
 
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/10 bg-[#0D131C] px-3 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/40 hover:text-[#F5F1E8]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/12 bg-[#0D131C] px-3 py-1.5 text-xs font-medium text-[#B6B0A4] transition hover:border-[#49E6B3]/45 hover:text-[#F5F1E8]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Home</span>
@@ -57,7 +55,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl justify-center px-4 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto flex max-w-6xl justify-center px-4 py-10 sm:px-6 sm:py-16">
         <AuthForm
           nextPath={nextPath}
           initialMode={initialMode}

@@ -1,34 +1,29 @@
-# Subtide Studio
+# ClipCaptions
 
-Word-synced caption studio for short-form portrait clips, built with Next.js App Router, TypeScript, Tailwind CSS, Supabase, FFmpeg/FFprobe, and pnpm.
+Add automatic captions to your videos. ClipCaptions is a word-synced caption editor and export studio built with Next.js App Router, TypeScript, Tailwind CSS, Supabase, FFmpeg/FFprobe, and pnpm.
 
-## Implemented Phases
+## Features
 
-### Phase 1 — Public Sample Studio
-- **Landing page (`/`)** featuring *"Caption your clips. Keep your style."* and a working **Try a sample** button.
-- **Public Sample Studio (`/studio`)** with a bundled 9:16 portrait clip (`public/sample-clip.mp4`), hand-timed word-level captions (`src/lib/captions.ts`), play/pause/scrub/click-to-seek controls, and **Clean**, **Boxed**, and **Word Highlight** presets. Works without signing in.
-
-### Phase 2 — Accounts & Private Resumable Uploads
-- **Supabase Auth (`/login`)** with server-verified sessions (`supabase.auth.getUser()`).
-- **Server-controlled database & private storage** (`public.projects`, `public.media_assets`, strict RLS, private `media` bucket up to `150 MiB`).
-- **Browser-direct resumable TUS uploads** (`/upload`) with progress, pause, resume, retry, server-assigned object keys (`x-upsert: false`), and idempotent server-side completion verification.
-
-### Phase 3 — Media & Transcription Worker
-- **Durable Postgres ingest queue (`public.ingest_jobs`)** with single-transaction upload finalization + job enqueue (`finalize_upload_and_enqueue_ingest`), bounded retries, renewable leases, and attempt tokens preventing stale workers from publishing results.
-- **Phase 2 backfill trigger (`POST /api/projects/[id]/process`)**: owners can start processing already-finalized Phase 2 clips (or retry failed jobs) without re-uploading.
-- **Separate Node worker (`worker/`)** with FFmpeg and FFprobe:
-  - Probes actual media bytes; enforces 3-minute duration limit and bounds on dimensions, streams, runtime, and output size.
-  - Generates private browser-playable H.264/AAC previews on a zero-based clock with display rotation baked upright, and normalized MP3 previews for MP3/WAV audio-only clips (rendered on a 9:16 portrait stage in `/projects`).
-  - Accounts for audio/video start offsets when extracting 16 kHz mono WAV for transcription.
-- **Deepgram Nova-3 + Fixture transcription adapters** storing integer-millisecond word timestamps and grouped cues in `public.caption_revisions` (atomic revision #1). Distinctly handles corrupt media, missing audio, valid audio with no speech, and provider failures.
-- **Live job stages on `/projects`** via authenticated polling with exponential backoff. *(Caption editing is deferred to Phase 4.)*
+- **Public Homepage & Interactive Demo (`/`, `/studio`)**: Play a bundled 9:16 portrait clip (`public/sample-clip.mp4`), toggle captions on/off, scrub word-synced cues, and switch between **Clean**, **Boxed**, and **Word Highlight** presets without signing in.
+- **Private Accounts & Resumable Uploads (`/login`, `/upload`, `/projects`)**:
+  - Server-verified Supabase Auth (`supabase.auth.getUser()`) with email login and environment-gated Google & Discord OAuth.
+  - Browser-direct resumable TUS uploads for **MP4, MOV, MP3, and WAV** up to **150 MB** and **3 minutes** with progress, pause/resume, retry, server-assigned private keys, and live processing handoff straight to **Open editor**.
+  - Project cards with video thumbnails, audio portrait artwork, real worker processing stages, and strict owner-only RLS.
+- **Word-Synced Caption Studio (`/projects/[id]/editor`)**:
+  - 3-column desktop studio workspace (9:16 preview + segmented cue timeline underneath, wide editable captions with clickable timestamps & active-word chips, separate style panel) and mobile-first accessible `Captions` / `Style` tabs.
+  - Immutable revision autosave with optimistic concurrency (`409` stale-tab conflict recovery) and retry.
+- **Revision-Pinned Exports (Phase 5)**:
+  - **MP4 to post**: H.264/AAC video with styled captions burned in and source audio preserved (9:16 portrait stage for audio-only projects).
+  - **SRT for subtitles**: Deterministic UTF-8 SubRip files preserving multiline text, Unicode, exact timing, and gaps.
+  - **Transparent MOV for compositing**: Apple ProRes 4444 (`yuva444p10le`) with real alpha, captions only, no audio, and full clip duration including transparent gaps.
+  - Durable Postgres export queue (`public.export_jobs`) with deduplication, bounded render resources, retries, stale-attempt tokens, and owner-only 60-second signed downloads.
 
 ## Prerequisites
 
 - Node.js 20+
 - pnpm 9+
-- Supabase project (local via Docker + Supabase CLI, or a hosted dev project)
-- FFmpeg & FFprobe (included in `worker/Dockerfile` or via local binaries on Windows)
+- Supabase project (local via Docker + Supabase CLI, or hosted dev project)
+- FFmpeg & FFprobe (included in `worker/Dockerfile` or via bundled `ffmpeg-static` / `ffprobe-static` on Windows)
 
 ## Local Setup
 
@@ -39,22 +34,17 @@ Word-synced caption studio for short-form portrait clips, built with Next.js App
    pnpm --dir worker install
    ```
 
-2. Create `.env.local` from the tracked template:
+2. Create `.env.local` from `.env.example`:
 
    ```bash
    cp .env.example .env.local
    ```
 
-   Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key), and `SUPABASE_SERVICE_ROLE_KEY` (server-only secret). Optionally set `DEEPGRAM_API_KEY` for real Nova-3 transcription, or set `TRANSCRIPTION_ADAPTER=fixture` for deterministic offline testing.
+   Configure `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Optionally set `DEEPGRAM_API_KEY` for Deepgram Nova-3 transcription or `TRANSCRIPTION_ADAPTER=fixture` for offline testing.
 
 3. Apply migrations to your Supabase project:
 
    ```bash
-   # Local Supabase
-   supabase start
-   supabase db reset
-
-   # Or linked hosted dev project
    npx supabase link --project-ref <your-project-ref>
    npx supabase db push --remote
    ```
@@ -65,32 +55,20 @@ Word-synced caption studio for short-form portrait clips, built with Next.js App
    pnpm dev
    ```
 
-5. *(Optional)* Enable Google or Discord social login:
-   - In your Supabase Dashboard, open **Authentication → URL Configuration** and add `http://localhost:3000/auth/callback` to **Redirect URLs**.
-   - In **Authentication → Providers**, enable **Google** and/or **Discord** and paste each provider's Client ID and Client Secret **only in the Supabase Dashboard** (never in `.env.local` or Git).
-   - Register Supabase's callback URL (`https://<your-project-ref>.supabase.co/auth/v1/callback`) in Google Cloud Console and/or the Discord Developer Portal.
-   - Set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` and/or `NEXT_PUBLIC_AUTH_DISCORD_ENABLED=true` in `.env.local` to expose the matching **Continue with Google** / **Continue with Discord** buttons on `/login`.
+5. Start the media & export worker:
 
-## Running the Phase 3 Worker
+   ```powershell
+   pnpm --dir worker build
+   pnpm --dir worker start
+   ```
 
-### Option A — Docker (Linux container with system FFmpeg & FFprobe)
+   *(Or run via Docker: `docker build -t clipcaptions-worker ./worker && docker run --rm --env-file .env.local clipcaptions-worker`.)*
 
-```bash
-docker build -t subtide-worker ./worker
-docker run --rm --env-file .env.local subtide-worker
-```
+## Optional Social Login (Google & Discord)
 
-### Option B — Native Windows (using local `ffmpeg` and `ffprobe` binaries)
-
-```powershell
-pnpm --dir worker build
-$env:FFMPEG_PATH = "C:\path\to\ffmpeg.exe"
-$env:FFPROBE_PATH = "C:\path\to\ffprobe.exe"
-$env:TRANSCRIPTION_ADAPTER = "auto" # or "fixture" / "deepgram"
-pnpm --dir worker start
-```
-
-*(If `FFMPEG_PATH` / `FFPROBE_PATH` are omitted, the worker automatically falls back to the bundled `ffmpeg-static` / `ffprobe-static` binaries installed in `worker/node_modules`.)*
+- Add `<your-origin>/auth/callback` to **Authentication → URL Configuration → Redirect URLs** in Supabase.
+- Enable **Google** and/or **Discord** in **Authentication → Providers** and keep Client IDs/Secrets strictly inside Supabase (never in `.env.local` or Git).
+- Set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` and/or `NEXT_PUBLIC_AUTH_DISCORD_ENABLED=true` in `.env.local`.
 
 ## Verification Commands
 

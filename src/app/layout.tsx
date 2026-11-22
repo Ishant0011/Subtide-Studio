@@ -1,10 +1,37 @@
 import type { Metadata } from "next";
+import {
+  HOMEPAGE_TITLE,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  getPublicOrigin,
+} from "@/lib/site";
 import "./globals.css";
 
+const publicOrigin = getPublicOrigin();
+
 export const metadata: Metadata = {
-  title: "Subtide Studio — Caption your clips. Keep your style.",
-  description:
-    "Style word-synced captions for short-form portrait video clips with Clean, Boxed, and Word Highlight presets.",
+  metadataBase: new URL(publicOrigin),
+  title: {
+    default: HOMEPAGE_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: HOMEPAGE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: publicOrigin,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOMEPAGE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

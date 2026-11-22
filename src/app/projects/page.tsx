@@ -3,17 +3,19 @@ import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { ProjectsList } from "@/components/ProjectsList";
+import { PRIVATE_PAGE_ROBOTS } from "@/lib/site";
 import {
   createSupabaseServerClient,
   getVerifiedUser,
 } from "@/lib/supabase/server";
-import type { ProjectWithMedia } from "@/lib/uploads";
+import { MEDIA_BUCKET, type ProjectWithMedia } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Projects — Subtide Studio",
-  description: "Your private Subtide Studio projects and uploaded clips.",
+  title: "Projects",
+  description: "Your private ClipCaptions projects, processing stages, and caption editors.",
+  robots: PRIVATE_PAGE_ROBOTS,
 };
 
 export default async function ProjectsPage() {
@@ -31,21 +33,45 @@ export default async function ProjectsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const projects = (data ?? []) as ProjectWithMedia[];
+  const rawProjects = (data ?? []) as ProjectWithMedia[];
+  const projects = await Promise.all(
+    rawProjects.map(async (project) => {
+      const primaryAsset = project.media_assets?.[0] ?? null;
+      const isAudio =
+        project.media_kind === "audio" ||
+        primaryAsset?.mime_type?.startsWith("audio/");
+      if (isAudio) {
+        return { ...project, thumbnail_url: null };
+      }
+
+      const key =
+        project.preview_object_key ||
+        (primaryAsset?.status === "uploaded" ? primaryAsset.object_key : null);
+      if (!key) {
+        return { ...project, thumbnail_url: null };
+      }
+
+      const { data: signed } = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .createSignedUrl(key, 300);
+
+      return { ...project, thumbnail_url: signed?.signedUrl ?? null };
+    })
+  );
 
   return (
     <div className="min-h-screen bg-[#070B10] text-[#F5F1E8]">
       <AppHeader userEmail={user.email ?? "Signed in"} activeNav="projects" />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-8">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#F5F1E8] sm:text-3xl">
               Your Projects
             </h1>
             <p className="mt-1 text-sm text-[#B6B0A4]">
-              New uploads appear here while processing runs. Once a clip is
-              ready, click <strong className="font-semibold text-[#F5F1E8]">Open editor</strong> to edit captions and styles.
+              Track live processing stages here, then open the editor to style
+              captions and export MP4, SRT, or transparent MOV.
             </p>
           </div>
 

@@ -9,7 +9,9 @@ import {
   Clock,
   FileVideo,
   FolderKanban,
+  Loader2,
   Pause,
+  Pencil,
   Play,
   RefreshCw,
   ShieldCheck,
@@ -24,6 +26,7 @@ import {
   deriveProjectTitle,
   formatBytes,
   validateUploadFile,
+  type ProjectWithMedia,
   type UploadCompleteResponse,
   type UploadInitResponse,
 } from "@/lib/uploads";
@@ -43,12 +46,55 @@ export function UploadWorkspace() {
   const initMetaRef = useRef<UploadInitResponse | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [title, setTitle] = useState("");
   const [phase, setPhase] = useState<UploadPhase>("idle");
   const [bytesUploaded, setBytesUploaded] = useState(0);
   const [bytesTotal, setBytesTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<UploadCompleteResponse | null>(null);
+  const [liveProject, setLiveProject] = useState<ProjectWithMedia | null>(null);
+
+  // Poll real worker processing stages right after upload completes so Open editor appears immediately
+  useEffect(() => {
+    if (phase !== "completed" || !completed?.project.id) return;
+    if (liveProject?.status === "ready" || liveProject?.status === "failed") return;
+
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const projectId = completed.project.id;
+
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/projects", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && Array.isArray(data.projects)) {
+            const found = (data.projects as ProjectWithMedia[]).find(
+              (p) => p.id === projectId
+            );
+            if (found) {
+              setLiveProject(found);
+              if (found.status === "ready" || found.status === "failed") {
+                return;
+              }
+            }
+          }
+        }
+      } catch {
+        // retry next tick
+      }
+      if (!cancelled) {
+        timerId = setTimeout(poll, 2000);
+      }
+    };
+
+    timerId = setTimeout(poll, 1200);
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [phase, completed, liveProject?.status]);
 
   // Abort in-flight TUS upload if component unmounts
   useEffect(() => {
@@ -62,6 +108,7 @@ export function UploadWorkspace() {
   const handleFilePicked = useCallback((file: File | null) => {
     setError(null);
     setCompleted(null);
+    setLiveProject(null);
     setPhase("idle");
     setBytesUploaded(0);
     setBytesTotal(0);
@@ -283,13 +330,22 @@ export function UploadWorkspace() {
       <div className="rounded-2xl border border-[#F5F1E8]/12 bg-[#0D131C] p-5 sm:p-6">
         {/* Dropzone */}
         <div
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
+            setIsDragging(false);
             const dropped = e.dataTransfer.files?.[0] ?? null;
             handleFilePicked(dropped);
           }}
-          className="rounded-2xl border border-dashed border-[#F5F1E8]/20 bg-[#070B10]/70 p-6 text-center transition hover:border-[#49E6B3]/50"
+          className={`rounded-2xl border border-dashed p-6 text-center transition ${
+            isDragging
+              ? "border-[#49E6B3] bg-[#102E28]/35"
+              : "border-[#F5F1E8]/20 bg-[#070B10]/70 hover:border-[#49E6B3]/50"
+          }`}
         >
           <input
             ref={fileInputRef}
@@ -393,48 +449,104 @@ export function UploadWorkspace() {
           </div>
         )}
 
-        {/* Completion Banner */}
+        {/* Completion & Live Processing Handoff Banner */}
         {completed && phase === "completed" && (
           <div
             data-testid="upload-complete-banner"
-            className="mt-4 rounded-xl border border-[#49E6B3]/40 bg-[#102E28]/80 p-4"
+            className="mt-4 rounded-xl border border-[#49E6B3]/40 bg-[#102E28]/70 p-4"
           >
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#49E6B3]" />
-              <div className="text-xs">
-                <p className="font-semibold text-[#F5F1E8]">
-                  {completed.project.title} uploaded and queued for processing.
-                </p>
-                <p className="mt-1 font-mono text-[#B6B0A4]">
-                  Verified size: {formatBytes(completed.asset.verifiedSizeBytes)}
-                  {completed.job ? ` · Job: ${completed.job.status}` : ""}
-                </p>
-                <p className="mt-1.5 text-[#B6B0A4]">
-                  Follow live processing stages in{" "}
-                  <strong className="font-semibold text-[#F5F1E8]">Projects</strong>
-                  , then click{" "}
-                  <strong className="font-semibold text-[#F5F1E8]">Open editor</strong>{" "}
-                  on your project card once it&apos;s ready.
-                </p>
-              </div>
-            </div>
+            {(() => {
+              const liveJob = liveProject?.ingest_jobs?.[0] ?? null;
+              const isReady = liveProject?.status === "ready";
+              const isFailed =
+                liveProject?.status === "failed" || liveJob?.status === "failed";
+              const stageLabel = isReady
+                ? "Ready to edit"
+                : isFailed
+                  ? liveJob?.error_message ||
+                    liveProject?.last_error_message ||
+                    "Processing failed"
+                  : liveJob?.status === "probing"
+                    ? "Probing media"
+                    : liveJob?.status === "transcoding"
+                      ? "Generating preview"
+                      : liveJob?.status === "transcribing"
+                        ? "Transcribing captions"
+                        : "Queued for worker";
 
-            <div className="mt-3.5 flex flex-wrap gap-2.5">
-              <Link
-                href="/projects"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3.5 py-2 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
-              >
-                <FolderKanban className="h-3.5 w-3.5" />
-                <span>View in Projects</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => handleFilePicked(null)}
-                className="rounded-lg border border-[#F5F1E8]/15 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] hover:border-[#F5F1E8]/30"
-              >
-                Upload another clip
-              </button>
-            </div>
+              return (
+                <>
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-start gap-2.5">
+                      {isReady ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#49E6B3]" />
+                      ) : isFailed ? (
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
+                      ) : (
+                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-[#49E6B3]" />
+                      )}
+                      <div className="text-xs">
+                        <p className="font-semibold text-[#F5F1E8]">
+                          {completed.project.title} —{" "}
+                          {isReady
+                            ? "captions are ready!"
+                            : isFailed
+                              ? "processing needs attention"
+                              : "uploaded & processing"}
+                        </p>
+                        <p className="mt-1 font-mono text-[#B6B0A4]">
+                          Verified size:{" "}
+                          {formatBytes(completed.asset.verifiedSizeBytes)} ·{" "}
+                          <span
+                            data-testid="upload-live-stage"
+                            className={
+                              isReady
+                                ? "text-[#49E6B3]"
+                                : isFailed
+                                  ? "text-rose-200"
+                                  : "text-amber-200"
+                            }
+                          >
+                            {stageLabel}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3.5 flex flex-wrap gap-2.5">
+                    {isReady && (
+                      <Link
+                        href={`/projects/${completed.project.id}/editor`}
+                        data-testid="upload-open-editor-btn"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3.5 py-2 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span>Open editor</span>
+                      </Link>
+                    )}
+                    <Link
+                      href="/projects"
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+                        isReady
+                          ? "border border-[#F5F1E8]/15 bg-[#0D131C] text-[#F5F1E8] hover:border-[#49E6B3]/50"
+                          : "bg-[#49E6B3] text-[#070B10] hover:bg-[#2FD49F]"
+                      }`}
+                    >
+                      <FolderKanban className="h-3.5 w-3.5" />
+                      <span>View in Projects</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleFilePicked(null)}
+                      className="rounded-lg border border-[#F5F1E8]/15 bg-[#0D131C] px-3.5 py-2 text-xs font-medium text-[#F5F1E8] hover:border-[#F5F1E8]/30"
+                    >
+                      Upload another clip
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
 

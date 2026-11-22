@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { StudioWorkspace } from "@/components/StudioWorkspace";
 
-export const metadata = {
-  title: "Studio — Subtide Studio",
+export const metadata: Metadata = {
+  title: "Sample Studio",
   description:
-    "Interactive portrait caption studio with live word sync and Clean, Boxed, and Word Highlight presets.",
+    "Try ClipCaptions without signing in: scrub word-synced portrait captions and switch between Clean, Boxed, and Word Highlight presets.",
+  alternates: {
+    canonical: "/studio",
+  },
 };
 
 export default function StudioPage() {

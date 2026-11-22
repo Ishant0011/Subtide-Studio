@@ -26,6 +26,7 @@ import {
   type CaptionStyleConfig,
 } from "@/lib/caption-editor";
 import { CaptionOverlay } from "@/components/CaptionOverlay";
+import { ClipCaptionsMark } from "@/components/ClipCaptionsLogo";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
 
@@ -191,9 +192,9 @@ export function StudioWorkspace() {
             </Link>
 
             <div className="flex min-w-0 items-center gap-2">
-              <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-[#49E6B3] shadow-[0_0_10px_rgba(73,230,179,0.75)]" />
-              <h1 className="truncate text-sm font-semibold tracking-tight text-[#F5F1E8]">
-                Subtide Studio
+              <ClipCaptionsMark size={26} className="shrink-0" />
+              <h1 className="truncate text-sm font-bold tracking-tight text-[#F5F1E8]">
+                Clip<span className="text-[#49E6B3]">Captions</span>
               </h1>
               <span
                 aria-hidden="true"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { MEDIA_BUCKET, type ProjectWithMedia } from "@/lib/uploads";
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -17,7 +18,10 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 }
+    );
   }
 
   const { data, error } = await supabase
@@ -35,5 +39,31 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ projects: data ?? [] });
+  const rawProjects = (data ?? []) as ProjectWithMedia[];
+  const projects = await Promise.all(
+    rawProjects.map(async (project) => {
+      const primaryAsset = project.media_assets?.[0] ?? null;
+      const isAudio =
+        project.media_kind === "audio" ||
+        primaryAsset?.mime_type?.startsWith("audio/");
+      if (isAudio) {
+        return { ...project, thumbnail_url: null };
+      }
+
+      const key =
+        project.preview_object_key ||
+        (primaryAsset?.status === "uploaded" ? primaryAsset.object_key : null);
+      if (!key) {
+        return { ...project, thumbnail_url: null };
+      }
+
+      const { data: signed } = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .createSignedUrl(key, 300);
+
+      return { ...project, thumbnail_url: signed?.signedUrl ?? null };
+    })
+  );
+
+  return NextResponse.json({ projects });
 }

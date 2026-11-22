@@ -260,8 +260,7 @@ function transcribeWithFixture(
   }
 
   const sampleTokens = [
-    "Subtide",
-    "Studio",
+    "ClipCaptions",
     "synced",
     "this",
     "clip.",

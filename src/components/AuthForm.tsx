@@ -128,16 +128,22 @@ export function AuthForm({
     <div className="w-full max-w-md rounded-2xl border border-[#F5F1E8]/12 bg-[#0D131C] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
       <div className="flex items-center gap-2 text-xs font-medium text-[#49E6B3]">
         <Lock className="h-3.5 w-3.5" />
-        <span>Private Workspace Access</span>
+        <span>
+          {nextPath.startsWith("/upload")
+            ? "Sign in to upload a clip"
+            : "Private Workspace Access"}
+        </span>
       </div>
 
       <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-[#F5F1E8]">
-        {mode === "signin" ? "Sign in to Subtide Studio" : "Create your account"}
+        {mode === "signin" ? "Sign in to ClipCaptions" : "Create your account"}
       </h1>
       <p className="mt-1.5 text-sm text-[#B6B0A4]">
         {mode === "signin"
-          ? "Access your private projects and resumable video uploads."
-          : "Start uploading portrait MP4, MOV, MP3, and WAV clips to your private library."}
+          ? nextPath.startsWith("/upload")
+            ? "You'll land directly on Upload right after signing in."
+            : "Access your private projects, caption revisions, and exports."
+          : "Start uploading MP4, MOV, MP3, and WAV clips to your private workspace."}
       </p>
 
       {/* Mode Switcher */}

@@ -41,24 +41,24 @@ export interface ExportFormatDescriptor {
 
 export const EXPORT_FORMATS: ExportFormatDescriptor[] = [
   {
-    id: "srt",
-    label: "Subtitles",
-    badge: "SRT · UTF-8",
-    extension: ".srt",
-    description:
-      "UTF-8 subtitles with deterministic timestamps, multiline text, Unicode, and cue gaps.",
-  },
-  {
     id: "mp4",
-    label: "Burned-In Video",
+    label: "MP4 to post",
     badge: "MP4 · H.264 / AAC",
     extension: ".mp4",
     description:
       "Ready-to-post video with your styled captions burned in and source audio preserved.",
   },
   {
+    id: "srt",
+    label: "SRT for subtitles",
+    badge: "SRT · UTF-8",
+    extension: ".srt",
+    description:
+      "UTF-8 subtitles with deterministic timestamps, multiline text, Unicode, and cue gaps.",
+  },
+  {
     id: "mov_alpha",
-    label: "Transparent Overlay",
+    label: "Transparent MOV for compositing",
     badge: "MOV · ProRes 4444 Alpha",
     extension: ".mov",
     description:
@@ -134,7 +134,7 @@ export function buildExportFilename(
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "subtide-export";
+      .slice(0, 60) || "clipcaptions-export";
 
   if (format === "srt") {
     return `${slug}-rev${revisionNumber}.srt`;

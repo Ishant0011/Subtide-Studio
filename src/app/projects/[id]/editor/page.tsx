@@ -5,6 +5,7 @@ import {
   hydrateEditorCues,
   normalizeCaptionStyle,
 } from "@/lib/caption-editor";
+import { PRIVATE_PAGE_ROBOTS } from "@/lib/site";
 import {
   createSupabaseServerClient,
   getVerifiedUser,
@@ -14,8 +15,9 @@ import { MEDIA_BUCKET } from "@/lib/uploads";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Caption Editor — Subtide Studio",
-  description: "Edit word-synced captions and styles for your private clip.",
+  title: "Caption Editor",
+  description: "Edit word-synced captions, styles, and exports in ClipCaptions.",
+  robots: PRIVATE_PAGE_ROBOTS,
 };
 
 interface EditorPageProps {

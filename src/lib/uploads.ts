@@ -122,6 +122,7 @@ export interface ProjectWithMedia {
   media_assets: MediaAssetRow[];
   ingest_jobs?: IngestJobRow[];
   caption_revisions?: CaptionRevisionRow[];
+  thumbnail_url?: string | null;
 }
 
 export interface UploadInitResponse {

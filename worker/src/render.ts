@@ -366,7 +366,7 @@ export function buildAssScript(params: {
 
   return [
     "[Script Info]",
-    "Title: Subtide Studio Export",
+    "Title: ClipCaptions Export",
     "ScriptType: v4.00+",
     "WrapStyle: 0",
     "ScaledBorderAndShadow: yes",

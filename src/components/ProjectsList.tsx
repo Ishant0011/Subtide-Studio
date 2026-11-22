@@ -329,180 +329,248 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                     ? "border border-rose-400/35 bg-rose-500/10 text-rose-200"
                     : "border border-[#F5F1E8]/12 bg-[#131C28] text-[#B6B0A4]";
 
+            const isAudio =
+              project.media_kind === "audio" ||
+              primaryAsset?.mime_type?.startsWith("audio/");
+            const durationSec = project.duration_ms
+              ? `${Math.floor(project.duration_ms / 60000)}:${String(
+                  Math.floor((project.duration_ms % 60000) / 1000)
+                ).padStart(2, "0")}`
+              : null;
+
             return (
               <article
                 key={project.id}
                 data-testid={`project-card-${project.id}`}
-                className="flex flex-col justify-between rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] p-5 transition hover:border-[#F5F1E8]/20"
+                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-[#F5F1E8]/10 bg-[#0D131C] transition hover:border-[#F5F1E8]/22"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-3">
-                    {isEditing ? (
-                      <div className="flex flex-1 items-center gap-2">
-                        <input
-                          type="text"
-                          value={draftTitle}
-                          onChange={(e) => setDraftTitle(e.target.value)}
-                          maxLength={120}
-                          aria-label="Project title"
-                          className="w-full rounded-lg border border-[#49E6B3]/50 bg-[#070B10] px-2.5 py-1.5 text-sm text-[#F5F1E8] focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          disabled={savingId === project.id}
-                          onClick={() => void saveTitle(project.id)}
-                          className="rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10]"
-                        >
-                          {savingId === project.id ? "..." : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(null)}
-                          className="rounded-lg border border-[#F5F1E8]/12 px-2 py-1.5 text-xs text-[#B6B0A4]"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base font-semibold tracking-tight text-[#F5F1E8]">
-                          {project.title}
-                        </h2>
-                        <button
-                          type="button"
-                          aria-label={`Rename ${project.title}`}
-                          onClick={() => {
-                            setEditingId(project.id);
-                            setDraftTitle(project.title);
-                          }}
-                          className="rounded-md p-1 text-[#7D7A72] transition hover:bg-[#131C28] hover:text-[#F5F1E8]"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-
-                    <span
-                      data-testid={`project-stage-${project.id}`}
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${badgeClass}`}
+                {/* Project Visual Thumbnail / Audio Artwork */}
+                <div className="relative h-40 w-full overflow-hidden border-b border-[#F5F1E8]/8 bg-[#070B10]">
+                  {isAudio ? (
+                    <div
+                      data-testid={`project-audio-artwork-${project.id}`}
+                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#112635] via-[#0B1722] to-[#070B10] px-4"
                     >
-                      {stage.spinning ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : stage.tone === "mint" ? (
-                        <CheckCircle2 className="h-3 w-3" />
-                      ) : stage.tone === "rose" ? (
-                        <AlertCircle className="h-3 w-3" />
-                      ) : (
-                        <Clock className="h-3 w-3" />
-                      )}
-                      <span>{stage.label}</span>
-                    </span>
-                  </div>
+                      <div className="flex items-end gap-1.5">
+                        {[14, 28, 42, 22, 48, 34, 20, 38, 26, 16].map((h, i) => (
+                          <span
+                            key={i}
+                            style={{ height: `${h}px` }}
+                            className={`w-1.5 rounded-full ${
+                              i % 3 === 1 ? "bg-[#49E6B3]" : "bg-[#49E6B3]/35"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#49E6B3]/30 bg-[#102E28]/85 px-2.5 py-0.5 text-[11px] font-medium text-[#49E6B3]">
+                        <AudioLines className="h-3 w-3" />
+                        <span>Audio · 9:16 Portrait Stage</span>
+                      </span>
+                    </div>
+                  ) : project.thumbnail_url ? (
+                    <div
+                      data-testid={`project-video-thumbnail-${project.id}`}
+                      className="relative flex h-full w-full items-center justify-center bg-[#070B10]"
+                    >
+                      <video
+                        src={`${project.thumbnail_url}#t=0.5`}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        aria-hidden="true"
+                        className="h-full w-full object-contain"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070B10]/70 via-transparent to-transparent" />
+                    </div>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#101A27] to-[#070B10] text-[#8C887F]">
+                      <Film className="h-7 w-7 text-[#49E6B3]/70" />
+                      <span className="mt-1.5 text-[11px]">
+                        {stage.spinning ? "Generating preview..." : "Video clip"}
+                      </span>
+                    </div>
+                  )}
 
-                  {/* Error details when failed */}
-                  {(job?.error_message || project.last_error_message) &&
-                    (job?.status === "failed" || project.status === "failed") && (
-                      <p className="mt-2.5 rounded-lg border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-                        {job?.error_message || project.last_error_message}
-                      </p>
+                  {/* Top overlay status pill */}
+                  <span
+                    data-testid={`project-stage-${project.id}`}
+                    className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md ${badgeClass}`}
+                  >
+                    {stage.spinning ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : stage.tone === "mint" ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : stage.tone === "rose" ? (
+                      <AlertCircle className="h-3 w-3" />
+                    ) : (
+                      <Clock className="h-3 w-3" />
                     )}
+                    <span>{stage.label}</span>
+                  </span>
 
-                  {primaryAsset && (
-                    <dl className="mt-4 grid grid-cols-2 gap-2.5 rounded-xl border border-[#F5F1E8]/8 bg-[#070B10]/70 p-3 text-xs">
-                      <div>
-                        <dt className="text-[#7D7A72]">File</dt>
-                        <dd className="mt-0.5 truncate font-medium text-[#F5F1E8]">
-                          {primaryAsset.original_filename}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-[#7D7A72]">Verified size</dt>
-                        <dd className="mt-0.5 font-mono tabular-nums text-[#F5F1E8]">
-                          {formatBytes(
-                            primaryAsset.verified_size_bytes ??
-                              primaryAsset.expected_size_bytes
-                          )}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-[#7D7A72]">Media</dt>
-                        <dd className="mt-0.5 font-mono text-[#B6B0A4]">
-                          {project.media_kind === "audio"
-                            ? "Audio · Portrait stage"
-                            : project.preview_width && project.preview_height
-                              ? `${project.preview_width}×${project.preview_height}`
-                              : primaryAsset.mime_type}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-[#7D7A72]">Captions</dt>
-                        <dd className="mt-0.5 tabular-nums text-[#B6B0A4]">
-                          {revision
-                            ? revision.speech_status === "no_speech"
-                              ? "No speech detected"
-                              : `${revision.cues.length} cues (${revision.words.length} words)`
-                            : job?.stage_message || "Not processed yet"}
-                        </dd>
-                      </div>
-                    </dl>
+                  {durationSec && (
+                    <span className="absolute bottom-2.5 right-3 rounded-md border border-[#F5F1E8]/15 bg-[#070B10]/80 px-2 py-0.5 font-mono text-[11px] tabular-nums text-[#F5F1E8]">
+                      {durationSec}
+                    </span>
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-[#F5F1E8]/8 pt-3.5">
-                  <span className="text-[11px] text-[#7D7A72]">
-                    {revision
-                      ? `Rev #${revision.revision_number} · ${revision.source}`
-                      : "Caption editing arrives in Phase 4"}
-                  </span>
+                <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      {isEditing ? (
+                        <div className="flex flex-1 items-center gap-2">
+                          <input
+                            type="text"
+                            value={draftTitle}
+                            onChange={(e) => setDraftTitle(e.target.value)}
+                            maxLength={120}
+                            aria-label="Project title"
+                            className="w-full rounded-lg border border-[#49E6B3]/50 bg-[#070B10] px-2.5 py-1.5 text-sm text-[#F5F1E8] focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={savingId === project.id}
+                            onClick={() => void saveTitle(project.id)}
+                            className="rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10]"
+                          >
+                            {savingId === project.id ? "..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="rounded-lg border border-[#F5F1E8]/12 px-2 py-1.5 text-xs text-[#B6B0A4]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <h2 className="truncate text-base font-semibold tracking-tight text-[#F5F1E8]">
+                            {project.title}
+                          </h2>
+                          <button
+                            type="button"
+                            aria-label={`Rename ${project.title}`}
+                            onClick={() => {
+                              setEditingId(project.id);
+                              setDraftTitle(project.title);
+                            }}
+                            className="shrink-0 rounded-md p-1 text-[#8C887F] transition hover:bg-[#131C28] hover:text-[#F5F1E8]"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    {canStartProcessing && (
-                      <button
-                        type="button"
-                        disabled={startingId === project.id}
-                        onClick={() => void startProcessing(project.id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/15 bg-[#131C28] px-3 py-1.5 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-60"
-                      >
-                        {startingId === project.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : job?.status === "failed" ? (
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        ) : (
-                          <Play className="h-3.5 w-3.5 fill-current" />
-                        )}
-                        <span>
-                          {job?.status === "failed"
-                            ? "Retry processing"
-                            : "Start processing"}
-                        </span>
-                      </button>
-                    )}
+                    {/* Error details when failed */}
+                    {(job?.error_message || project.last_error_message) &&
+                      (job?.status === "failed" || project.status === "failed") && (
+                        <p className="mt-2.5 rounded-lg border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                          {job?.error_message || project.last_error_message}
+                        </p>
+                      )}
 
-                    {primaryAsset && isAssetUploaded && project.status === "ready" && (
-                      <Link
-                        href={`/projects/${project.id}/editor`}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        <span>Open editor</span>
-                      </Link>
+                    {primaryAsset && (
+                      <dl className="mt-3.5 grid grid-cols-2 gap-2.5 rounded-xl border border-[#F5F1E8]/8 bg-[#070B10]/70 p-3 text-xs">
+                        <div>
+                          <dt className="text-[#8C887F]">File</dt>
+                          <dd className="mt-0.5 truncate font-medium text-[#F5F1E8]">
+                            {primaryAsset.original_filename}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[#8C887F]">Verified size</dt>
+                          <dd className="mt-0.5 font-mono tabular-nums text-[#F5F1E8]">
+                            {formatBytes(
+                              primaryAsset.verified_size_bytes ??
+                                primaryAsset.expected_size_bytes
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[#8C887F]">Media</dt>
+                          <dd className="mt-0.5 font-mono text-[#B6B0A4]">
+                            {isAudio
+                              ? "Audio · 9:16 stage"
+                              : project.preview_width && project.preview_height
+                                ? `${project.preview_width}×${project.preview_height}`
+                                : primaryAsset.mime_type}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[#8C887F]">Captions</dt>
+                          <dd className="mt-0.5 tabular-nums text-[#B6B0A4]">
+                            {revision
+                              ? revision.speech_status === "no_speech"
+                                ? "No speech detected"
+                                : `${revision.cues.length} cues (${revision.words.length} words)`
+                              : job?.stage_message || "Waiting for worker"}
+                          </dd>
+                        </div>
+                      </dl>
                     )}
+                  </div>
 
-                    {primaryAsset && isAssetUploaded && (
-                      <button
-                        type="button"
-                        disabled={loadingAssetId === primaryAsset.id}
-                        onClick={() => void openPreview(primaryAsset.id, project, revision)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#49E6B3]/35 bg-[#102E28] px-3 py-1.5 text-xs font-semibold text-[#49E6B3] transition hover:bg-[#49E6B3] hover:text-[#070B10] disabled:opacity-60"
-                      >
-                        {loadingAssetId === primaryAsset.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        )}
-                        <span>Preview clip</span>
-                      </button>
-                    )}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-[#F5F1E8]/8 pt-3.5">
+                    <span className="font-mono text-[11px] text-[#8C887F]">
+                      {revision
+                        ? `Rev #${revision.revision_number} · ${revision.source}`
+                        : stage.spinning
+                          ? "Processing in worker"
+                          : "Ready for processing"}
+                    </span>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canStartProcessing && (
+                        <button
+                          type="button"
+                          disabled={startingId === project.id}
+                          onClick={() => void startProcessing(project.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#F5F1E8]/15 bg-[#131C28] px-3 py-1.5 text-xs font-semibold text-[#F5F1E8] transition hover:border-[#49E6B3]/50 hover:text-[#49E6B3] disabled:opacity-60"
+                        >
+                          {startingId === project.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : job?.status === "failed" ? (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 fill-current" />
+                          )}
+                          <span>
+                            {job?.status === "failed"
+                              ? "Retry processing"
+                              : "Start processing"}
+                          </span>
+                        </button>
+                      )}
+
+                      {primaryAsset && isAssetUploaded && project.status === "ready" && (
+                        <Link
+                          href={`/projects/${project.id}/editor`}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-3 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F]"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Open editor</span>
+                        </Link>
+                      )}
+
+                      {primaryAsset && isAssetUploaded && (
+                        <button
+                          type="button"
+                          disabled={loadingAssetId === primaryAsset.id}
+                          onClick={() => void openPreview(primaryAsset.id, project, revision)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#49E6B3]/35 bg-[#102E28] px-3 py-1.5 text-xs font-semibold text-[#49E6B3] transition hover:bg-[#49E6B3] hover:text-[#070B10] disabled:opacity-60"
+                        >
+                          {loadingAssetId === primaryAsset.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          )}
+                          <span>Preview clip</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </article>

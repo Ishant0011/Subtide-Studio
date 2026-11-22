@@ -74,7 +74,7 @@ function buildExportFilename(
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "subtide-export";
+      .slice(0, 60) || "clipcaptions-export";
 
   return format === "mp4"
     ? `${slug}-rev${revisionNumber}.mp4`
@@ -523,7 +523,7 @@ async function main() {
   process.on("SIGINT", onStop);
   process.on("SIGTERM", onStop);
 
-  log("info", "Subtide Studio worker started", {
+  log("info", "ClipCaptions worker started", {
     workerId: config.workerId,
     adapter: config.transcriptionAdapter,
     hasDeepgramKey: Boolean(config.deepgramApiKey),
