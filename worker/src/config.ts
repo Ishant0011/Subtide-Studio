@@ -116,9 +116,19 @@ export function loadWorkerConfig(argv: string[] = process.argv.slice(2)): Worker
     Math.min(4, Number.parseInt(process.env.WORKER_RENDER_THREADS || "2", 10) || 2)
   );
   const renderFontName =
-    process.env.WORKER_FONT_NAME?.trim() ||
-    (process.platform === "win32" ? "Segoe UI" : "DejaVu Sans");
-  const renderFontsDir = process.env.WORKER_FONTS_DIR?.trim() || null;
+    process.env.WORKER_FONT_NAME?.trim() || "Poppins";
+
+  // Auto-discover bundled redistributable OFL fonts directory so worker and browser agree
+  const candidateFontDirs = [
+    process.env.WORKER_FONTS_DIR?.trim(),
+    path.resolve(process.cwd(), "public", "fonts"),
+    path.resolve(process.cwd(), "..", "public", "fonts"),
+    path.resolve(__dirname, "..", "..", "public", "fonts"),
+    path.resolve(__dirname, "..", "fonts"),
+  ].filter((p): p is string => Boolean(p));
+
+  const renderFontsDir =
+    candidateFontDirs.find((dir) => fs.existsSync(dir)) ?? null;
 
   return {
     supabaseUrl,

@@ -23,12 +23,25 @@ export class RenderError extends Error {
 export type CaptionPresetId = "clean" | "boxed" | "word-highlight";
 export type CaptionFontSize = "sm" | "md" | "lg";
 export type CaptionAccentId = "violet" | "mint";
+export type CaptionFontId = "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
+export type CaptionCasing = "original" | "uppercase" | "lowercase";
+export type CaptionShadowStrength = "none" | "soft" | "strong";
 
 export interface CaptionStyleConfig {
   preset: CaptionPresetId;
   fontSize: CaptionFontSize;
   verticalPosition: number;
   accent?: CaptionAccentId;
+  fontFamily?: CaptionFontId;
+  textColor?: string;
+  activeWordColor?: string;
+  casing?: CaptionCasing;
+  outlineWidth?: number;
+  outlineColor?: string;
+  backgroundEnabled?: boolean;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  shadowStrength?: CaptionShadowStrength;
 }
 
 export interface RenderCaptionWord {
@@ -84,6 +97,23 @@ const DEFAULT_STYLE: CaptionStyleConfig = {
   fontSize: "md",
   verticalPosition: 14,
   accent: "violet",
+  fontFamily: "poppins",
+  textColor: "#F5F1E8",
+  activeWordColor: "#A78BFA",
+  casing: "uppercase",
+  outlineWidth: 0,
+  outlineColor: "#070B10",
+  backgroundEnabled: true,
+  backgroundColor: "#070B10",
+  backgroundOpacity: 60,
+  shadowStrength: "soft",
+};
+
+const FONT_ASS_MAP: Record<CaptionFontId, string> = {
+  poppins: "Poppins",
+  "bebas-neue": "Bebas Neue",
+  "space-mono": "Space Mono",
+  "dm-serif": "DM Serif Display",
 };
 
 const ACCENT_PALETTE: Record<
@@ -106,6 +136,36 @@ const FONT_SIZE_TABLE: Record<CaptionFontSize, { renderPx1080: number }> = {
   md: { renderPx1080: 54 },
   lg: { renderPx1080: 66 },
 };
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+function normalizeHex(value: unknown, fallback: string): string {
+  if (typeof value === "string" && HEX_COLOR_RE.test(value.trim())) {
+    return value.trim().toUpperCase();
+  }
+  return fallback.toUpperCase();
+}
+
+function hexToAssBgr(hex: string): string {
+  const clean = normalizeHex(hex, "#A78BFA").slice(1);
+  return `${clean.slice(4, 6)}${clean.slice(2, 4)}${clean.slice(0, 2)}`;
+}
+
+function opacityPctToAssAlphaHex(opacityPct: number): string {
+  const clamped = Math.max(0, Math.min(100, Math.round(opacityPct)));
+  // ASS alpha is inverted: 00 = opaque, FF = fully transparent
+  const alphaByte = Math.round(((100 - clamped) / 100) * 255);
+  return alphaByte.toString(16).toUpperCase().padStart(2, "0");
+}
+
+function contrastingInkAssBgr(hex: string): string {
+  const clean = normalizeHex(hex, "#A78BFA").slice(1);
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 135 ? "100B07" : "E8F1F5";
+}
 
 function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
   const preset: CaptionPresetId =
@@ -136,6 +196,55 @@ function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
   const accent: CaptionAccentId = style?.accent === "mint" ? "mint" : "violet";
   const accentColor = ACCENT_PALETTE[accent];
 
+  const fontFamily: CaptionFontId =
+    style?.fontFamily && style.fontFamily in FONT_ASS_MAP
+      ? style.fontFamily
+      : "poppins";
+
+  const textColorHex = normalizeHex(style?.textColor, "#F5F1E8");
+  const activeWordHex = normalizeHex(style?.activeWordColor, accentColor.hex);
+
+  const casing: CaptionCasing =
+    style?.casing === "original" ||
+    style?.casing === "uppercase" ||
+    style?.casing === "lowercase"
+      ? style.casing
+      : preset === "word-highlight"
+        ? "uppercase"
+        : "original";
+
+  const outlineWidth =
+    typeof style?.outlineWidth === "number" && Number.isFinite(style.outlineWidth)
+      ? Math.max(0, Math.min(6, Math.round(style.outlineWidth)))
+      : preset === "clean"
+        ? 2
+        : 0;
+  const outlineColorHex = normalizeHex(style?.outlineColor, "#070B10");
+
+  const backgroundEnabled =
+    typeof style?.backgroundEnabled === "boolean"
+      ? style.backgroundEnabled
+      : preset !== "clean";
+  const backgroundColorHex = normalizeHex(style?.backgroundColor, "#070B10");
+  const backgroundOpacity =
+    typeof style?.backgroundOpacity === "number" &&
+    Number.isFinite(style.backgroundOpacity)
+      ? Math.max(0, Math.min(100, Math.round(style.backgroundOpacity)))
+      : preset === "boxed"
+        ? 82
+        : preset === "word-highlight"
+          ? 60
+          : 0;
+
+  const shadowStrength: CaptionShadowStrength =
+    style?.shadowStrength === "none" ||
+    style?.shadowStrength === "soft" ||
+    style?.shadowStrength === "strong"
+      ? style.shadowStrength
+      : preset === "clean"
+        ? "strong"
+        : "soft";
+
   return {
     preset,
     fontSize,
@@ -143,8 +252,24 @@ function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
     bottomPercent,
     maxWidthPercent: preset === "word-highlight" ? 94 : 90,
     accent,
-    accentHex: accentColor.hex,
-    accentAssBgr: accentColor.assBgr,
+    accentHex: activeWordHex,
+    accentAssBgr: hexToAssBgr(activeWordHex),
+    activeInkAssBgr: contrastingInkAssBgr(activeWordHex),
+    textAssBgr: hexToAssBgr(textColorHex),
+    assFontFamily: FONT_ASS_MAP[fontFamily],
+    casing,
+    outlineWidth,
+    outlineAssBgr: hexToAssBgr(outlineColorHex),
+    backgroundEnabled,
+    bgAssBgr: hexToAssBgr(backgroundColorHex),
+    bgAssAlpha: backgroundEnabled
+      ? opacityPctToAssAlphaHex(backgroundOpacity)
+      : "FF",
+    bgDimAssAlpha: backgroundEnabled
+      ? opacityPctToAssAlphaHex(Math.round(backgroundOpacity * 0.72))
+      : "FF",
+    shadowDepth:
+      shadowStrength === "strong" ? 3 : shadowStrength === "soft" ? 1.5 : 0,
   };
 }
 
@@ -238,22 +363,28 @@ function detectWordLineBreaks(cueText: string, wordCount: number): Set<number> {
   return breakBefore;
 }
 
+type ComputedRenderLayout = ReturnType<typeof computeLayout>;
+
 function formatStyledCueRun(
   cue: RenderCaptionCue,
-  preset: CaptionPresetId,
-  accentAssBgr: string,
+  layout: ComputedRenderLayout,
   activeWord: RenderCaptionWord | null,
   sampleTimeMs: number
 ): string {
+  const { preset, accentAssBgr, activeInkAssBgr, textAssBgr, bgAssBgr, bgAssAlpha, bgDimAssAlpha, casing } =
+    layout;
   const useWordTiming = cue.timing_mode === "word" && cue.words.length > 0;
   const transform = (s: string) =>
-    preset === "word-highlight" ? s.toUpperCase() : s;
+    casing === "uppercase"
+      ? s.toUpperCase()
+      : casing === "lowercase"
+        ? s.toLowerCase()
+        : s;
 
-  // Deep ink #070B10 -> 100B07, Warm white #F5F1E8 -> E8F1F5, Violet #A78BFA -> FA8BA7 (or legacy Mint #49E6B3 -> B3E649)
   if (!useWordTiming) {
     const escaped = escapeAssText(transform(cue.text.trim()));
     if (preset === "word-highlight") {
-      return `{\\c&H100B07&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${escaped}`;
+      return `{\\c&H${activeInkAssBgr}&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${escaped}`;
     }
     return `{\\c&H${accentAssBgr}&\\1a&H00&}${escaped}`;
   }
@@ -282,26 +413,26 @@ function formatStyledCueRun(
       if (isActive) {
         parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\fscx104\\fscy104}${wordText}`);
       } else if (isPast) {
-        parts.push(`{\\c&HE8F1F5&\\1a&H00&\\fscx100\\fscy100}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\fscx100\\fscy100}${wordText}`);
       } else {
-        parts.push(`{\\c&HE8F1F5&\\1a&H33&\\fscx100\\fscy100}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H33&\\fscx100\\fscy100}${wordText}`);
       }
     } else if (preset === "boxed") {
       if (isActive) {
         parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\u1}${wordText}`);
       } else if (isPast) {
-        parts.push(`{\\c&HE8F1F5&\\1a&H00&\\u0}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\u0}${wordText}`);
       } else {
-        parts.push(`{\\c&HE8F1F5&\\1a&H45&\\u0}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H45&\\u0}${wordText}`);
       }
     } else {
-      // word-highlight: kinetic accent pill with dark ink text vs translucent ink pills
+      // word-highlight: kinetic accent pill with contrasting ink vs translucent background pills
       if (isActive) {
-        parts.push(`{\\c&H100B07&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${wordText}`);
+        parts.push(`{\\c&H${activeInkAssBgr}&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${wordText}`);
       } else if (isPast) {
-        parts.push(`{\\c&HE8F1F5&\\1a&H00&\\3c&H100B07&\\3a&H73&}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\3c&H${bgAssBgr}&\\3a&H${bgAssAlpha}&}${wordText}`);
       } else {
-        parts.push(`{\\c&HE8F1F5&\\1a&H40&\\3c&H100B07&\\3a&H99&}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H40&\\3c&H${bgAssBgr}&\\3a&H${bgDimAssAlpha}&}${wordText}`);
       }
     }
   }
@@ -320,6 +451,9 @@ export function buildAssScript(params: {
   const layout = computeLayout(params.style);
   const cues = hydrateCues(params.cues);
 
+  // Use the validated bundled font family matching browser preview, falling back to worker fontName if empty
+  const resolvedFontName = layout.assFontFamily || fontName;
+
   // Match editor proportion across portrait, square, and landscape canvases
   const refWidth = width > height ? Math.round(height * 0.85) : width;
   const fontSize = Math.max(
@@ -332,14 +466,25 @@ export function buildAssScript(params: {
     Math.round(width * ((100 - layout.maxWidthPercent) / 200))
   );
 
-  // Style definition tailored to preset
+  // Style definition tailored to preset + validated creator settings
   let styleLine: string;
+  const scaledOutline = Number((layout.outlineWidth * (refWidth / 1080) * 1.4).toFixed(1));
   if (layout.preset === "clean") {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H10100B07,&H66100B07,-1,0,0,0,100,100,0,0,1,2.5,2,2,${marginH},${marginH},${marginV},1`;
+    const borderStyle = layout.backgroundEnabled ? 3 : 1;
+    const outlineCol = layout.backgroundEnabled
+      ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
+      : `&H10${layout.outlineAssBgr}`;
+    const outlinePx = layout.backgroundEnabled ? 10 : Math.max(0.5, scaledOutline || 2);
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H66100B07,-1,0,0,0,100,100,0,0,${borderStyle},${outlinePx},${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
   } else if (layout.preset === "boxed") {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H2E100B07,&H2E100B07,-1,0,0,0,100,100,0,0,3,14,0,2,${marginH},${marginH},${marginV},1`;
+    const borderStyle = layout.backgroundEnabled ? 3 : 1;
+    const outlineCol = layout.backgroundEnabled
+      ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
+      : `&H10${layout.outlineAssBgr}`;
+    const outlinePx = layout.backgroundEnabled ? 14 : scaledOutline;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,0,0,0,100,100,0,0,${borderStyle},${outlinePx},${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
   } else {
-    styleLine = `Style: Caption,${fontName},${fontSize},&H00E8F1F5,&H00${layout.accentAssBgr},&H73100B07,&H73100B07,-1,0,0,0,100,100,0.4,0,3,8,0,2,${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,0,0,0,100,100,0.4,0,3,8,${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
   }
 
   const events: string[] = [];
@@ -352,8 +497,7 @@ export function buildAssScript(params: {
       if (startStr !== endStr) {
         const text = formatStyledCueRun(
           cue,
-          layout.preset,
-          layout.accentAssBgr,
+          layout,
           null,
           cue.start_ms
         );
@@ -385,8 +529,7 @@ export function buildAssScript(params: {
       const activeWord = findActiveWord(cue, sampleMid);
       const text = formatStyledCueRun(
         cue,
-        layout.preset,
-        layout.accentAssBgr,
+        layout,
         activeWord,
         sampleMid
       );

@@ -44,6 +44,16 @@ export interface CaptionRevisionRow {
     fontSize?: "sm" | "md" | "lg";
     verticalPosition?: number;
     accent?: "violet" | "mint";
+    fontFamily?: "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
+    textColor?: string;
+    activeWordColor?: string;
+    casing?: "original" | "uppercase" | "lowercase";
+    outlineWidth?: number;
+    outlineColor?: string;
+    backgroundEnabled?: boolean;
+    backgroundColor?: string;
+    backgroundOpacity?: number;
+    shadowStrength?: "none" | "soft" | "strong";
   } | null;
   created_at: string;
 }

@@ -6,14 +6,88 @@ import type {
 
 export type CaptionFontSize = "sm" | "md" | "lg";
 export type CaptionAccentId = "violet" | "mint";
+export type CaptionFontId = "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
+export type CaptionCasing = "original" | "uppercase" | "lowercase";
+export type CaptionShadowStrength = "none" | "soft" | "strong";
+
+export interface CaptionFontDescriptor {
+  id: CaptionFontId;
+  label: string;
+  cssFamily: string;
+  assFamily: string;
+  file: string;
+  category: string;
+}
+
+export const CAPTION_FONTS: Record<CaptionFontId, CaptionFontDescriptor> = {
+  poppins: {
+    id: "poppins",
+    label: "Poppins",
+    cssFamily: '"Poppins", "Plus Jakarta Sans", sans-serif',
+    assFamily: "Poppins",
+    file: "Poppins-Bold.ttf",
+    category: "Geometric Sans",
+  },
+  "bebas-neue": {
+    id: "bebas-neue",
+    label: "Bebas Neue",
+    cssFamily: '"Bebas Neue", Impact, sans-serif',
+    assFamily: "Bebas Neue",
+    file: "BebasNeue-Regular.ttf",
+    category: "Condensed Display",
+  },
+  "space-mono": {
+    id: "space-mono",
+    label: "Space Mono",
+    cssFamily: '"Space Mono", ui-monospace, monospace',
+    assFamily: "Space Mono",
+    file: "SpaceMono-Bold.ttf",
+    category: "Tech Mono",
+  },
+  "dm-serif": {
+    id: "dm-serif",
+    label: "DM Serif",
+    cssFamily: '"DM Serif Display", Georgia, serif',
+    assFamily: "DM Serif Display",
+    file: "DMSerifDisplay-Regular.ttf",
+    category: "Editorial Serif",
+  },
+};
+
+export const CAPTION_FONT_LIST: CaptionFontDescriptor[] = [
+  CAPTION_FONTS.poppins,
+  CAPTION_FONTS["bebas-neue"],
+  CAPTION_FONTS["space-mono"],
+  CAPTION_FONTS["dm-serif"],
+];
 
 export interface CaptionStyleConfig {
   preset: CaptionPresetId;
   fontSize: CaptionFontSize;
   /** Vertical offset from bottom edge as a percentage (8..85). */
   verticalPosition: number;
-  /** Caption highlight accent color; defaults to ClipCaptions violet while preserving saved mint styles. */
+  /** Legacy / quick accent token; preserved for older revisions. */
   accent?: CaptionAccentId;
+  /** Phase 5B creator style controls (stored by value on revisions & personal presets). */
+  fontFamily?: CaptionFontId;
+  textColor?: string;
+  activeWordColor?: string;
+  casing?: CaptionCasing;
+  outlineWidth?: number;
+  outlineColor?: string;
+  backgroundEnabled?: boolean;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  shadowStrength?: CaptionShadowStrength;
+}
+
+export interface SavedCaptionPresetRow {
+  id: string;
+  user_id: string;
+  name: string;
+  style: CaptionStyleConfig;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EditorCue extends NormalizedCaptionCue {
@@ -32,6 +106,19 @@ export interface CaptionLayoutMetrics {
   accentHex: string;
   accentAssBgr: string;
   accentShadowRgba: string;
+  fontFamily: CaptionFontId;
+  cssFontFamily: string;
+  assFontFamily: string;
+  textColor: string;
+  activeWordColor: string;
+  activeWordContrastText: string;
+  casing: CaptionCasing;
+  outlineWidth: number;
+  outlineColor: string;
+  backgroundEnabled: boolean;
+  backgroundColor: string;
+  backgroundOpacity: number;
+  shadowStrength: CaptionShadowStrength;
 }
 
 export const CAPTION_ACCENTS: Record<
@@ -57,12 +144,184 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyleConfig = {
   fontSize: "md",
   verticalPosition: 14,
   accent: "violet",
+  fontFamily: "poppins",
+  textColor: "#F5F1E8",
+  activeWordColor: "#A78BFA",
+  casing: "uppercase",
+  outlineWidth: 0,
+  outlineColor: "#070B10",
+  backgroundEnabled: true,
+  backgroundColor: "#070B10",
+  backgroundOpacity: 60,
+  shadowStrength: "soft",
 };
+
+export interface BuiltInStyleTemplate {
+  id: string;
+  name: string;
+  description: string;
+  style: CaptionStyleConfig;
+}
+
+export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
+  {
+    id: "word-highlight",
+    name: "Word Highlight",
+    description: "Kinetic violet pill tracking every spoken word.",
+    style: {
+      preset: "word-highlight",
+      fontSize: "md",
+      verticalPosition: 14,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#F5F1E8",
+      activeWordColor: "#A78BFA",
+      casing: "uppercase",
+      outlineWidth: 0,
+      outlineColor: "#070B10",
+      backgroundEnabled: true,
+      backgroundColor: "#070B10",
+      backgroundOpacity: 60,
+      shadowStrength: "soft",
+    },
+  },
+  {
+    id: "clean",
+    name: "Clean",
+    description: "Floating bold sans with subtle outline and active word lift.",
+    style: {
+      preset: "clean",
+      fontSize: "md",
+      verticalPosition: 14,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#F5F1E8",
+      activeWordColor: "#A78BFA",
+      casing: "original",
+      outlineWidth: 2,
+      outlineColor: "#070B10",
+      backgroundEnabled: false,
+      backgroundColor: "#070B10",
+      backgroundOpacity: 0,
+      shadowStrength: "strong",
+    },
+  },
+  {
+    id: "boxed",
+    name: "Boxed",
+    description: "Deep-ink plate for crisp contrast over busy frames.",
+    style: {
+      preset: "boxed",
+      fontSize: "md",
+      verticalPosition: 14,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#F5F1E8",
+      activeWordColor: "#A78BFA",
+      casing: "original",
+      outlineWidth: 0,
+      outlineColor: "#070B10",
+      backgroundEnabled: true,
+      backgroundColor: "#070B10",
+      backgroundOpacity: 82,
+      shadowStrength: "soft",
+    },
+  },
+  {
+    id: "punch-display",
+    name: "Punch Display",
+    description: "Tall condensed Bebas Neue built for high-retention hooks.",
+    style: {
+      preset: "word-highlight",
+      fontSize: "lg",
+      verticalPosition: 18,
+      accent: "violet",
+      fontFamily: "bebas-neue",
+      textColor: "#FFFFFF",
+      activeWordColor: "#FACC15",
+      casing: "uppercase",
+      outlineWidth: 2,
+      outlineColor: "#070B10",
+      backgroundEnabled: true,
+      backgroundColor: "#070B10",
+      backgroundOpacity: 55,
+      shadowStrength: "strong",
+    },
+  },
+  {
+    id: "editorial-serif",
+    name: "Editorial",
+    description: "Refined DM Serif Display over a dark translucent plate.",
+    style: {
+      preset: "boxed",
+      fontSize: "md",
+      verticalPosition: 16,
+      accent: "violet",
+      fontFamily: "dm-serif",
+      textColor: "#F5F1E8",
+      activeWordColor: "#C4B5FD",
+      casing: "original",
+      outlineWidth: 0,
+      outlineColor: "#070B10",
+      backgroundEnabled: true,
+      backgroundColor: "#10121A",
+      backgroundOpacity: 86,
+      shadowStrength: "soft",
+    },
+  },
+];
 
 export const MIN_VERTICAL_POSITION = 8;
 export const MAX_VERTICAL_POSITION = 85;
 export const MAX_CLIP_DURATION_MS = 180_000;
 export const MAX_CUES_PER_REVISION = 500;
+export const MIN_CUE_SPAN_MS = 200;
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+export function isValidHexColor(value: unknown): value is string {
+  return typeof value === "string" && HEX_COLOR_RE.test(value.trim());
+}
+
+export function normalizeHexColor(value: unknown, fallback: string): string {
+  if (isValidHexColor(value)) {
+    return value.trim().toUpperCase();
+  }
+  return fallback.toUpperCase();
+}
+
+export function hexToRgba(hex: string, alpha01: number): string {
+  const clean = normalizeHexColor(hex, "#070B10").slice(1);
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  const clamped = Math.max(0, Math.min(1, alpha01));
+  return `rgba(${r}, ${g}, ${b}, ${clamped.toFixed(2)})`;
+}
+
+export function hexToAssBgr(hex: string): string {
+  const clean = normalizeHexColor(hex, "#A78BFA").slice(1);
+  const r = clean.slice(0, 2);
+  const g = clean.slice(2, 4);
+  const b = clean.slice(4, 6);
+  return `${b}${g}${r}`;
+}
+
+export function getContrastingInkForHex(hex: string): string {
+  const clean = normalizeHexColor(hex, "#A78BFA").slice(1);
+  const r = Number.parseInt(clean.slice(0, 2), 16);
+  const g = Number.parseInt(clean.slice(2, 4), 16);
+  const b = Number.parseInt(clean.slice(4, 6), 16);
+  // Relative luminance heuristic for crisp text contrast on active-word pill
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 135 ? "#070B10" : "#F5F1E8";
+}
+
+export function applyCaptionCasing(text: string, casing: CaptionCasing): string {
+  if (casing === "uppercase") return text.toUpperCase();
+  if (casing === "lowercase") return text.toLowerCase();
+  return text;
+}
 
 const FONT_SIZE_TABLE: Record<
   CaptionFontSize,
@@ -75,7 +334,7 @@ const FONT_SIZE_TABLE: Record<
 
 /**
  * Shared layout calculation used by both the live browser preview overlay
- * and the future server-side video renderer (Phase 5).
+ * and the server-side FFmpeg/libass renderer. Preserves legacy saved styles.
  */
 export function computeCaptionLayout(
   style: Partial<CaptionStyleConfig> | null | undefined
@@ -109,6 +368,57 @@ export function computeCaptionLayout(
     style?.accent === "mint" ? "mint" : "violet";
   const accentMeta = CAPTION_ACCENTS[accent];
 
+  const fontFamily: CaptionFontId =
+    style?.fontFamily && style.fontFamily in CAPTION_FONTS
+      ? style.fontFamily
+      : "poppins";
+  const fontDesc = CAPTION_FONTS[fontFamily];
+
+  const textColor = normalizeHexColor(style?.textColor, "#F5F1E8");
+  const activeWordColor = normalizeHexColor(
+    style?.activeWordColor,
+    accentMeta.hex
+  );
+  const activeWordContrastText = getContrastingInkForHex(activeWordColor);
+
+  const casing: CaptionCasing =
+    style?.casing === "original" ||
+    style?.casing === "uppercase" ||
+    style?.casing === "lowercase"
+      ? style.casing
+      : preset === "word-highlight"
+        ? "uppercase"
+        : "original";
+
+  const defaultOutline = preset === "clean" ? 2 : 0;
+  const outlineWidth =
+    typeof style?.outlineWidth === "number" && Number.isFinite(style.outlineWidth)
+      ? Math.max(0, Math.min(6, Math.round(style.outlineWidth)))
+      : defaultOutline;
+  const outlineColor = normalizeHexColor(style?.outlineColor, "#070B10");
+
+  const defaultBgEnabled = preset !== "clean";
+  const backgroundEnabled =
+    typeof style?.backgroundEnabled === "boolean"
+      ? style.backgroundEnabled
+      : defaultBgEnabled;
+  const backgroundColor = normalizeHexColor(style?.backgroundColor, "#070B10");
+  const defaultBgOpacity = preset === "boxed" ? 82 : preset === "word-highlight" ? 60 : 0;
+  const backgroundOpacity =
+    typeof style?.backgroundOpacity === "number" &&
+    Number.isFinite(style.backgroundOpacity)
+      ? Math.max(0, Math.min(100, Math.round(style.backgroundOpacity)))
+      : defaultBgOpacity;
+
+  const shadowStrength: CaptionShadowStrength =
+    style?.shadowStrength === "none" ||
+    style?.shadowStrength === "soft" ||
+    style?.shadowStrength === "strong"
+      ? style.shadowStrength
+      : preset === "clean"
+        ? "strong"
+        : "soft";
+
   const metrics = FONT_SIZE_TABLE[fontSize];
   return {
     preset,
@@ -119,9 +429,22 @@ export function computeCaptionLayout(
     bottomPercent,
     maxWidthPercent: preset === "word-highlight" ? 94 : 90,
     accent,
-    accentHex: accentMeta.hex,
-    accentAssBgr: accentMeta.assBgr,
-    accentShadowRgba: accentMeta.shadowRgba,
+    accentHex: activeWordColor,
+    accentAssBgr: hexToAssBgr(activeWordColor),
+    accentShadowRgba: hexToRgba(activeWordColor, 0.45),
+    fontFamily,
+    cssFontFamily: fontDesc.cssFamily,
+    assFontFamily: fontDesc.assFamily,
+    textColor,
+    activeWordColor,
+    activeWordContrastText,
+    casing,
+    outlineWidth,
+    outlineColor,
+    backgroundEnabled,
+    backgroundColor,
+    backgroundOpacity,
+    shadowStrength,
   };
 }
 
@@ -134,6 +457,116 @@ export function normalizeCaptionStyle(
     fontSize: layout.fontSize,
     verticalPosition: layout.bottomPercent,
     accent: layout.accent,
+    fontFamily: layout.fontFamily,
+    textColor: layout.textColor,
+    activeWordColor: layout.activeWordColor,
+    casing: layout.casing,
+    outlineWidth: layout.outlineWidth,
+    outlineColor: layout.outlineColor,
+    backgroundEnabled: layout.backgroundEnabled,
+    backgroundColor: layout.backgroundColor,
+    backgroundOpacity: layout.backgroundOpacity,
+    shadowStrength: layout.shadowStrength,
+  };
+}
+
+export function validateCaptionStyle(
+  rawStyle: unknown
+):
+  | { ok: true; normalizedStyle: CaptionStyleConfig }
+  | { ok: false; error: string } {
+  if (!rawStyle || typeof rawStyle !== "object") {
+    return { ok: false, error: "Caption style configuration is required." };
+  }
+
+  const s = rawStyle as Partial<CaptionStyleConfig>;
+  if (
+    s.preset !== "clean" &&
+    s.preset !== "boxed" &&
+    s.preset !== "word-highlight"
+  ) {
+    return { ok: false, error: "Invalid caption preset." };
+  }
+  if (s.fontSize !== "sm" && s.fontSize !== "md" && s.fontSize !== "lg") {
+    return { ok: false, error: "Invalid caption font size." };
+  }
+  if (
+    typeof s.verticalPosition !== "number" ||
+    !Number.isFinite(s.verticalPosition) ||
+    s.verticalPosition < MIN_VERTICAL_POSITION ||
+    s.verticalPosition > MAX_VERTICAL_POSITION
+  ) {
+    return {
+      ok: false,
+      error: `Vertical position must be between ${MIN_VERTICAL_POSITION}% and ${MAX_VERTICAL_POSITION}%.`,
+    };
+  }
+  if (
+    s.accent !== undefined &&
+    s.accent !== "violet" &&
+    s.accent !== "mint"
+  ) {
+    return { ok: false, error: "Invalid caption highlight accent." };
+  }
+  if (s.fontFamily !== undefined && !(s.fontFamily in CAPTION_FONTS)) {
+    return { ok: false, error: "Invalid caption font family." };
+  }
+  if (s.textColor !== undefined && !isValidHexColor(s.textColor)) {
+    return { ok: false, error: "Invalid text color hex value." };
+  }
+  if (s.activeWordColor !== undefined && !isValidHexColor(s.activeWordColor)) {
+    return { ok: false, error: "Invalid active word color hex value." };
+  }
+  if (
+    s.casing !== undefined &&
+    s.casing !== "original" &&
+    s.casing !== "uppercase" &&
+    s.casing !== "lowercase"
+  ) {
+    return { ok: false, error: "Invalid caption casing." };
+  }
+  if (
+    s.outlineWidth !== undefined &&
+    (typeof s.outlineWidth !== "number" ||
+      !Number.isFinite(s.outlineWidth) ||
+      s.outlineWidth < 0 ||
+      s.outlineWidth > 6)
+  ) {
+    return { ok: false, error: "Outline width must be between 0 and 6." };
+  }
+  if (s.outlineColor !== undefined && !isValidHexColor(s.outlineColor)) {
+    return { ok: false, error: "Invalid outline color hex value." };
+  }
+  if (
+    s.backgroundEnabled !== undefined &&
+    typeof s.backgroundEnabled !== "boolean"
+  ) {
+    return { ok: false, error: "Invalid background toggle." };
+  }
+  if (s.backgroundColor !== undefined && !isValidHexColor(s.backgroundColor)) {
+    return { ok: false, error: "Invalid background color hex value." };
+  }
+  if (
+    s.backgroundOpacity !== undefined &&
+    (typeof s.backgroundOpacity !== "number" ||
+      !Number.isFinite(s.backgroundOpacity) ||
+      s.backgroundOpacity < 0 ||
+      s.backgroundOpacity > 100)
+  ) {
+    return { ok: false, error: "Background opacity must be between 0 and 100." };
+  }
+  if (
+    s.shadowStrength !== undefined &&
+    s.shadowStrength !== "none" &&
+    s.shadowStrength !== "soft" &&
+    s.shadowStrength !== "strong"
+  ) {
+    return { ok: false, error: "Invalid shadow strength." };
+  }
+
+  return {
+    ok: true,
+    normalizedStyle: normalizeCaptionStyle(s),
   };
 }
 
@@ -203,6 +636,244 @@ export function reconcileCueWords(
   }
 
   return { words: [], timing_mode: "cue" };
+}
+
+function clampMonotonicWords(
+  words: NormalizedCaptionWord[],
+  cueStartMs: number,
+  cueEndMs: number
+): NormalizedCaptionWord[] {
+  let prevEnd = cueStartMs;
+  return words.map((w) => {
+    const start = Math.max(prevEnd, Math.min(cueEndMs, Math.round(w.start_ms)));
+    const end = Math.max(start, Math.min(cueEndMs, Math.round(w.end_ms)));
+    prevEnd = end;
+    return { ...w, start_ms: start, end_ms: end };
+  });
+}
+
+/**
+ * Splits a cue cleanly at playhead `splitMs`, preserving valid word-level timing
+ * whenever words partition cleanly across the split boundary, and falling back
+ * to cue-level timing when alignment is uncertain.
+ */
+export function splitCueAtTimeMs(
+  cues: EditorCue[],
+  cueId: string,
+  splitMs: number
+):
+  | { ok: true; cues: EditorCue[]; firstCueId: string; secondCueId: string }
+  | { ok: false; error: string } {
+  const idx = cues.findIndex((c) => c.id === cueId);
+  if (idx < 0) return { ok: false, error: "Select a cue to split." };
+
+  const cue = cues[idx];
+  const roundedSplit = Math.round(splitMs);
+  if (
+    roundedSplit < cue.start_ms + MIN_CUE_SPAN_MS ||
+    roundedSplit > cue.end_ms - MIN_CUE_SPAN_MS
+  ) {
+    return {
+      ok: false,
+      error: `Move the playhead inside Cue #${idx + 1} (at least 0.20s from both edges) to split.`,
+    };
+  }
+
+  const secondId = `${cue.id}-s${Date.now().toString(36).slice(-4)}`;
+  const isWordSynced = cue.timing_mode === "word" && cue.words.length >= 2;
+
+  let firstCue: EditorCue;
+  let secondCue: EditorCue;
+
+  if (isWordSynced) {
+    // Partition words by midpoint relative to splitMs, ensuring both halves get >= 1 word
+    let splitWordIdx = cue.words.findIndex(
+      (w) => (w.start_ms + w.end_ms) / 2 >= roundedSplit
+    );
+    if (splitWordIdx <= 0) splitWordIdx = 1;
+    if (splitWordIdx >= cue.words.length) splitWordIdx = cue.words.length - 1;
+
+    const leftWordsRaw = cue.words.slice(0, splitWordIdx);
+    const rightWordsRaw = cue.words.slice(splitWordIdx);
+
+    const leftBoundary = Math.max(
+      cue.start_ms + MIN_CUE_SPAN_MS,
+      Math.min(cue.end_ms - MIN_CUE_SPAN_MS, roundedSplit)
+    );
+
+    const leftWords = clampMonotonicWords(leftWordsRaw, cue.start_ms, leftBoundary);
+    const rightWords = clampMonotonicWords(rightWordsRaw, leftBoundary, cue.end_ms);
+
+    firstCue = {
+      id: cue.id,
+      start_ms: cue.start_ms,
+      end_ms: leftBoundary,
+      text: leftWords.map((w) => w.text).join(" "),
+      words: leftWords,
+      timing_mode: "word",
+    };
+    secondCue = {
+      id: secondId,
+      start_ms: leftBoundary,
+      end_ms: cue.end_ms,
+      text: rightWords.map((w) => w.text).join(" "),
+      words: rightWords,
+      timing_mode: "word",
+    };
+  } else {
+    // Cue-level fallback when words aren't available or single-word cue is split
+    const tokens = cue.text.trim().split(/\s+/).filter(Boolean);
+    let leftText = cue.text.trim();
+    let rightText = cue.text.trim();
+    if (tokens.length >= 2) {
+      const ratio =
+        (roundedSplit - cue.start_ms) / Math.max(1, cue.end_ms - cue.start_ms);
+      const cut = Math.max(
+        1,
+        Math.min(tokens.length - 1, Math.round(tokens.length * ratio))
+      );
+      leftText = tokens.slice(0, cut).join(" ");
+      rightText = tokens.slice(cut).join(" ");
+    }
+
+    firstCue = {
+      id: cue.id,
+      start_ms: cue.start_ms,
+      end_ms: roundedSplit,
+      text: leftText,
+      words: [],
+      timing_mode: "cue",
+    };
+    secondCue = {
+      id: secondId,
+      start_ms: roundedSplit,
+      end_ms: cue.end_ms,
+      text: rightText,
+      words: [],
+      timing_mode: "cue",
+    };
+  }
+
+  const nextCues = [
+    ...cues.slice(0, idx),
+    firstCue,
+    secondCue,
+    ...cues.slice(idx + 1),
+  ];
+  return {
+    ok: true,
+    cues: nextCues,
+    firstCueId: firstCue.id,
+    secondCueId: secondCue.id,
+  };
+}
+
+/**
+ * Merges cue at `firstCueIndex` with its immediate successor (`firstCueIndex + 1`).
+ * Preserves per-word timing when both cues are word-synced and monotonic; falls back
+ * to cue-level otherwise.
+ */
+export function mergeAdjacentCues(
+  cues: EditorCue[],
+  firstCueIndex: number
+):
+  | { ok: true; cues: EditorCue[]; mergedCueId: string }
+  | { ok: false; error: string } {
+  if (firstCueIndex < 0 || firstCueIndex >= cues.length - 1) {
+    return { ok: false, error: "Select a cue that has a following cue to merge." };
+  }
+
+  const first = cues[firstCueIndex];
+  const second = cues[firstCueIndex + 1];
+  const combinedText = `${first.text.trim()} ${second.text.trim()}`.trim();
+  if (combinedText.length > 240) {
+    return {
+      ok: false,
+      error: "Merged cue text exceeds the 240-character limit.",
+    };
+  }
+
+  const canKeepWords =
+    first.timing_mode === "word" &&
+    second.timing_mode === "word" &&
+    first.words.length > 0 &&
+    second.words.length > 0;
+
+  let mergedWords: NormalizedCaptionWord[] = [];
+  let timingMode: "word" | "cue" = "cue";
+
+  if (canKeepWords) {
+    mergedWords = clampMonotonicWords(
+      [...first.words, ...second.words],
+      first.start_ms,
+      second.end_ms
+    );
+    timingMode = "word";
+  }
+
+  const mergedCue: EditorCue = {
+    id: first.id,
+    start_ms: first.start_ms,
+    end_ms: second.end_ms,
+    text: combinedText,
+    words: mergedWords,
+    timing_mode: timingMode,
+  };
+
+  const nextCues = [
+    ...cues.slice(0, firstCueIndex),
+    mergedCue,
+    ...cues.slice(firstCueIndex + 2),
+  ];
+  return { ok: true, cues: nextCues, mergedCueId: mergedCue.id };
+}
+
+/**
+ * Edits a single timed word inside a word-synced cue.
+ * - Single non-empty token -> preserves exact word-level timestamps!
+ * - Multi-word replacement or deletion -> updates cue text cleanly and falls back to cue-level timing.
+ */
+export function editSingleWordInCue(
+  cues: EditorCue[],
+  cueId: string,
+  wordId: string,
+  nextWordText: string
+): EditorCue[] {
+  const cleaned = nextWordText.trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+
+  return cues.map((cue) => {
+    if (cue.id !== cueId || cue.timing_mode !== "word") return cue;
+    const wIdx = cue.words.findIndex((w) => w.id === wordId);
+    if (wIdx < 0) return cue;
+
+    if (tokens.length === 1) {
+      const nextWords = cue.words.map((w, idx) =>
+        idx === wIdx ? { ...w, text: tokens[0] } : w
+      );
+      return {
+        ...cue,
+        text: nextWords.map((w) => w.text).join(" "),
+        words: nextWords,
+        timing_mode: "word",
+      };
+    }
+
+    // Multi-word insertion or word deletion: update text and fall back safely to cue-level timing
+    const nextTokens = [
+      ...cue.words.slice(0, wIdx).map((w) => w.text),
+      ...tokens,
+      ...cue.words.slice(wIdx + 1).map((w) => w.text),
+    ];
+    const nextText = nextTokens.join(" ").trim();
+    if (!nextText) return cue;
+    return {
+      ...cue,
+      text: nextText,
+      words: [],
+      timing_mode: "cue",
+    };
+  });
 }
 
 export function hydrateEditorCues(rawCues: unknown): EditorCue[] {
@@ -281,39 +952,9 @@ export function validateCaptionRevisionInput(input: {
   style: unknown;
   durationMs: number | null | undefined;
 }): ValidationSuccess | ValidationFailure {
-  if (!input.style || typeof input.style !== "object") {
-    return { ok: false, error: "Caption style configuration is required." };
-  }
-
-  const s = input.style as Partial<CaptionStyleConfig>;
-  if (
-    s.preset !== "clean" &&
-    s.preset !== "boxed" &&
-    s.preset !== "word-highlight"
-  ) {
-    return { ok: false, error: "Invalid caption preset." };
-  }
-  if (s.fontSize !== "sm" && s.fontSize !== "md" && s.fontSize !== "lg") {
-    return { ok: false, error: "Invalid caption font size." };
-  }
-  if (
-    typeof s.verticalPosition !== "number" ||
-    !Number.isFinite(s.verticalPosition) ||
-    s.verticalPosition < MIN_VERTICAL_POSITION ||
-    s.verticalPosition > MAX_VERTICAL_POSITION
-  ) {
-    return {
-      ok: false,
-      error: `Vertical position must be between ${MIN_VERTICAL_POSITION}% and ${MAX_VERTICAL_POSITION}%.`,
-    };
-  }
-
-  if (
-    s.accent !== undefined &&
-    s.accent !== "violet" &&
-    s.accent !== "mint"
-  ) {
-    return { ok: false, error: "Invalid caption highlight accent." };
+  const styleCheck = validateCaptionStyle(input.style);
+  if (!styleCheck.ok) {
+    return styleCheck;
   }
 
   if (!Array.isArray(input.cues)) {
@@ -457,12 +1098,7 @@ export function validateCaptionRevisionInput(input: {
     ok: true,
     normalizedCues,
     flatWords,
-    normalizedStyle: {
-      preset: s.preset,
-      fontSize: s.fontSize,
-      verticalPosition: Math.round(s.verticalPosition),
-      accent: s.accent === "mint" ? "mint" : "violet",
-    },
+    normalizedStyle: styleCheck.normalizedStyle,
   };
 }
 
