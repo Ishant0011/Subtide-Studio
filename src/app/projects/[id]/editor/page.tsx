@@ -4,6 +4,7 @@ import {
   DEFAULT_CAPTION_STYLE,
   hydrateEditorCues,
   normalizeCaptionStyle,
+  type SavedCaptionPresetRow,
 } from "@/lib/caption-editor";
 import { PRIVATE_PAGE_ROBOTS } from "@/lib/site";
 import {
@@ -33,14 +34,22 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select(
-      "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_width, preview_height, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, width, height, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
-    )
-    .eq("id", projectId)
-    .maybeSingle();
+  const [projectRes, presetsRes] = await Promise.all([
+    supabase
+      .from("projects")
+      .select(
+        "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_width, preview_height, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, width, height, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
+      )
+      .eq("id", projectId)
+      .maybeSingle(),
+    supabase
+      .from("caption_presets")
+      .select("id, user_id, name, style, created_at, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false }),
+  ]);
 
+  const { data: project, error } = projectRes;
   if (error || !project || project.user_id !== user.id) {
     notFound();
   }
@@ -105,6 +114,10 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
       ? project.preview_height
       : primaryAsset?.height) ?? null;
 
+  const initialPresets = Array.isArray(presetsRes.data)
+    ? (presetsRes.data as SavedCaptionPresetRow[])
+    : [];
+
   return (
     <ProjectCaptionEditor
       userEmail={user.email ?? "Signed in"}
@@ -119,6 +132,7 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
       initialRevisionNumber={activeRevision?.revision_number ?? 0}
       initialCues={initialCues}
       initialStyle={initialStyle}
+      initialPresets={initialPresets}
     />
   );
 }

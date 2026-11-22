@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Merge, Play, Scissors, ZoomIn, ZoomOut } from "lucide-react";
 import {
   formatMsClock,
   reconcileCueWords,
@@ -20,10 +20,18 @@ interface EditorTimelineProps {
   currentTimeMs: number;
   activeCueId: string | null;
   selectedCueId: string | null;
+  /** Signed media preview URL for decoding real audio waveform peaks */
+  audioSourceUrl?: string;
   onSeekMs: (ms: number) => void;
   onSelectCue: (cueId: string, startMs: number) => void;
   onPreviewCuesChange: (nextCues: EditorCue[]) => void;
   onCommitCuesChange: (beforeCues: EditorCue[], afterCues: EditorCue[]) => void;
+  onSplitAtPlayhead?: () => void;
+  canSplitAtPlayhead?: boolean;
+  onMergeSelectedWithNext?: () => void;
+  canMergeSelected?: boolean;
+  onPlaySelectedCue?: () => void;
+  canPlaySelectedCue?: boolean;
 }
 
 type DragState =
@@ -61,13 +69,21 @@ export function EditorTimeline({
   currentTimeMs,
   activeCueId,
   selectedCueId,
+  audioSourceUrl,
   onSeekMs,
   onSelectCue,
   onPreviewCuesChange,
   onCommitCuesChange,
+  onSplitAtPlayhead,
+  canSplitAtPlayhead = false,
+  onMergeSelectedWithNext,
+  canMergeSelected = false,
+  onPlaySelectedCue,
+  canPlaySelectedCue = false,
 }: EditorTimelineProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
   const [zoomIndex, setZoomIndex] = useState(0);
@@ -75,16 +91,119 @@ export function EditorTimeline({
     cueId: string;
     edge: "start" | "end";
   } | null>(null);
+  // Real decoded audio peaks only (null when unavailable — never draws fake bars)
+  const [waveformPeaks, setWaveformPeaks] = useState<number[] | null>(null);
 
   const zoom = ZOOM_LEVELS[zoomIndex];
   const safeDurationMs = Math.max(1000, durationMs);
+
+  // Decode real audio peaks from signed preview media using Web Audio API
+  useEffect(() => {
+    if (!audioSourceUrl || typeof window === "undefined") {
+      setWaveformPeaks(null);
+      return;
+    }
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioCtx) {
+      setWaveformPeaks(null);
+      return;
+    }
+
+    const abortController = new AbortController();
+    let audioCtx: AudioContext | null = null;
+    let cancelled = false;
+
+    const decode = async () => {
+      try {
+        const res = await fetch(audioSourceUrl, {
+          signal: abortController.signal,
+        });
+        if (!res.ok) return;
+        const arrayBuffer = await res.arrayBuffer();
+        if (cancelled) return;
+
+        audioCtx = new AudioCtx();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        if (cancelled) return;
+
+        const channelData = audioBuffer.getChannelData(0);
+        const bucketCount = 160;
+        const samplesPerBucket = Math.max(
+          1,
+          Math.floor(channelData.length / bucketCount)
+        );
+        const peaks: number[] = [];
+        let maxPeak = 0.0001;
+
+        for (let i = 0; i < bucketCount; i++) {
+          const start = i * samplesPerBucket;
+          const end = Math.min(channelData.length, start + samplesPerBucket);
+          let peak = 0;
+          const step = Math.max(1, Math.floor((end - start) / 64));
+          for (let j = start; j < end; j += step) {
+            const abs = Math.abs(channelData[j]);
+            if (abs > peak) peak = abs;
+          }
+          peaks.push(peak);
+          if (peak > maxPeak) maxPeak = peak;
+        }
+
+        if (!cancelled) {
+          setWaveformPeaks(peaks.map((p) => p / maxPeak));
+        }
+      } catch {
+        // Real audio unavailable or unsupported codec — gracefully omit waveform
+        if (!cancelled) setWaveformPeaks(null);
+      } finally {
+        if (audioCtx) {
+          await audioCtx.close().catch(() => {});
+        }
+      }
+    };
+
+    void decode();
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [audioSourceUrl]);
+
+  // Render real decoded waveform peaks to canvas
+  useEffect(() => {
+    const canvas = waveformCanvasRef.current;
+    if (!canvas || !waveformPeaks || waveformPeaks.length === 0) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+
+    const barWidth = width / waveformPeaks.length;
+    ctx.fillStyle = "rgba(167, 139, 250, 0.24)";
+    for (let i = 0; i < waveformPeaks.length; i++) {
+      const amp = waveformPeaks[i];
+      const barH = Math.max(2, Math.round(amp * (height - 4)));
+      const y = Math.round((height - barH) / 2);
+      ctx.fillRect(
+        Math.round(i * barWidth),
+        y,
+        Math.max(1, Math.floor(barWidth - 1)),
+        barH
+      );
+    }
+  }, [waveformPeaks, zoom]);
 
   const ticks = useMemo(() => {
     const stepMs = chooseTickStepMs(safeDurationMs, zoom);
     const list: Array<{ ms: number; pct: number; label: string }> = [];
     for (let ms = 0; ms <= safeDurationMs; ms += stepMs) {
       const pct = (ms / safeDurationMs) * 100;
-      // Avoid crowding a tick immediately before the right edge
       if (pct > 86 && pct < 100) continue;
       list.push({
         ms,
@@ -229,7 +348,6 @@ export function EditorTimeline({
         : c
     );
 
-    // Reuse shared timing validation before applying
     const validation = validateCaptionRevisionInput({
       cues: candidateCues,
       style,
@@ -272,11 +390,11 @@ export function EditorTimeline({
   return (
     <div
       data-testid="editor-timeline"
-      className="mt-2 rounded-2xl border border-ink/10 bg-panel p-2.5"
+      className="rounded-2xl border border-ink/10 bg-panel p-3"
     >
-      {/* Timeline Toolbar: Cue readout + Zoom Controls */}
+      {/* Timeline Toolbar: Cue readout + Split / Merge / Play Cue + Zoom */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2 text-xs">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
           <span className="font-semibold text-ink">Timeline</span>
           {selectedCue && (
             <span
@@ -287,9 +405,65 @@ export function EditorTimeline({
               {formatMsClock(selectedCue.end_ms)}
             </span>
           )}
+          {waveformPeaks && (
+            <span
+              data-testid="timeline-waveform-badge"
+              className="hidden rounded-full border border-accent/25 bg-accent-soft/60 px-2 py-0.5 text-[10px] font-medium text-accent-hover sm:inline-block"
+            >
+              Audio waveform
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Correction Actions + Zoom Controls */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {onSplitAtPlayhead && (
+            <button
+              type="button"
+              data-testid="timeline-split-btn"
+              disabled={!canSplitAtPlayhead}
+              onClick={onSplitAtPlayhead}
+              title="Split selected cue at playhead"
+              className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-35"
+            >
+              <Scissors className="h-3 w-3" />
+              <span>Split</span>
+            </button>
+          )}
+
+          {onMergeSelectedWithNext && (
+            <button
+              type="button"
+              data-testid="timeline-merge-btn"
+              disabled={!canMergeSelected}
+              onClick={onMergeSelectedWithNext}
+              title="Merge selected cue with next cue"
+              className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-35"
+            >
+              <Merge className="h-3 w-3" />
+              <span>Merge</span>
+            </button>
+          )}
+
+          {onPlaySelectedCue && (
+            <button
+              type="button"
+              data-testid="timeline-play-cue-btn"
+              disabled={!canPlaySelectedCue}
+              onClick={onPlaySelectedCue}
+              title="Play only the selected cue"
+              className="inline-flex h-7 items-center gap-1 rounded-lg border border-accent/40 bg-accent-soft px-2 text-[11px] font-semibold text-accent-hover transition hover:bg-accent hover:text-page disabled:opacity-35"
+            >
+              <Play className="h-3 w-3 fill-current" />
+              <span className="hidden sm:inline">Play cue</span>
+            </button>
+          )}
+
+          <span
+            aria-hidden="true"
+            className="mx-0.5 hidden h-4 w-px bg-ink/12 sm:inline-block"
+          />
+
           <button
             type="button"
             data-testid="timeline-zoom-out"
@@ -302,7 +476,7 @@ export function EditorTimeline({
           </button>
           <span
             data-testid="timeline-zoom-level"
-            className="min-w-[38px] text-center font-mono text-[11px] font-semibold tabular-nums text-accent-hover"
+            className="min-w-[34px] text-center font-mono text-[11px] font-semibold tabular-nums text-accent-hover"
           >
             {zoom}x
           </span>
@@ -321,7 +495,7 @@ export function EditorTimeline({
         </div>
       </div>
 
-      {/* Scrollable Zoomed Ruler + Cue Blocks + Playhead */}
+      {/* Scrollable Zoomed Ruler + Real Audio Waveform + Cue Blocks + Playhead */}
       <div
         ref={scrollRef}
         className="studio-scroll mt-2.5 overflow-x-auto rounded-xl border border-ink/10 bg-page pb-2 pt-1"
@@ -363,15 +537,26 @@ export function EditorTimeline({
             })}
           </div>
 
-          {/* Caption Cue Blocks Track */}
+          {/* Cue Track with Optional Real Audio Waveform Behind Cues */}
           <div
             data-testid="timeline-track"
             onPointerDown={startScrub}
             onPointerMove={handleScrubMove}
             onPointerUp={endScrub}
             onPointerCancel={endScrub}
-            className="relative mt-2 h-11 cursor-pointer rounded-lg bg-inset/90"
+            className="relative mt-2 h-12 cursor-pointer overflow-hidden rounded-lg bg-inset/90"
           >
+            {waveformPeaks && (
+              <canvas
+                ref={waveformCanvasRef}
+                width={960}
+                height={48}
+                data-testid="timeline-waveform-canvas"
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full"
+              />
+            )}
+
             {cues.map((cue, idx) => {
               const leftPct = (cue.start_ms / safeDurationMs) * 100;
               const widthPct = ((cue.end_ms - cue.start_ms) / safeDurationMs) * 100;
@@ -404,13 +589,13 @@ export function EditorTimeline({
                   }}
                   className={`group absolute bottom-1 top-1 flex items-center overflow-hidden rounded-lg border text-left transition-colors ${
                     isSelected || isDraggingThis
-                      ? "z-20 border-accent bg-accent-soft text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.45)]"
+                      ? "z-20 border-accent bg-accent-soft/90 text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.45)]"
                       : isActive
                         ? "z-10 border-accent/65 bg-accent-soft/75 text-ink"
-                        : "z-10 border-ink/15 bg-elevated text-ink-secondary hover:border-accent/45 hover:text-ink"
+                        : "z-10 border-ink/15 bg-elevated/90 text-ink-secondary hover:border-accent/45 hover:text-ink"
                   }`}
                 >
-                  {/* Left (Start) Draggable Boundary Handle */}
+                  {/* Left (Start) Draggable Handle */}
                   <button
                     type="button"
                     tabIndex={-1}
@@ -433,7 +618,7 @@ export function EditorTimeline({
                     {cue.text}
                   </span>
 
-                  {/* Right (End) Draggable Boundary Handle */}
+                  {/* Right (End) Draggable Handle */}
                   <button
                     type="button"
                     tabIndex={-1}

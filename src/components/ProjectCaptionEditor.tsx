@@ -8,34 +8,44 @@ import {
   ArrowLeft,
   AudioLines,
   Captions,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   Download,
+  Frame,
   Keyboard,
   Loader2,
+  Merge,
   Pause,
+  Pencil,
   Play,
   Redo2,
   RefreshCw,
   RotateCcw,
   RotateCw,
+  Scissors,
   Search,
+  SlidersHorizontal,
   Undo2,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
 import {
+  editSingleWordInCue,
   findActiveEditorCue,
   findActiveEditorWord,
   formatMsClock,
   hydrateEditorCues,
+  mergeAdjacentCues,
   normalizeCaptionStyle,
   reconcileCueWords,
+  splitCueAtTimeMs,
   validateCaptionRevisionInput,
   type CaptionStyleConfig,
   type EditorCue,
+  type SavedCaptionPresetRow,
 } from "@/lib/caption-editor";
 import { AccountMenu } from "@/components/AccountMenu";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
@@ -71,6 +81,7 @@ interface ProjectCaptionEditorProps {
   initialRevisionNumber: number;
   initialCues: EditorCue[];
   initialStyle: CaptionStyleConfig;
+  initialPresets?: SavedCaptionPresetRow[];
 }
 
 const MAX_HISTORY_DEPTH = 50;
@@ -88,6 +99,7 @@ export function ProjectCaptionEditor({
   initialRevisionNumber,
   initialCues,
   initialStyle,
+  initialPresets = [],
 }: ProjectCaptionEditorProps) {
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const playButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -95,6 +107,7 @@ export function ProjectCaptionEditor({
   const shortcutsRef = useRef<HTMLDivElement | null>(null);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const cueCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const playUntilMsRef = useRef<number | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -110,11 +123,15 @@ export function ProjectCaptionEditor({
       : null
   );
   const [hasInitializedSeek, setHasInitializedSeek] = useState(false);
-  const [mobileTab, setMobileTab] = useState<StudioMobileTab>("captions");
+  // Shared inspector tab across desktop inspector & phone tabs
+  const [inspectorTab, setInspectorTab] = useState<StudioMobileTab>("captions");
+  const [showSafeArea, setShowSafeArea] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const [cues, setCues] = useState<EditorCue[]>(initialCues);
   const [style, setStyle] = useState<CaptionStyleConfig>(initialStyle);
+  const [personalPresets, setPersonalPresets] =
+    useState<SavedCaptionPresetRow[]>(initialPresets);
   const [selectedCueId, setSelectedCueId] = useState<string | null>(
     initialCues[0]?.id ?? null
   );
@@ -123,6 +140,14 @@ export function ProjectCaptionEditor({
     initialRevisionId
   );
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  // Inline individual timed word edit state
+  const [editingWord, setEditingWord] = useState<{
+    cueId: string;
+    wordId: string;
+    draft: string;
+  } | null>(null);
 
   // Transcript Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -170,10 +195,7 @@ export function ProjectCaptionEditor({
   }, []);
 
   const recordUndoSnapshot = useCallback(
-    (
-      snapshot: EditorHistorySnapshot,
-      coalesceKey?: string
-    ) => {
+    (snapshot: EditorHistorySnapshot, coalesceKey?: string) => {
       const now = Date.now();
       if (
         coalesceKey &&
@@ -223,11 +245,31 @@ export function ProjectCaptionEditor({
     () => findActiveEditorWord(activeCue, currentTimeMs),
     [activeCue, currentTimeMs]
   );
+  const selectedCueIndex = useMemo(
+    () =>
+      selectedCueId ? cues.findIndex((c) => c.id === selectedCueId) : -1,
+    [cues, selectedCueId]
+  );
+  const selectedCue =
+    selectedCueIndex >= 0 ? cues[selectedCueIndex] : activeCue;
+
   const activePresetShortLabel = useMemo(() => {
     if (style.preset === "word-highlight") return "Highlight";
     if (style.preset === "boxed") return "Boxed";
     return "Clean";
   }, [style.preset]);
+
+  // Split / Merge eligibility checks
+  const splitTargetCue = activeCue ?? selectedCue;
+  const canSplitAtPlayhead = Boolean(
+    splitTargetCue &&
+      currentTimeMs >= splitTargetCue.start_ms + 200 &&
+      currentTimeMs <= splitTargetCue.end_ms - 200
+  );
+  const mergeTargetIndex =
+    selectedCueIndex >= 0 ? selectedCueIndex : activeCueIndex;
+  const canMergeSelected =
+    mergeTargetIndex >= 0 && mergeTargetIndex < cues.length - 1;
 
   const trimmedQuery = searchQuery.trim().toLowerCase();
   const matchingCueIds = useMemo(() => {
@@ -276,14 +318,22 @@ export function ProjectCaptionEditor({
     };
   }, [shortcutsOpen]);
 
-  // 60fps media clock sync while playing (strictly avoids focus or scroll hijacking)
+  // 60fps media clock sync + play-selected-cue auto-pause boundary
   useEffect(() => {
     if (!isPlaying) return;
     let frameId = 0;
     const tick = () => {
       const el = mediaRef.current;
       if (el) {
-        setCurrentTimeMs(Math.round(el.currentTime * 1000));
+        const ms = Math.round(el.currentTime * 1000);
+        setCurrentTimeMs(ms);
+        if (playUntilMsRef.current !== null && ms >= playUntilMsRef.current) {
+          el.pause();
+          el.currentTime = playUntilMsRef.current / 1000;
+          setCurrentTimeMs(playUntilMsRef.current);
+          playUntilMsRef.current = null;
+          return;
+        }
       }
       frameId = window.requestAnimationFrame(tick);
     };
@@ -293,6 +343,7 @@ export function ProjectCaptionEditor({
 
   const seekToMs = useCallback(
     (nextMs: number) => {
+      playUntilMsRef.current = null;
       const clamped = Math.max(0, Math.min(clipDurationMs, Math.round(nextMs)));
       const el = mediaRef.current;
       if (el) {
@@ -321,6 +372,7 @@ export function ProjectCaptionEditor({
   }, []);
 
   const togglePlay = useCallback(async () => {
+    playUntilMsRef.current = null;
     const el = mediaRef.current;
     if (!el) return;
     if (el.paused || el.ended) {
@@ -339,6 +391,23 @@ export function ProjectCaptionEditor({
       el.pause();
     }
   }, [clipDurationMs]);
+
+  const playSelectedCue = useCallback(async () => {
+    const cue = selectedCue;
+    const el = mediaRef.current;
+    if (!cue || !el) return;
+    setSelectedCueId(cue.id);
+    playUntilMsRef.current = cue.end_ms;
+    el.currentTime = cue.start_ms / 1000;
+    setCurrentTimeMs(cue.start_ms);
+    try {
+      await el.play();
+    } catch {
+      el.muted = true;
+      setIsMuted(true);
+      await el.play().catch(() => {});
+    }
+  }, [selectedCue]);
 
   const toggleMute = useCallback(() => {
     const el = mediaRef.current;
@@ -489,6 +558,13 @@ export function ProjectCaptionEditor({
     };
   }, []);
 
+  const flashNotice = useCallback((msg: string) => {
+    setActionNotice(msg);
+    setTimeout(() => {
+      setActionNotice((curr) => (curr === msg ? null : curr));
+    }, 2800);
+  }, []);
+
   const handleUndo = useCallback(() => {
     const stack = undoStackRef.current;
     if (stack.length === 0) return;
@@ -505,6 +581,7 @@ export function ProjectCaptionEditor({
     latestStyleRef.current = previous.style;
     setCues(previous.cues);
     setStyle(previous.style);
+    setEditingWord(null);
     syncHistoryCounts();
     scheduleAutosave();
   }, [scheduleAutosave, syncHistoryCounts]);
@@ -525,27 +602,101 @@ export function ProjectCaptionEditor({
     latestStyleRef.current = next.style;
     setCues(next.cues);
     setStyle(next.style);
+    setEditingWord(null);
     syncHistoryCounts();
     scheduleAutosave();
   }, [scheduleAutosave, syncHistoryCounts]);
 
-  // Keyboard shortcuts (playback, seek, undo/redo, search) safely scoped around active typing
+  const handleSplitAtPlayhead = useCallback(() => {
+    const target = activeCue ?? selectedCue;
+    if (!target) return;
+    const res = splitCueAtTimeMs(latestCuesRef.current, target.id, currentTimeMs);
+    if (!res.ok) {
+      flashNotice(res.error);
+      return;
+    }
+    // Single undoable action
+    recordUndoSnapshot({
+      cues: latestCuesRef.current,
+      style: latestStyleRef.current,
+    });
+    latestCuesRef.current = res.cues;
+    setCues(res.cues);
+    setSelectedCueId(res.secondCueId);
+    setEditingWord(null);
+    scheduleAutosave();
+    flashNotice("Split cue at playhead");
+  }, [
+    activeCue,
+    currentTimeMs,
+    flashNotice,
+    recordUndoSnapshot,
+    scheduleAutosave,
+    selectedCue,
+  ]);
+
+  const handleMergeSelectedWithNext = useCallback(() => {
+    const idx = selectedCueIndex >= 0 ? selectedCueIndex : activeCueIndex;
+    const res = mergeAdjacentCues(latestCuesRef.current, idx);
+    if (!res.ok) {
+      flashNotice(res.error);
+      return;
+    }
+    // Single undoable action
+    recordUndoSnapshot({
+      cues: latestCuesRef.current,
+      style: latestStyleRef.current,
+    });
+    latestCuesRef.current = res.cues;
+    setCues(res.cues);
+    setSelectedCueId(res.mergedCueId);
+    setEditingWord(null);
+    scheduleAutosave();
+    flashNotice("Merged adjacent cues");
+  }, [
+    activeCueIndex,
+    flashNotice,
+    recordUndoSnapshot,
+    scheduleAutosave,
+    selectedCueIndex,
+  ]);
+
+  const commitInlineWordEdit = useCallback(() => {
+    if (!editingWord) return;
+    const { cueId, wordId, draft } = editingWord;
+    const nextCues = editSingleWordInCue(
+      latestCuesRef.current,
+      cueId,
+      wordId,
+      draft
+    );
+    if (nextCues !== latestCuesRef.current) {
+      recordUndoSnapshot({
+        cues: latestCuesRef.current,
+        style: latestStyleRef.current,
+      });
+      latestCuesRef.current = nextCues;
+      setCues(nextCues);
+      scheduleAutosave();
+    }
+    setEditingWord(null);
+  }, [editingWord, recordUndoSnapshot, scheduleAutosave]);
+
+  // Keyboard shortcuts safely scoped around active typing
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isSearchField = target === searchInputRef.current;
       const isMod = event.ctrlKey || event.metaKey;
 
-      // Ctrl/Cmd+F focuses transcript search
       if (isMod && event.key.toLowerCase() === "f") {
         event.preventDefault();
-        setMobileTab("captions");
+        setInspectorTab("captions");
         searchInputRef.current?.focus();
         searchInputRef.current?.select();
         return;
       }
 
-      // Unified Undo / Redo across caption & style edits (leave search input native)
       if (isMod && !isSearchField) {
         const lower = event.key.toLowerCase();
         if (lower === "z" && !event.shiftKey) {
@@ -586,6 +737,9 @@ export function ProjectCaptionEditor({
       } else if (event.code === "ArrowRight") {
         event.preventDefault();
         seekToMs(currentTimeMs + (event.shiftKey ? 5000 : 1000));
+      } else if (event.key.toLowerCase() === "s" && !isMod) {
+        event.preventDefault();
+        handleSplitAtPlayhead();
       } else if (event.key === "?") {
         event.preventDefault();
         setShortcutsOpen((prev) => !prev);
@@ -594,7 +748,14 @@ export function ProjectCaptionEditor({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [currentTimeMs, handleRedo, handleUndo, seekToMs, togglePlay]);
+  }, [
+    currentTimeMs,
+    handleRedo,
+    handleSplitAtPlayhead,
+    handleUndo,
+    seekToMs,
+    togglePlay,
+  ]);
 
   const navigateSearchMatch = useCallback(
     (direction: 1 | -1) => {
@@ -618,7 +779,6 @@ export function ProjectCaptionEditor({
     (cueId: string, startMs: number) => {
       setSelectedCueId(cueId);
       seekToMs(startMs);
-      // Do not hijack scroll if user is actively typing in an input/textarea
       const activeTag = document.activeElement?.tagName;
       if (activeTag !== "TEXTAREA" && activeTag !== "INPUT") {
         scrollCueCardIntoContainer(cueId);
@@ -708,7 +868,11 @@ export function ProjectCaptionEditor({
 
   const updateStyle = (patch: Partial<CaptionStyleConfig>) => {
     const coalesceKey =
-      patch.verticalPosition !== undefined ? "style:vpos" : undefined;
+      patch.verticalPosition !== undefined
+        ? "style:vpos"
+        : patch.backgroundOpacity !== undefined
+          ? "style:bgop"
+          : undefined;
     recordUndoSnapshot(
       { cues: latestCuesRef.current, style: latestStyleRef.current },
       coalesceKey
@@ -755,16 +919,14 @@ export function ProjectCaptionEditor({
       {/* Compact Project Header */}
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
-          {/* Back link */}
           <Link
             href="/projects"
-            className="order-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="order-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Projects</span>
           </Link>
 
-          {/* Project Title & Metadata */}
           <div className="order-3 flex w-full min-w-0 items-center justify-between gap-2 sm:order-2 sm:w-auto sm:flex-1 sm:justify-start">
             <span
               aria-hidden="true"
@@ -786,7 +948,6 @@ export function ProjectCaptionEditor({
             </div>
           </div>
 
-          {/* Undo/Redo + Save Status + Export + AccountMenu */}
           <div className="order-2 flex shrink-0 items-center gap-1.5 sm:order-3 sm:gap-2">
             <div className="hidden items-center gap-1 sm:flex">
               <button
@@ -864,7 +1025,7 @@ export function ProjectCaptionEditor({
               type="button"
               data-testid="open-export-btn"
               onClick={() => setExportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:px-3"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover sm:px-3"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Export</span>
@@ -875,9 +1036,20 @@ export function ProjectCaptionEditor({
         </div>
       </header>
 
-      {/* Main Studio Workspace */}
-      <main className="mx-auto w-full max-w-[1440px] px-3 py-3 sm:px-5 lg:px-6 lg:py-4">
-        {/* Conflict Banner (keeps newer local edits intact!) */}
+      {/* Main Creator Studio Workspace */}
+      <main className="mx-auto w-full max-w-[1440px] px-3 py-3 sm:px-5 lg:px-6 lg:py-3.5">
+        {/* Action Toast */}
+        {actionNotice && (
+          <div
+            role="status"
+            data-testid="editor-action-notice"
+            className="mb-2.5 rounded-xl border border-accent/35 bg-accent-soft px-3.5 py-2 text-xs font-medium text-accent-hover"
+          >
+            {actionNotice}
+          </div>
+        )}
+
+        {/* Conflict Banner */}
         {saveStatus === "conflict" && (
           <div
             role="alert"
@@ -947,22 +1119,37 @@ export function ProjectCaptionEditor({
             </div>
           )}
 
-        {/* 3-Panel Studio Grid: Preview+Transport+Timeline (Anchor) | Transcript | Style Inspector */}
-        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)_272px] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_288px] xl:gap-5">
-          {/* Column 1: Visual Preview Anchor + Transport + Zoomable Interactive Timeline */}
+        {/* Top Row: Centered Video Stage + Right Transcript/Style Inspector */}
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start xl:grid-cols-[minmax(0,1fr)_460px] xl:gap-5">
+          {/* Centered Preview Stage + Transport Bar */}
           <section
-            aria-label="Caption preview, transport, and timeline"
-            className="flex min-w-0 flex-col lg:sticky lg:top-[64px]"
+            aria-label="Caption preview and playback"
+            className="flex min-w-0 flex-col"
           >
-            {/* Stage Well */}
-            <div className="flex justify-center rounded-2xl border border-ink/10 bg-inset p-2.5 sm:p-3">
+            <div className="relative flex items-center justify-center rounded-2xl border border-ink/10 bg-inset px-3 py-3 sm:px-6 sm:py-4">
+              {/* Quick Safe-Area Guide Button on Stage */}
+              <button
+                type="button"
+                onClick={() => setShowSafeArea((v) => !v)}
+                aria-pressed={showSafeArea}
+                title="Toggle Reels/Shorts safe-area guide"
+                className={`absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
+                  showSafeArea
+                    ? "border-accent bg-accent-soft text-accent-hover"
+                    : "border-ink/12 bg-page/80 text-ink-secondary hover:border-accent/45 hover:text-ink"
+                }`}
+              >
+                <Frame className="h-3 w-3" />
+                <span className="hidden sm:inline">Safe area</span>
+              </button>
+
               <div
                 data-testid="editor-preview-stage"
                 data-orientation={isLandscapeVideo ? "landscape" : "portrait"}
                 className={`studio-stage-container relative overflow-hidden rounded-[1.35rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] ${
                   isLandscapeVideo
-                    ? "aspect-video w-full max-w-[520px]"
-                    : "aspect-[9/16] w-[192px] sm:w-[216px] lg:w-[206px] xl:w-[230px]"
+                    ? "aspect-video w-full max-w-[600px]"
+                    : "aspect-[9/16] w-[196px] sm:w-[228px] lg:w-[234px] xl:w-[252px]"
                 }`}
               >
                 {mediaKind === "video" ? (
@@ -1015,7 +1202,21 @@ export function ProjectCaptionEditor({
                   </div>
                 )}
 
-                {/* Top playback status badge */}
+                {/* Safe-area guide overlay (social UI exclusion zones) */}
+                {showSafeArea && (
+                  <div
+                    aria-hidden="true"
+                    data-testid="editor-safe-area-guide"
+                    className="pointer-events-none absolute inset-0 z-10"
+                  >
+                    <div className="absolute inset-x-0 top-0 h-[12%] border-b border-dashed border-accent/65 bg-accent/10" />
+                    {!isLandscapeVideo && (
+                      <div className="absolute bottom-0 right-0 top-[12%] w-[16%] border-l border-dashed border-accent/65 bg-accent/10" />
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 h-[18%] border-t border-dashed border-accent/65 bg-accent/10" />
+                  </div>
+                )}
+
                 <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-ink/15 bg-page/70 px-2 py-0.5 text-[10px] font-medium text-ink/90 backdrop-blur-md">
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
@@ -1025,10 +1226,8 @@ export function ProjectCaptionEditor({
                   <span>{isPlaying ? "Playing" : "Paused"}</span>
                 </div>
 
-                {/* Subtle scrim for caption readability */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
 
-                {/* Live Caption Overlay */}
                 <EditorCaptionOverlay
                   activeCue={activeCue}
                   activeWord={activeWord}
@@ -1036,7 +1235,6 @@ export function ProjectCaptionEditor({
                   currentTimeMs={currentTimeMs}
                 />
 
-                {/* Non-focusable center play affordance */}
                 {!isPlaying && (
                   <div
                     aria-hidden="true"
@@ -1048,8 +1246,8 @@ export function ProjectCaptionEditor({
               </div>
             </div>
 
-            {/* Transport Controls directly under Preview */}
-            <div className="mt-2 rounded-2xl border border-ink/10 bg-panel px-3 py-2.5">
+            {/* Centered Transport Bar directly under Preview */}
+            <div className="mt-2.5 rounded-2xl border border-ink/10 bg-panel px-3 py-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
@@ -1058,7 +1256,7 @@ export function ProjectCaptionEditor({
                     data-testid="play-pause-btn"
                     onClick={() => void togglePlay()}
                     aria-label={isPlaying ? "Pause" : "Play"}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-panel"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover"
                   >
                     {isPlaying ? (
                       <Pause className="h-3.5 w-3.5 fill-current" />
@@ -1096,8 +1294,7 @@ export function ProjectCaptionEditor({
                   </button>
                 </div>
 
-                {/* Time Readout + Active Cue + Discoverable Shortcuts */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <div
                     data-testid="editor-time-readout"
                     className="font-mono text-xs font-semibold tabular-nums text-ink-secondary"
@@ -1112,7 +1309,7 @@ export function ProjectCaptionEditor({
                   {activeWord && (
                     <span
                       data-testid="active-word-readout"
-                      className="hidden max-w-[96px] truncate rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover xl:inline-block"
+                      className="hidden max-w-[100px] truncate rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover sm:inline-block"
                     >
                       {activeWord.text}
                     </span>
@@ -1131,7 +1328,7 @@ export function ProjectCaptionEditor({
                       : `${cues.length} cues`}
                   </span>
 
-                  {/* Discoverable Keyboard Shortcuts Popover */}
+                  {/* Discoverable Shortcuts Popover */}
                   <div ref={shortcutsRef} className="relative">
                     <button
                       type="button"
@@ -1154,7 +1351,7 @@ export function ProjectCaptionEditor({
                         role="dialog"
                         aria-label="Keyboard shortcuts reference"
                         data-testid="shortcuts-popover"
-                        className="absolute bottom-10 right-0 z-40 w-60 rounded-xl border border-ink/15 bg-panel p-3 text-xs shadow-[0_18px_50px_rgba(0,0,0,0.75)]"
+                        className="absolute bottom-10 right-0 z-40 w-64 rounded-xl border border-ink/15 bg-panel p-3 text-xs shadow-[0_18px_50px_rgba(0,0,0,0.75)]"
                       >
                         <p className="font-semibold text-ink">
                           Playback &amp; Edit Shortcuts
@@ -1167,15 +1364,15 @@ export function ProjectCaptionEditor({
                             </dd>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Seek ±1s</dt>
+                            <dt className="text-ink-secondary">Seek ±1s / ±5s</dt>
                             <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              ← / →
+                              ← / → (Shift)
                             </dd>
                           </div>
                           <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Seek ±5s</dt>
+                            <dt className="text-ink-secondary">Split at playhead</dt>
                             <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              Shift + ← / →
+                              S
                             </dd>
                           </div>
                           <div className="flex items-center justify-between gap-2">
@@ -1197,398 +1394,574 @@ export function ProjectCaptionEditor({
                 </div>
               </div>
             </div>
-
-            {/* Interactive Zoomable Timeline directly below Transport */}
-            <EditorTimeline
-              cues={cues}
-              style={style}
-              durationMs={clipDurationMs}
-              currentTimeMs={currentTimeMs}
-              activeCueId={activeCue?.id ?? null}
-              selectedCueId={selectedCueId}
-              onSeekMs={seekToMs}
-              onSelectCue={handleSelectTimelineCue}
-              onPreviewCuesChange={handleTimelinePreviewCues}
-              onCommitCuesChange={handleTimelineCommitCues}
-            />
           </section>
 
-          {/* Mobile Accessible Captions / Style Tab Switcher */}
-          <StudioTabs
-            activeTab={mobileTab}
-            onChange={setMobileTab}
-            cueCount={cues.length}
-            activePresetName={activePresetShortLabel}
-            idPrefix="editor"
-          />
+          {/* Right Side Unified Inspector: Transcript / Style Tabs */}
+          <aside className="flex min-w-0 flex-col">
+            {/* Mobile accessible tabs */}
+            <div className="mb-3 lg:hidden">
+              <StudioTabs
+                activeTab={inspectorTab}
+                onChange={setInspectorTab}
+                cueCount={cues.length}
+                activePresetName={activePresetShortLabel}
+                idPrefix="editor"
+              />
+            </div>
 
-          {/* Column 2: Distinct Transcript Panel with Search + Undo/Redo + Numeric Timing */}
-          <section
-            id="editor-panel-captions"
-            role="tabpanel"
-            aria-labelledby="editor-tab-captions"
-            data-testid="panel-captions"
-            className={`min-w-0 flex-col ${
-              mobileTab === "captions" ? "flex" : "hidden lg:flex"
-            }`}
-          >
-            <div className="flex flex-col rounded-2xl border border-ink/10 bg-panel p-3.5 sm:p-4">
-              {/* Transcript Header */}
-              <div className="flex items-center justify-between gap-2 border-b border-ink/8 pb-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
-                    <Captions className="h-3.5 w-3.5" />
-                  </span>
-                  <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
-                    Transcript
-                  </h2>
-                </div>
+            {/* Desktop Inspector Switcher (Transcript | Style) */}
+            <div
+              role="tablist"
+              aria-label="Inspector sections"
+              className="mb-2.5 hidden grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1 lg:grid"
+            >
+              <button
+                type="button"
+                role="tab"
+                data-testid="inspector-tab-captions"
+                aria-selected={inspectorTab === "captions"}
+                onClick={() => setInspectorTab("captions")}
+                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
+                  inspectorTab === "captions"
+                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
+                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
+                }`}
+              >
+                <Captions className="h-3.5 w-3.5" />
+                <span>Transcript</span>
+                <span className="rounded-full bg-page/60 px-1.5 py-0.5 font-mono text-[10px]">
+                  {cues.length}
+                </span>
+              </button>
 
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {/* Mobile Undo/Redo controls */}
-                  <div className="flex items-center gap-1 sm:hidden">
-                    <button
-                      type="button"
-                      disabled={historyCounts.undo === 0}
-                      onClick={handleUndo}
-                      aria-label="Undo"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
-                    >
-                      <Undo2 className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={historyCounts.redo === 0}
-                      onClick={handleRedo}
-                      aria-label="Redo"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
-                    >
-                      <Redo2 className="h-3.5 w-3.5" />
-                    </button>
+              <button
+                type="button"
+                role="tab"
+                data-testid="inspector-tab-style"
+                aria-selected={inspectorTab === "style"}
+                onClick={() => setInspectorTab("style")}
+                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
+                  inspectorTab === "style"
+                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
+                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
+                }`}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>Style &amp; Presets</span>
+              </button>
+            </div>
+
+            {/* Transcript Panel */}
+            <section
+              id="editor-panel-captions"
+              role="tabpanel"
+              aria-labelledby="editor-tab-captions"
+              data-testid="panel-captions"
+              className={`min-w-0 flex-col ${
+                inspectorTab === "captions" ? "flex" : "hidden"
+              }`}
+            >
+              <div className="flex flex-col rounded-2xl border border-ink/10 bg-panel p-3.5 sm:p-4">
+                <div className="flex items-center justify-between gap-2 border-b border-ink/8 pb-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
+                      <Captions className="h-3.5 w-3.5" />
+                    </span>
+                    <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
+                      Transcript
+                    </h2>
                   </div>
 
-                  <span className="rounded-full border border-ink/10 bg-elevated px-2.5 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
-                    {cues.length} {cues.length === 1 ? "cue" : "cues"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Transcript Search Bar with Prev/Next Match Navigation */}
-              <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-ink/10 bg-page px-2.5 py-1.5 focus-within:border-accent">
-                <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  data-testid="transcript-search-input"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    const nextVal = e.target.value;
-                    setSearchQuery(nextVal);
-                    setActiveMatchIdx(0);
-                    const q = nextVal.trim().toLowerCase();
-                    if (q) {
-                      const first = cues.find((c) =>
-                        c.text.toLowerCase().includes(q)
-                      );
-                      if (first) {
-                        setSelectedCueId(first.id);
-                        scrollCueCardIntoContainer(first.id);
-                      }
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      navigateSearchMatch(e.shiftKey ? -1 : 1);
-                    } else if (e.key === "Escape") {
-                      setSearchQuery("");
-                      setActiveMatchIdx(0);
-                    }
-                  }}
-                  placeholder="Search transcript..."
-                  aria-label="Search transcript"
-                  className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
-                />
-
-                {trimmedQuery && (
                   <div className="flex shrink-0 items-center gap-1">
-                    <span
-                      data-testid="transcript-search-count"
-                      className="font-mono text-[11px] tabular-nums text-ink-secondary"
-                    >
-                      {matchingCueIds.length > 0
-                        ? `${boundedMatchIdx + 1}/${matchingCueIds.length}`
-                        : "0/0"}
-                    </span>
+                    {/* Mobile Undo/Redo */}
+                    <div className="flex items-center gap-1 sm:hidden">
+                      <button
+                        type="button"
+                        disabled={historyCounts.undo === 0}
+                        onClick={handleUndo}
+                        aria-label="Undo"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
+                      >
+                        <Undo2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={historyCounts.redo === 0}
+                        onClick={handleRedo}
+                        aria-label="Redo"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
+                      >
+                        <Redo2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
                     <button
                       type="button"
-                      data-testid="transcript-search-prev"
-                      disabled={matchingCueIds.length === 0}
-                      onClick={() => navigateSearchMatch(-1)}
-                      aria-label="Previous match"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                      disabled={!canSplitAtPlayhead}
+                      onClick={handleSplitAtPlayhead}
+                      title="Split at playhead"
+                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35"
                     >
-                      <ChevronUp className="h-3.5 w-3.5" />
+                      <Scissors className="h-3 w-3" />
+                      <span className="hidden sm:inline">Split</span>
                     </button>
                     <button
                       type="button"
-                      data-testid="transcript-search-next"
-                      disabled={matchingCueIds.length === 0}
-                      onClick={() => navigateSearchMatch(1)}
-                      aria-label="Next match"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                      disabled={!canMergeSelected}
+                      onClick={handleMergeSelectedWithNext}
+                      title="Merge selected cue with next"
+                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35"
                     >
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <Merge className="h-3 w-3" />
+                      <span className="hidden sm:inline">Merge</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
+                  </div>
+                </div>
+
+                {/* Transcript Search Bar */}
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-xl border border-ink/10 bg-page px-2.5 py-1.5 focus-within:border-accent">
+                  <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    data-testid="transcript-search-input"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      const nextVal = e.target.value;
+                      setSearchQuery(nextVal);
+                      setActiveMatchIdx(0);
+                      const q = nextVal.trim().toLowerCase();
+                      if (q) {
+                        const first = cues.find((c) =>
+                          c.text.toLowerCase().includes(q)
+                        );
+                        if (first) {
+                          setSelectedCueId(first.id);
+                          scrollCueCardIntoContainer(first.id);
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        navigateSearchMatch(e.shiftKey ? -1 : 1);
+                      } else if (e.key === "Escape") {
                         setSearchQuery("");
                         setActiveMatchIdx(0);
-                      }}
-                      aria-label="Clear search"
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink-muted hover:text-ink"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                      }
+                    }}
+                    placeholder="Search transcript..."
+                    aria-label="Search transcript"
+                    className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
+                  />
+
+                  {trimmedQuery && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span
+                        data-testid="transcript-search-count"
+                        className="font-mono text-[11px] tabular-nums text-ink-secondary"
+                      >
+                        {matchingCueIds.length > 0
+                          ? `${boundedMatchIdx + 1}/${matchingCueIds.length}`
+                          : "0/0"}
+                      </span>
+                      <button
+                        type="button"
+                        data-testid="transcript-search-prev"
+                        disabled={matchingCueIds.length === 0}
+                        onClick={() => navigateSearchMatch(-1)}
+                        aria-label="Previous match"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="transcript-search-next"
+                        disabled={matchingCueIds.length === 0}
+                        onClick={() => navigateSearchMatch(1)}
+                        aria-label="Next match"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink disabled:opacity-40"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setActiveMatchIdx(0);
+                        }}
+                        aria-label="Clear search"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink-muted hover:text-ink"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {cues.length === 0 ? (
+                  <p className="mt-4 rounded-xl border border-dashed border-ink/12 bg-page px-4 py-8 text-center text-xs text-ink-muted">
+                    No speech cues were detected for this clip.
+                  </p>
+                ) : (
+                  <div
+                    ref={transcriptScrollRef}
+                    className="studio-scroll relative mt-3 space-y-2.5 lg:max-h-[410px] lg:overflow-y-auto lg:pr-1 xl:max-h-[445px]"
+                  >
+                    {cues.map((cue, idx) => {
+                      const isActive = activeCue?.id === cue.id;
+                      const isSelected = selectedCueId === cue.id;
+                      const isSearchMatch =
+                        Boolean(trimmedQuery) && matchingCueIds.includes(cue.id);
+                      const isCurrentMatch = currentMatchedCueId === cue.id;
+                      const hasWordSync =
+                        cue.timing_mode === "word" && cue.words.length > 0;
+
+                      return (
+                        <div
+                          key={cue.id}
+                          ref={(el) => {
+                            cueCardRefs.current[cue.id] = el;
+                          }}
+                          data-testid={`editor-cue-${idx + 1}`}
+                          data-active-cue={isActive ? "true" : "false"}
+                          data-selected-cue={isSelected ? "true" : "false"}
+                          data-search-match={isSearchMatch ? "true" : "false"}
+                          data-search-current={isCurrentMatch ? "true" : "false"}
+                          data-timing-mode={cue.timing_mode}
+                          onClick={() => setSelectedCueId(cue.id)}
+                          className={`relative overflow-hidden rounded-xl border p-3 transition ${
+                            isCurrentMatch
+                              ? "border-accent bg-elevated ring-1 ring-accent/55"
+                              : isActive
+                                ? "border-accent/60 bg-elevated shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
+                                : isSelected
+                                  ? "border-accent/40 bg-elevated/60"
+                                  : isSearchMatch
+                                    ? "border-accent/35 bg-inset"
+                                    : "border-ink/10 bg-inset hover:border-ink/20"
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`absolute bottom-2.5 left-0 top-2.5 w-1 rounded-r-full transition ${
+                              isActive || isCurrentMatch
+                                ? "bg-accent"
+                                : "bg-transparent"
+                            }`}
+                          />
+
+                          {/* Timestamp + Quick Cue Actions */}
+                          <div className="flex flex-wrap items-center justify-between gap-1.5 pl-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCueId(cue.id);
+                                seekToMs(cue.start_ms);
+                              }}
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition ${
+                                isActive
+                                  ? "border-accent/45 bg-accent-soft text-accent-hover"
+                                  : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
+                              }`}
+                            >
+                              <span className="font-semibold">#{idx + 1}</span>
+                              <span aria-hidden="true" className="opacity-50">
+                                ·
+                              </span>
+                              <span>
+                                {formatMsClock(cue.start_ms)} –{" "}
+                                {formatMsClock(cue.end_ms)}
+                              </span>
+                            </button>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                data-testid={`cue-${idx + 1}-play-btn`}
+                                aria-label={`Play cue ${idx + 1}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCueId(cue.id);
+                                  const el = mediaRef.current;
+                                  if (el) {
+                                    playUntilMsRef.current = cue.end_ms;
+                                    el.currentTime = cue.start_ms / 1000;
+                                    setCurrentTimeMs(cue.start_ms);
+                                    void el.play().catch(() => {});
+                                  }
+                                }}
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-page text-ink-secondary transition hover:border-accent/50 hover:text-accent-hover"
+                              >
+                                <Play className="h-3 w-3 fill-current" />
+                              </button>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                                  cue.timing_mode === "word"
+                                    ? "bg-accent-soft text-accent-hover"
+                                    : "bg-track text-ink-secondary"
+                                }`}
+                              >
+                                {cue.timing_mode === "word"
+                                  ? "Word-synced"
+                                  : "Cue-level"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Click-to-Seek + Individual Timed Word Editor */}
+                          {hasWordSync && (
+                            <div
+                              aria-label={`Cue ${idx + 1} word timing`}
+                              className="mt-2 flex flex-wrap items-center gap-1 pl-1"
+                            >
+                              {cue.words.map((word, wIdx) => {
+                                const isWordActive =
+                                  isActive && activeWord?.id === word.id;
+                                const isWordPast =
+                                  isActive && currentTimeMs >= word.end_ms;
+                                const isEditingThisWord =
+                                  editingWord?.cueId === cue.id &&
+                                  editingWord?.wordId === word.id;
+
+                                if (isEditingThisWord) {
+                                  return (
+                                    <span
+                                      key={word.id}
+                                      className="inline-flex items-center gap-1 rounded-md border border-accent bg-page px-1 py-0.5"
+                                    >
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        data-testid="inline-word-input"
+                                        aria-label={`Edit word ${wIdx + 1} in cue ${idx + 1}`}
+                                        value={editingWord.draft}
+                                        onChange={(e) =>
+                                          setEditingWord({
+                                            ...editingWord,
+                                            draft: e.target.value,
+                                          })
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            commitInlineWordEdit();
+                                          } else if (e.key === "Escape") {
+                                            e.preventDefault();
+                                            setEditingWord(null);
+                                          }
+                                        }}
+                                        className="w-24 bg-transparent text-xs font-semibold text-ink focus:outline-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        data-testid="inline-word-save-btn"
+                                        aria-label="Save word edit"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          commitInlineWordEdit();
+                                        }}
+                                        className="inline-flex h-5 w-5 items-center justify-center rounded bg-accent text-page"
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label="Cancel word edit"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingWord(null);
+                                        }}
+                                        className="inline-flex h-5 w-5 items-center justify-center rounded text-ink-muted hover:text-ink"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </span>
+                                  );
+                                }
+
+                                return (
+                                  <span
+                                    key={word.id}
+                                    className="group/word inline-flex items-center"
+                                  >
+                                    <button
+                                      type="button"
+                                      data-testid={`cue-${idx + 1}-word-${wIdx + 1}`}
+                                      data-active-word={
+                                        isWordActive ? "true" : "false"
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedCueId(cue.id);
+                                        seekToMs(word.start_ms);
+                                      }}
+                                      onDoubleClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedCueId(cue.id);
+                                        setEditingWord({
+                                          cueId: cue.id,
+                                          wordId: word.id,
+                                          draft: word.text,
+                                        });
+                                      }}
+                                      title={`Seek to ${formatMsClock(word.start_ms)} (double-click to edit word)`}
+                                      className={`rounded-md px-1.5 py-0.5 text-xs leading-snug transition ${
+                                        isWordActive
+                                          ? "bg-accent font-semibold text-page shadow-[0_0_12px_rgba(167,139,250,0.4)]"
+                                          : isWordPast
+                                            ? "bg-track/70 text-ink hover:bg-track"
+                                            : isActive
+                                              ? "bg-page/60 text-ink-secondary hover:text-ink"
+                                              : "text-ink-secondary/85 hover:bg-elevated hover:text-ink"
+                                      }`}
+                                    >
+                                      {word.text}
+                                    </button>
+                                    {isWordActive && (
+                                      <button
+                                        type="button"
+                                        data-testid={`edit-active-word-btn-${idx + 1}`}
+                                        aria-label={`Edit timed word ${word.text}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingWord({
+                                            cueId: cue.id,
+                                            wordId: word.id,
+                                            draft: word.text,
+                                          });
+                                        }}
+                                        className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded bg-accent-soft text-accent-hover hover:bg-accent hover:text-page"
+                                      >
+                                        <Pencil className="h-2.5 w-2.5" />
+                                      </button>
+                                    )}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Editable Caption Text */}
+                          <div className="mt-2 pl-1">
+                            <textarea
+                              rows={2}
+                              aria-label={`Cue ${idx + 1} text`}
+                              value={cue.text}
+                              onFocus={() => setSelectedCueId(cue.id)}
+                              onChange={(e) =>
+                                updateCueText(cue.id, e.target.value)
+                              }
+                              className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-1.5 text-xs leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+                            />
+                          </div>
+
+                          {/* Numeric Start / End Timing Controls */}
+                          <div className="mt-2 grid grid-cols-2 gap-2 pl-1">
+                            <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
+                              <span className="shrink-0 font-medium">
+                                Start (s)
+                              </span>
+                              <input
+                                type="number"
+                                step="0.05"
+                                min="0"
+                                max={(clipDurationMs / 1000).toFixed(2)}
+                                aria-label={`Cue ${idx + 1} start seconds`}
+                                value={(cue.start_ms / 1000).toFixed(2)}
+                                onFocus={() => setSelectedCueId(cue.id)}
+                                onChange={(e) =>
+                                  updateCueTiming(
+                                    cue.id,
+                                    "start_ms",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                              />
+                            </label>
+
+                            <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
+                              <span className="shrink-0 font-medium">
+                                End (s)
+                              </span>
+                              <input
+                                type="number"
+                                step="0.05"
+                                min="0"
+                                max={(clipDurationMs / 1000).toFixed(2)}
+                                aria-label={`Cue ${idx + 1} end seconds`}
+                                value={(cue.end_ms / 1000).toFixed(2)}
+                                onFocus={() => setSelectedCueId(cue.id)}
+                                onChange={(e) =>
+                                  updateCueTiming(
+                                    cue.id,
+                                    "end_ms",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+            </section>
 
-              {cues.length === 0 ? (
-                <p className="mt-4 rounded-xl border border-dashed border-ink/12 bg-page px-4 py-8 text-center text-xs text-ink-muted">
-                  No speech cues were detected for this clip.
-                </p>
-              ) : (
-                <div
-                  ref={transcriptScrollRef}
-                  className="studio-scroll relative mt-3 space-y-3 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-1"
-                >
-                  {cues.map((cue, idx) => {
-                    const isActive = activeCue?.id === cue.id;
-                    const isSelected = selectedCueId === cue.id;
-                    const isSearchMatch =
-                      Boolean(trimmedQuery) && matchingCueIds.includes(cue.id);
-                    const isCurrentMatch = currentMatchedCueId === cue.id;
-                    const hasWordSync =
-                      cue.timing_mode === "word" && cue.words.length > 0;
-
-                    return (
-                      <div
-                        key={cue.id}
-                        ref={(el) => {
-                          cueCardRefs.current[cue.id] = el;
-                        }}
-                        data-testid={`editor-cue-${idx + 1}`}
-                        data-active-cue={isActive ? "true" : "false"}
-                        data-selected-cue={isSelected ? "true" : "false"}
-                        data-search-match={isSearchMatch ? "true" : "false"}
-                        data-search-current={isCurrentMatch ? "true" : "false"}
-                        data-timing-mode={cue.timing_mode}
-                        onClick={() => setSelectedCueId(cue.id)}
-                        className={`relative overflow-hidden rounded-xl border p-3 transition ${
-                          isCurrentMatch
-                            ? "border-accent bg-elevated ring-1 ring-accent/55"
-                            : isActive
-                              ? "border-accent/60 bg-elevated shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
-                              : isSelected
-                                ? "border-accent/40 bg-elevated/60"
-                                : isSearchMatch
-                                  ? "border-accent/35 bg-inset"
-                                  : "border-ink/10 bg-inset hover:border-ink/20"
-                        }`}
-                      >
-                        {/* Active left accent bar */}
-                        <span
-                          aria-hidden="true"
-                          className={`absolute bottom-2.5 left-0 top-2.5 w-1 rounded-r-full transition ${
-                            isActive || isCurrentMatch
-                              ? "bg-accent"
-                              : "bg-transparent"
-                          }`}
-                        />
-
-                        {/* Scannable Timestamp & Status Row */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pl-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedCueId(cue.id);
-                              seekToMs(cue.start_ms);
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                              isActive
-                                ? "border-accent/45 bg-accent-soft text-accent-hover"
-                                : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
-                            }`}
-                          >
-                            <span className="font-semibold">#{idx + 1}</span>
-                            <span aria-hidden="true" className="opacity-50">
-                              ·
-                            </span>
-                            <span>
-                              {formatMsClock(cue.start_ms)} –{" "}
-                              {formatMsClock(cue.end_ms)}
-                            </span>
-                          </button>
-
-                          <div className="flex items-center gap-1.5">
-                            {isCurrentMatch && (
-                              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-page">
-                                Match
-                              </span>
-                            )}
-                            {isActive && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-hover">
-                                <span
-                                  className={`h-1.5 w-1.5 rounded-full bg-accent ${
-                                    isPlaying ? "animate-pulse" : ""
-                                  }`}
-                                />
-                                Active
-                              </span>
-                            )}
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                                cue.timing_mode === "word"
-                                  ? "bg-accent-soft text-accent-hover"
-                                  : "bg-track text-ink-secondary"
-                              }`}
-                            >
-                              {cue.timing_mode === "word"
-                                ? "Word-synced"
-                                : "Cue-level"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Scannable Click-to-Seek Word Strip */}
-                        {hasWordSync && (
-                          <div
-                            aria-label={`Cue ${idx + 1} word timing`}
-                            className="mt-2 flex flex-wrap items-center gap-1 pl-1"
-                          >
-                            {cue.words.map((word) => {
-                              const isWordActive =
-                                isActive && activeWord?.id === word.id;
-                              const isWordPast =
-                                isActive && currentTimeMs >= word.end_ms;
-                              return (
-                                <button
-                                  key={word.id}
-                                  type="button"
-                                  data-active-word={
-                                    isWordActive ? "true" : "false"
-                                  }
-                                  onClick={() => {
-                                    setSelectedCueId(cue.id);
-                                    seekToMs(word.start_ms);
-                                  }}
-                                  title={`Seek to ${formatMsClock(word.start_ms)}`}
-                                  className={`rounded-md px-1.5 py-0.5 text-xs leading-snug transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                                    isWordActive
-                                      ? "bg-accent font-semibold text-page shadow-[0_0_12px_rgba(167,139,250,0.4)]"
-                                      : isWordPast
-                                        ? "bg-track/70 text-ink hover:bg-track"
-                                        : isActive
-                                          ? "bg-page/60 text-ink-secondary hover:text-ink"
-                                          : "text-ink-secondary/85 hover:bg-elevated hover:text-ink"
-                                  }`}
-                                >
-                                  {word.text}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Editable Caption Text */}
-                        <div className="mt-2 pl-1">
-                          <textarea
-                            rows={2}
-                            aria-label={`Cue ${idx + 1} text`}
-                            value={cue.text}
-                            onFocus={() => setSelectedCueId(cue.id)}
-                            onChange={(e) =>
-                              updateCueText(cue.id, e.target.value)
-                            }
-                            className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-2 text-sm leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
-                          />
-                        </div>
-
-                        {/* Retained Numeric Start / End Timing Controls (precise & keyboard accessible) */}
-                        <div className="mt-2 grid grid-cols-2 gap-2 pl-1">
-                          <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
-                            <span className="shrink-0 font-medium">
-                              Start (s)
-                            </span>
-                            <input
-                              type="number"
-                              step="0.05"
-                              min="0"
-                              max={(clipDurationMs / 1000).toFixed(2)}
-                              aria-label={`Cue ${idx + 1} start seconds`}
-                              value={(cue.start_ms / 1000).toFixed(2)}
-                              onFocus={() => setSelectedCueId(cue.id)}
-                              onChange={(e) =>
-                                updateCueTiming(
-                                  cue.id,
-                                  "start_ms",
-                                  e.target.value
-                                )
-                              }
-                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
-                            />
-                          </label>
-
-                          <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
-                            <span className="shrink-0 font-medium">
-                              End (s)
-                            </span>
-                            <input
-                              type="number"
-                              step="0.05"
-                              min="0"
-                              max={(clipDurationMs / 1000).toFixed(2)}
-                              aria-label={`Cue ${idx + 1} end seconds`}
-                              value={(cue.end_ms / 1000).toFixed(2)}
-                              onFocus={() => setSelectedCueId(cue.id)}
-                              onChange={(e) =>
-                                updateCueTiming(
-                                  cue.id,
-                                  "end_ms",
-                                  e.target.value
-                                )
-                              }
-                              className="w-20 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Column 3: Distinct Style Inspector Panel */}
-          <aside
-            id="editor-panel-style"
-            role="tabpanel"
-            aria-labelledby="editor-tab-style"
-            data-testid="panel-style"
-            className={`min-w-0 flex-col lg:sticky lg:top-[64px] ${
-              mobileTab === "style" ? "flex" : "hidden lg:flex"
-            }`}
-          >
-            <StudioStylePanel
-              style={style}
-              onUpdateStyle={updateStyle}
-              subtitle="Autosaves"
-            />
+            {/* Style & Saved Presets Panel */}
+            <section
+              id="editor-panel-style"
+              role="tabpanel"
+              aria-labelledby="editor-tab-style"
+              data-testid="panel-style"
+              className={`studio-scroll min-w-0 flex-col lg:max-h-[540px] lg:overflow-y-auto lg:pr-1 ${
+                inspectorTab === "style" ? "flex" : "hidden"
+              }`}
+            >
+              <StudioStylePanel
+                style={style}
+                onUpdateStyle={updateStyle}
+                subtitle="Autosaves"
+                showSafeArea={showSafeArea}
+                onToggleSafeArea={setShowSafeArea}
+                enablePersonalPresets
+                personalPresets={personalPresets}
+                onPersonalPresetsChange={setPersonalPresets}
+              />
+            </section>
           </aside>
         </div>
+
+        {/* Full-Width Interactive Timeline Bar Below */}
+        <section
+          aria-label="Full-width caption timeline"
+          className="mt-3.5 w-full"
+        >
+          <EditorTimeline
+            cues={cues}
+            style={style}
+            durationMs={clipDurationMs}
+            currentTimeMs={currentTimeMs}
+            activeCueId={activeCue?.id ?? null}
+            selectedCueId={selectedCueId}
+            audioSourceUrl={previewUrl}
+            onSeekMs={seekToMs}
+            onSelectCue={handleSelectTimelineCue}
+            onPreviewCuesChange={handleTimelinePreviewCues}
+            onCommitCuesChange={handleTimelineCommitCues}
+            onSplitAtPlayhead={handleSplitAtPlayhead}
+            canSplitAtPlayhead={canSplitAtPlayhead}
+            onMergeSelectedWithNext={handleMergeSelectedWithNext}
+            canMergeSelected={canMergeSelected}
+            onPlaySelectedCue={() => void playSelectedCue()}
+            canPlaySelectedCue={Boolean(selectedCue)}
+          />
+        </section>
       </main>
 
       <ProjectExportModal
