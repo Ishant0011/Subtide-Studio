@@ -9,9 +9,14 @@ import {
   generatePreview,
   probeMedia,
 } from "./media";
+import {
+  RenderError,
+  renderExportArtifact,
+  type CaptionStyleConfig,
+} from "./render";
 import { transcribeAudio } from "./transcribe";
 
-interface ClaimedJob {
+interface ClaimedIngestJob {
   jobId: string;
   projectId: string;
   mediaAssetId: string;
@@ -26,6 +31,29 @@ interface ClaimedJob {
   verifiedSizeBytes: number;
 }
 
+interface ClaimedExportJob {
+  jobId: string;
+  projectId: string;
+  revisionId: string;
+  revisionNumber: number;
+  userId: string;
+  format: "mp4" | "mov_alpha";
+  attemptCount: number;
+  maxAttempts: number;
+  attemptToken: string;
+  bucketId: string;
+  projectTitle: string;
+  mediaKind: "video" | "audio";
+  durationMs: number | null;
+  previewObjectKey: string | null;
+  previewWidth: number | null;
+  previewHeight: number | null;
+  sourceObjectKey: string | null;
+  sourceRotationDeg: number;
+  style: Partial<CaptionStyleConfig> | null;
+  cues: unknown;
+}
+
 function log(level: "info" | "warn" | "error", msg: string, meta?: Record<string, unknown>) {
   const entry = {
     ts: new Date().toISOString(),
@@ -36,10 +64,27 @@ function log(level: "info" | "warn" | "error", msg: string, meta?: Record<string
   console.log(JSON.stringify(entry));
 }
 
-async function processJob(
+function buildExportFilename(
+  projectTitle: string,
+  revisionNumber: number,
+  format: "mp4" | "mov_alpha"
+): string {
+  const slug =
+    projectTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "subtide-export";
+
+  return format === "mp4"
+    ? `${slug}-rev${revisionNumber}.mp4`
+    : `${slug}-rev${revisionNumber}-alpha.mov`;
+}
+
+async function processIngestJob(
   supabase: SupabaseClient,
   config: WorkerConfig,
-  job: ClaimedJob
+  job: ClaimedIngestJob
 ): Promise<void> {
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), `subtide-job-${job.jobId}-`));
   const abortController = new AbortController();
@@ -63,7 +108,7 @@ async function processJob(
     if (error || data !== true) {
       leaseLost = true;
       abortController.abort();
-      log("warn", "Lease lost or attempt superseded; aborting job", {
+      log("warn", "Lease lost or attempt superseded; aborting ingest job", {
         jobId: job.jobId,
         attemptToken: job.attemptToken,
       });
@@ -86,7 +131,6 @@ async function processJob(
       originalFilename: job.originalFilename,
     });
 
-    // 1. Download source bytes from private storage bucket
     const { data: blob, error: downloadError } = await supabase.storage
       .from(job.bucketId)
       .download(job.objectKey);
@@ -103,7 +147,6 @@ async function processJob(
     const inputPath = path.join(workDir, `source${ext}`);
     fs.writeFileSync(inputPath, Buffer.from(await blob.arrayBuffer()));
 
-    // 2. Probe actual media bytes
     const probe = await probeMedia(
       inputPath,
       config.ffprobePath,
@@ -112,13 +155,11 @@ async function processJob(
 
     if (leaseLost) return;
 
-    // Optional test hook for simulating a crashed worker mid-job
     if (process.env.WORKER_CRASH_AFTER_STAGE === "probing") {
       log("warn", "Simulating worker crash after probing stage", { jobId: job.jobId });
       process.exit(2);
     }
 
-    // 3. Transcode browser preview on zero-based clock (with upright rotation)
     const okTranscoding = await renewLease(
       "transcoding",
       probe.mediaKind === "video"
@@ -158,7 +199,6 @@ async function processJob(
 
     if (leaseLost) return;
 
-    // 4. Extract zero-based transcription audio accounting for A/V start offsets
     const okTranscribing = await renewLease(
       "transcribing",
       "Transcribing audio to word-level captions"
@@ -185,7 +225,6 @@ async function processJob(
 
     if (leaseLost) return;
 
-    // 5. Publish metadata, preview key, and first caption revision atomically (attempt-token guarded)
     const { data: publishData, error: publishError } = await supabase.rpc(
       "publish_ingest_result",
       {
@@ -266,6 +305,210 @@ async function processJob(
   }
 }
 
+async function processExportJob(
+  supabase: SupabaseClient,
+  config: WorkerConfig,
+  job: ClaimedExportJob
+): Promise<void> {
+  const workDir = fs.mkdtempSync(path.join(os.tmpdir(), `subtide-export-${job.jobId}-`));
+  const abortController = new AbortController();
+  const exportLeaseSeconds = Math.max(config.leaseSeconds, 90);
+  let currentMessage =
+    job.format === "mp4"
+      ? "Rendering burned-in MP4"
+      : "Rendering transparent ProRes 4444 MOV";
+  let leaseLost = false;
+
+  const renewLease = async (message: string): Promise<boolean> => {
+    currentMessage = message;
+    const { data, error } = await supabase.rpc("heartbeat_export_job", {
+      p_job_id: job.jobId,
+      p_attempt_token: job.attemptToken,
+      p_stage_message: message,
+      p_lease_seconds: exportLeaseSeconds,
+    });
+    if (error || data !== true) {
+      leaseLost = true;
+      abortController.abort();
+      log("warn", "Export lease lost or attempt superseded; aborting render", {
+        jobId: job.jobId,
+        attemptToken: job.attemptToken,
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const heartbeatIntervalMs = Math.max(5_000, Math.floor((exportLeaseSeconds * 1000) / 3));
+  const heartbeatTimer = setInterval(() => {
+    void renewLease(currentMessage);
+  }, heartbeatIntervalMs);
+
+  try {
+    log("info", "Claimed export job", {
+      jobId: job.jobId,
+      projectId: job.projectId,
+      revisionId: job.revisionId,
+      revisionNumber: job.revisionNumber,
+      format: job.format,
+      mediaKind: job.mediaKind,
+      attemptCount: job.attemptCount,
+      maxAttempts: job.maxAttempts,
+    });
+
+    // Prefer normalized upright zero-based preview media; fall back to original upload key
+    const mediaKey = job.previewObjectKey || job.sourceObjectKey;
+    const usedPreviewSource = Boolean(job.previewObjectKey);
+    if (!mediaKey) {
+      throw new RenderError(
+        "corrupt_media",
+        "Project media asset could not be located for export rendering.",
+        false
+      );
+    }
+
+    const { data: blob, error: downloadError } = await supabase.storage
+      .from(job.bucketId)
+      .download(mediaKey);
+
+    if (downloadError || !blob) {
+      throw new RenderError(
+        "storage_error",
+        `Failed to download media for export: ${downloadError?.message || "missing blob"}`,
+        true
+      );
+    }
+
+    const ext = path.extname(mediaKey) || ".bin";
+    const sourcePath = path.join(workDir, `source${ext}`);
+    fs.writeFileSync(sourcePath, Buffer.from(await blob.arrayBuffer()));
+
+    if (leaseLost) return;
+
+    const maxOutputBytes =
+      job.format === "mp4" ? config.maxMp4ExportBytes : config.maxMovExportBytes;
+
+    const rendered = await renderExportArtifact({
+      format: job.format,
+      mediaKind: job.mediaKind,
+      sourceMediaPath: sourcePath,
+      usedPreviewSource,
+      sourceRotationDeg: job.sourceRotationDeg || 0,
+      durationMs: job.durationMs ?? 15_000,
+      style: job.style,
+      cues: job.cues,
+      workDir,
+      ffmpegPath: config.ffmpegPath,
+      ffprobePath: config.ffprobePath,
+      maxRuntimeMs: config.maxRenderRuntimeMs,
+      maxOutputBytes,
+      renderThreads: config.renderThreads,
+      fontName: config.renderFontName,
+      fontsDir: config.renderFontsDir,
+      signal: abortController.signal,
+    });
+
+    if (leaseLost) return;
+
+    const okUpload = await renewLease("Uploading completed export");
+    if (!okUpload) return;
+
+    // Upload only the complete, verified artifact under strict owner-only prefix
+    const outputObjectKey = `${job.userId}/${job.projectId}/exports/${job.jobId}.${rendered.extension}`;
+    const outputBuffer = fs.readFileSync(rendered.outputPath);
+    const { error: uploadError } = await supabase.storage
+      .from(job.bucketId)
+      .upload(outputObjectKey, outputBuffer, {
+        contentType: rendered.mimeType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new RenderError(
+        "storage_error",
+        `Failed to upload rendered export: ${uploadError.message}`,
+        true
+      );
+    }
+
+    if (leaseLost) return;
+
+    const outputFilename = buildExportFilename(
+      job.projectTitle,
+      job.revisionNumber,
+      job.format
+    );
+
+    const { data: publishData, error: publishError } = await supabase.rpc(
+      "publish_export_result",
+      {
+        p_job_id: job.jobId,
+        p_attempt_token: job.attemptToken,
+        p_output_object_key: outputObjectKey,
+        p_output_mime_type: rendered.mimeType,
+        p_output_filename: outputFilename,
+        p_output_size_bytes: rendered.sizeBytes,
+        p_output_width: rendered.width,
+        p_output_height: rendered.height,
+        p_output_duration_ms: rendered.durationMs,
+      }
+    );
+
+    if (publishError) {
+      throw new RenderError(
+        "internal_error",
+        `Failed to publish export result: ${publishError.message}`,
+        true
+      );
+    }
+
+    log("info", "Completed export job", {
+      jobId: job.jobId,
+      projectId: job.projectId,
+      revisionNumber: job.revisionNumber,
+      format: job.format,
+      width: rendered.width,
+      height: rendered.height,
+      sizeBytes: rendered.sizeBytes,
+      publishData,
+    });
+  } catch (err) {
+    if (leaseLost) return;
+
+    const renderErr =
+      err instanceof RenderError
+        ? err
+        : new RenderError(
+            "render_failed",
+            err instanceof Error ? err.message : String(err),
+            true
+          );
+
+    const backoffSeconds = Math.min(60, 2 ** job.attemptCount * 2);
+
+    const { data: failData } = await supabase.rpc("fail_export_job", {
+      p_job_id: job.jobId,
+      p_attempt_token: job.attemptToken,
+      p_error_code: renderErr.code,
+      p_error_message: renderErr.message.slice(0, 500),
+      p_retryable: renderErr.retryable,
+      p_backoff_seconds: backoffSeconds,
+    });
+
+    log("warn", "Export job failed", {
+      jobId: job.jobId,
+      format: job.format,
+      code: renderErr.code,
+      retryable: renderErr.retryable,
+      message: renderErr.message,
+      failData,
+    });
+  } finally {
+    clearInterval(heartbeatTimer);
+    fs.rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   const config = loadWorkerConfig();
   const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
@@ -285,36 +528,62 @@ async function main() {
     adapter: config.transcriptionAdapter,
     hasDeepgramKey: Boolean(config.deepgramApiKey),
     leaseSeconds: config.leaseSeconds,
+    renderThreads: config.renderThreads,
+    renderFontName: config.renderFontName,
     once: config.once,
   });
 
   while (!stopping) {
-    const { data, error } = await supabase.rpc("claim_next_ingest_job", {
-      p_worker_id: config.workerId,
-      p_lease_seconds: config.leaseSeconds,
-    });
+    // 1. Check for runnable ingest jobs first
+    const { data: ingestData, error: ingestError } = await supabase.rpc(
+      "claim_next_ingest_job",
+      {
+        p_worker_id: config.workerId,
+        p_lease_seconds: config.leaseSeconds,
+      }
+    );
 
-    if (error) {
-      log("error", "Error claiming next ingest job", { error: error.message });
+    if (ingestError) {
+      log("error", "Error claiming next ingest job", { error: ingestError.message });
       if (config.once) process.exit(1);
       await new Promise((r) => setTimeout(r, config.pollIntervalMs));
       continue;
     }
 
-    if (!data) {
-      if (config.once) {
-        log("info", "No runnable jobs found (--once exiting)");
-        break;
+    if (ingestData) {
+      await processIngestJob(supabase, config, ingestData as ClaimedIngestJob);
+      if (config.once) break;
+      continue;
+    }
+
+    // 2. Check for runnable video export jobs (mp4 / mov_alpha)
+    const { data: exportData, error: exportError } = await supabase.rpc(
+      "claim_next_export_job",
+      {
+        p_worker_id: config.workerId,
+        p_lease_seconds: Math.max(config.leaseSeconds, 90),
       }
+    );
+
+    if (exportError) {
+      log("error", "Error claiming next export job", { error: exportError.message });
+      if (config.once) process.exit(1);
       await new Promise((r) => setTimeout(r, config.pollIntervalMs));
       continue;
     }
 
-    await processJob(supabase, config, data as ClaimedJob);
+    if (exportData) {
+      await processExportJob(supabase, config, exportData as ClaimedExportJob);
+      if (config.once) break;
+      continue;
+    }
 
     if (config.once) {
+      log("info", "No runnable ingest or export jobs found (--once exiting)");
       break;
     }
+
+    await new Promise((r) => setTimeout(r, config.pollIntervalMs));
   }
 }
 

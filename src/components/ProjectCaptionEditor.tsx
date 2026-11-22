@@ -9,6 +9,7 @@ import {
   AudioLines,
   Captions,
   CheckCircle2,
+  Download,
   Loader2,
   Pause,
   Play,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/caption-editor";
 import { AccountMenu } from "@/components/AccountMenu";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
+import { ProjectExportModal } from "@/components/ProjectExportModal";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
 
@@ -85,6 +87,10 @@ export function ProjectCaptionEditor({
   const [cues, setCues] = useState<EditorCue[]>(initialCues);
   const [style, setStyle] = useState<CaptionStyleConfig>(initialStyle);
   const [revisionNumber, setRevisionNumber] = useState(initialRevisionNumber);
+  const [savedRevisionId, setSavedRevisionId] = useState<string | null>(
+    initialRevisionId
+  );
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Concurrency & autosave refs
   const baseRevisionIdRef = useRef<string | null>(initialRevisionId);
@@ -312,6 +318,7 @@ export function ProjectCaptionEditor({
       baseRevisionIdRef.current = savedRev.id;
       savedVersionRef.current = snapshotVersion;
       didSucceed = true;
+      setSavedRevisionId(savedRev.id);
       setRevisionNumber(savedRev.revision_number);
       setConflictRevision(null);
 
@@ -424,6 +431,7 @@ export function ProjectCaptionEditor({
     const nextCues = hydrateEditorCues(conflictRevision.cues);
     const nextStyle = normalizeCaptionStyle(conflictRevision.style);
     baseRevisionIdRef.current = conflictRevision.id;
+    setSavedRevisionId(conflictRevision.id);
     setRevisionNumber(conflictRevision.revision_number);
     setCues(nextCues);
     setStyle(nextStyle);
@@ -526,6 +534,16 @@ export function ProjectCaptionEditor({
                 <span>Retry</span>
               </button>
             )}
+
+            <button
+              type="button"
+              data-testid="open-export-btn"
+              onClick={() => setExportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#49E6B3] px-2.5 py-1.5 text-xs font-semibold text-[#070B10] transition hover:bg-[#2FD49F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#49E6B3] sm:px-3"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export</span>
+            </button>
 
             <AccountMenu userEmail={userEmail} />
           </div>
@@ -1081,6 +1099,18 @@ export function ProjectCaptionEditor({
           </aside>
         </div>
       </main>
+
+      <ProjectExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        projectId={projectId}
+        projectTitle={projectTitle}
+        mediaKind={mediaKind}
+        savedRevisionId={savedRevisionId}
+        savedRevisionNumber={revisionNumber}
+        hasUnsavedChanges={saveStatus !== "saved"}
+        saveStatus={saveStatus}
+      />
     </div>
   );
 }

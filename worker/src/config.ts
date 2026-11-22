@@ -13,7 +13,13 @@ export interface WorkerConfig {
   leaseSeconds: number;
   pollIntervalMs: number;
   maxFfmpegRuntimeMs: number;
+  maxRenderRuntimeMs: number;
   maxPreviewBytes: number;
+  maxMp4ExportBytes: number;
+  maxMovExportBytes: number;
+  renderThreads: number;
+  renderFontName: string;
+  renderFontsDir: string | null;
   ffmpegPath: string;
   ffprobePath: string;
   transcriptionAdapter: TranscriptionAdapterMode;
@@ -86,11 +92,33 @@ export function loadWorkerConfig(argv: string[] = process.argv.slice(2)): Worker
     10_000,
     Number.parseInt(process.env.WORKER_MAX_FFMPEG_RUNTIME_MS || "120000", 10) || 120_000
   );
+  const maxRenderRuntimeMs = Math.max(
+    20_000,
+    Number.parseInt(process.env.WORKER_MAX_RENDER_RUNTIME_MS || "240000", 10) || 240_000
+  );
   const maxPreviewBytes = Math.max(
     5 * 1024 * 1024,
     Number.parseInt(process.env.WORKER_MAX_PREVIEW_BYTES || String(60 * 1024 * 1024), 10) ||
       60 * 1024 * 1024
   );
+  const maxMp4ExportBytes = Math.max(
+    10 * 1024 * 1024,
+    Number.parseInt(process.env.WORKER_MAX_MP4_EXPORT_BYTES || String(150 * 1024 * 1024), 10) ||
+      150 * 1024 * 1024
+  );
+  const maxMovExportBytes = Math.max(
+    20 * 1024 * 1024,
+    Number.parseInt(process.env.WORKER_MAX_MOV_EXPORT_BYTES || String(450 * 1024 * 1024), 10) ||
+      450 * 1024 * 1024
+  );
+  const renderThreads = Math.max(
+    1,
+    Math.min(4, Number.parseInt(process.env.WORKER_RENDER_THREADS || "2", 10) || 2)
+  );
+  const renderFontName =
+    process.env.WORKER_FONT_NAME?.trim() ||
+    (process.platform === "win32" ? "Segoe UI" : "DejaVu Sans");
+  const renderFontsDir = process.env.WORKER_FONTS_DIR?.trim() || null;
 
   return {
     supabaseUrl,
@@ -99,7 +127,13 @@ export function loadWorkerConfig(argv: string[] = process.argv.slice(2)): Worker
     leaseSeconds,
     pollIntervalMs,
     maxFfmpegRuntimeMs,
+    maxRenderRuntimeMs,
     maxPreviewBytes,
+    maxMp4ExportBytes,
+    maxMovExportBytes,
+    renderThreads,
+    renderFontName,
+    renderFontsDir,
     ffmpegPath,
     ffprobePath,
     transcriptionAdapter,
