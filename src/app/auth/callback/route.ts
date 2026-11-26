@@ -1,22 +1,26 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { sanitizeNextPath } from "@/lib/security/http";
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const nextParam = searchParams.get("next");
-  const safeNext =
-    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-      ? nextParam
-      : "/projects";
+  const safeNext = sanitizeNextPath(searchParams.get("next"), "/projects");
 
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${safeNext}`);
+      const response = NextResponse.redirect(new URL(safeNext, origin));
+      response.headers.set("Cache-Control", "no-store, private");
+      return response;
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  const loginUrl = new URL("/login", origin);
+  loginUrl.searchParams.set("error", "auth_callback_failed");
+  loginUrl.searchParams.set("next", safeNext);
+  const response = NextResponse.redirect(loginUrl);
+  response.headers.set("Cache-Control", "no-store, private");
+  return response;
 }

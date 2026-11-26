@@ -1,5 +1,6 @@
 import { spawn } from "child_process";
 import fs from "fs";
+import { buildMinimalToolEnv } from "./security";
 
 export type WorkerErrorCode =
   | "corrupt_media"
@@ -72,7 +73,10 @@ function runBinary(
   signal?: AbortSignal
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(binary, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: buildMinimalToolEnv(),
+    });
     let stdout = "";
     let stderr = "";
     let settled = false;
@@ -125,14 +129,14 @@ function runBinary(
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
     });
-    child.on("error", (err) => {
-      finish(new WorkerError("internal_error", `Failed to spawn ${binary}: ${err.message}`, true));
+    child.on("error", () => {
+      finish(new WorkerError("internal_error", "Media processing binary failed to start.", true));
     });
     child.on("close", (code) => {
       if (code === 0) {
         finish();
       } else {
-        finish(new Error(`${binary} exited with code ${code}: ${stderr.slice(-400)}`));
+        finish(new Error(`Media tool exited with status ${code}`));
       }
     });
   });
@@ -174,6 +178,8 @@ export async function probeMedia(
       [
         "-v",
         "error",
+        "-protocol_whitelist",
+        "file,pipe",
         "-print_format",
         "json",
         "-show_format",
@@ -322,6 +328,8 @@ export async function generatePreview(
 
     const args = [
       "-y",
+      "-protocol_whitelist",
+      "file,pipe",
       "-noautorotate",
       "-i",
       inputPath,
@@ -364,7 +372,7 @@ export async function generatePreview(
       if (err instanceof WorkerError) throw err;
       throw new WorkerError(
         "corrupt_media",
-        `Failed to transcode video preview: ${err instanceof Error ? err.message : String(err)}`,
+        "Failed to transcode video preview.",
         false
       );
     }
@@ -393,6 +401,8 @@ export async function generatePreview(
   const outputPath = `${outputBasePath}.mp3`;
   const args = [
     "-y",
+    "-protocol_whitelist",
+    "file,pipe",
     "-i",
     inputPath,
     "-vn",
@@ -417,7 +427,7 @@ export async function generatePreview(
     if (err instanceof WorkerError) throw err;
     throw new WorkerError(
       "corrupt_media",
-      `Failed to normalize audio preview: ${err instanceof Error ? err.message : String(err)}`,
+      "Failed to normalize audio preview.",
       false
     );
   }
@@ -470,6 +480,8 @@ export async function extractTranscriptionAudio(
 
   const args = [
     "-y",
+    "-protocol_whitelist",
+    "file,pipe",
     "-i",
     inputPath,
     "-vn",
@@ -492,7 +504,7 @@ export async function extractTranscriptionAudio(
     if (err instanceof WorkerError) throw err;
     throw new WorkerError(
       "corrupt_media",
-      `Failed to extract transcription audio: ${err instanceof Error ? err.message : String(err)}`,
+      "Failed to extract audio for transcription.",
       false
     );
   }

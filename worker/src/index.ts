@@ -15,6 +15,7 @@ import {
   type CaptionStyleConfig,
 } from "./render";
 import { transcribeAudio } from "./transcribe";
+import { redactWorkerText, sanitizeLogMeta } from "./security";
 
 interface ClaimedIngestJob {
   jobId: string;
@@ -58,8 +59,8 @@ function log(level: "info" | "warn" | "error", msg: string, meta?: Record<string
   const entry = {
     ts: new Date().toISOString(),
     level,
-    msg,
-    ...(meta ?? {}),
+    msg: redactWorkerText(msg, 240),
+    ...sanitizeLogMeta(meta),
   };
   console.log(JSON.stringify(entry));
 }
@@ -287,7 +288,7 @@ async function processIngestJob(
       p_job_id: job.jobId,
       p_attempt_token: job.attemptToken,
       p_error_code: workerErr.code,
-      p_error_message: workerErr.message.slice(0, 500),
+      p_error_message: redactWorkerText(workerErr.message, 300),
       p_retryable: workerErr.retryable,
       p_backoff_seconds: backoffSeconds,
     });
@@ -490,7 +491,7 @@ async function processExportJob(
       p_job_id: job.jobId,
       p_attempt_token: job.attemptToken,
       p_error_code: renderErr.code,
-      p_error_message: renderErr.message.slice(0, 500),
+      p_error_message: redactWorkerText(renderErr.message, 300),
       p_retryable: renderErr.retryable,
       p_backoff_seconds: backoffSeconds,
     });

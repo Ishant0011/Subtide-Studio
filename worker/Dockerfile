@@ -11,7 +11,9 @@ RUN npm install --omit=dev=false
 
 COPY tsconfig.json ./
 COPY src ./src
-RUN npm run build
+RUN npm run build && chown -R node:node /app
+
+USER node
 
 ENV NODE_ENV=production
 ENV FFMPEG_PATH=/usr/bin/ffmpeg

@@ -1,0 +1,61 @@
+name: Security & Leak-Prevention Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  security-gate:
+    name: Secret Scan, Dependency Audit & Build Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history for secret scan
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Run redacted secret scan (working tree, Docker context, Git history)
+        run: node scripts/security-secret-scan.mjs
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install worker dependencies
+        run: pnpm --dir worker install
+
+      - name: Dependency audit (high/critical)
+        run: pnpm audit --audit-level=high
+
+      - name: Lint & Typecheck (web + worker)
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm --dir worker typecheck
+          pnpm --dir worker build
+
+      - name: Production build (with non-secret placeholder public env)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-public-anon-key-not-a-secret
+          NEXT_PUBLIC_SITE_URL: https://clipcaptions.app
+        run: pnpm build
+
+      - name: Verify generated browser bundles (.next/static) contain zero secrets
+        run: node scripts/security-secret-scan.mjs --static-only

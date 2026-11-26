@@ -1,7 +1,14 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  isUuid,
+  noStoreJson,
+  readBoundedJson,
+  validateSameOrigin,
+} from "@/lib/security/http";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/security/rate-limit";
 import {
   MAX_UPLOAD_BYTES,
   MEDIA_BUCKET,
@@ -10,10 +17,15 @@ import {
 
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
+  }
+
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -23,27 +35,34 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  let body: {
+  const rate = await checkRateLimit({
+    policy: RATE_LIMIT_POLICIES.uploadComplete,
+    subjectKey: user.id,
+    request,
+    actorUserId: user.id,
+  });
+  if (!rate.ok) return rate.response;
+
+  const parsed = await readBoundedJson<{
     projectId?: string;
     assetId?: string;
     objectKey?: string;
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }>(request, 16 * 1024);
+  if (!parsed.ok) {
+    return noStoreJson({ error: parsed.error }, { status: parsed.status });
   }
+  const body = parsed.data;
 
   const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
   const assetId = typeof body.assetId === "string" ? body.assetId.trim() : "";
   const objectKey = typeof body.objectKey === "string" ? body.objectKey.trim() : "";
 
-  if (!projectId || !assetId || !objectKey) {
-    return NextResponse.json(
-      { error: "projectId, assetId, and objectKey are required." },
+  if (!isUuid(projectId) || !isUuid(assetId) || !objectKey || objectKey.length > 512) {
+    return noStoreJson(
+      { error: "Valid projectId, assetId, and objectKey are required." },
       { status: 400 }
     );
   }
@@ -58,15 +77,12 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (assetError || !asset || asset.user_id !== user.id) {
-    return NextResponse.json(
-      { error: "Media asset not found." },
-      { status: 404 }
-    );
+    return noStoreJson({ error: "Media asset not found." }, { status: 404 });
   }
 
   // 2. Verify expected project & server-assigned object key
   if (asset.project_id !== projectId || asset.object_key !== objectKey) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Upload key or project mismatch." },
       { status: 400 }
     );
@@ -79,20 +95,15 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (projectFetchError || !project || project.user_id !== user.id) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
   let admin;
   try {
     admin = createSupabaseAdminClient();
-  } catch (err) {
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Server storage verification is misconfigured.",
-      },
+  } catch {
+    return noStoreJson(
+      { error: "Storage verification service is temporarily unavailable." },
       { status: 503 }
     );
   }
@@ -111,15 +122,15 @@ export async function POST(request: NextRequest) {
       .list(folder, { limit: 100, search: fileName });
 
     if (listError) {
-      return NextResponse.json(
-        { error: "Could not verify uploaded object in storage.", detail: listError.message },
+      return noStoreJson(
+        { error: "Could not verify uploaded object in storage." },
         { status: 502 }
       );
     }
 
     const stored = (objects ?? []).find((entry) => entry.name === fileName);
     if (!stored) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Uploaded object was not found at the expected storage key." },
         { status: 409 }
       );
@@ -133,14 +144,14 @@ export async function POST(request: NextRequest) {
       storedSize <= 0 ||
       storedSize > MAX_UPLOAD_BYTES
     ) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Stored file size is invalid or exceeds the 150 MB limit." },
         { status: 422 }
       );
     }
 
     if (storedSize !== asset.expected_size_bytes) {
-      return NextResponse.json(
+      return noStoreJson(
         {
           error: "Stored file size does not match the expected upload size.",
           expectedSizeBytes: asset.expected_size_bytes,
@@ -166,11 +177,8 @@ export async function POST(request: NextRequest) {
   );
 
   if (rpcError || !rpcData) {
-    return NextResponse.json(
-      {
-        error: "Failed to finalize upload and enqueue ingest job.",
-        detail: rpcError?.message,
-      },
+    return noStoreJson(
+      { error: "Failed to finalize upload and enqueue processing job." },
       { status: 500 }
     );
   }
@@ -190,5 +198,5 @@ export async function POST(request: NextRequest) {
     job: result.job,
   };
 
-  return NextResponse.json(payload, { status: 200 });
+  return noStoreJson(payload, { status: 200 });
 }

@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -9,23 +9,31 @@ import {
   isExportFormat,
   type ExportJobRow,
 } from "@/lib/exports";
+import {
+  isUuid,
+  noStoreJson,
+  readBoundedJson,
+  validateSameOrigin,
+} from "@/lib/security/http";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/security/rate-limit";
 import { MEDIA_BUCKET } from "@/lib/uploads";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
   const { id: projectId } = await context.params;
+  if (!isUuid(projectId)) {
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -33,13 +41,9 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 }
-    );
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  // Verify project ownership via RLS-scoped query
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, user_id")
@@ -47,7 +51,7 @@ export async function GET(
     .maybeSingle();
 
   if (projectError || !project || project.user_id !== user.id) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
   const { data: jobs, error: jobsError } = await supabase
@@ -60,13 +64,10 @@ export async function GET(
     .order("created_at", { ascending: false });
 
   if (jobsError) {
-    return NextResponse.json(
-      { error: "Failed to load exports." },
-      { status: 500 }
-    );
+    return noStoreJson({ error: "Failed to load exports." }, { status: 500 });
   }
 
-  return NextResponse.json({ exports: (jobs ?? []) as ExportJobRow[] });
+  return noStoreJson({ exports: (jobs ?? []) as ExportJobRow[] });
 }
 
 export async function POST(
@@ -74,13 +75,22 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const { id: projectId } = await context.params;
+  if (!isUuid(projectId)) {
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -88,40 +98,43 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 }
-    );
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  let body: { revisionId?: unknown; format?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON payload." },
-      { status: 400 }
-    );
+  const rate = await checkRateLimit({
+    policy: RATE_LIMIT_POLICIES.exportCreate,
+    subjectKey: user.id,
+    request,
+    actorUserId: user.id,
+  });
+  if (!rate.ok) return rate.response;
+
+  const parsed = await readBoundedJson<{
+    revisionId?: unknown;
+    format?: unknown;
+  }>(request, 8 * 1024);
+  if (!parsed.ok) {
+    return noStoreJson({ error: parsed.error }, { status: parsed.status });
   }
+  const body = parsed.data;
 
   const revisionId =
     typeof body.revisionId === "string" ? body.revisionId.trim() : "";
-  if (!UUID_RE.test(revisionId)) {
-    return NextResponse.json(
+  if (!isUuid(revisionId)) {
+    return noStoreJson(
       { error: "A valid saved revisionId is required to export." },
       { status: 400 }
     );
   }
 
   if (!isExportFormat(body.format)) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Format must be 'srt', 'mp4', or 'mov_alpha'." },
       { status: 400 }
     );
   }
   const format = body.format;
 
-  // Server-verified ownership & revision binding via RLS-scoped reads
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, user_id, title, status, duration_ms")
@@ -129,11 +142,11 @@ export async function POST(
     .maybeSingle();
 
   if (projectError || !project || project.user_id !== user.id) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
   if (project.status !== "ready") {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Project must finish processing before exporting." },
       { status: 409 }
     );
@@ -147,7 +160,7 @@ export async function POST(
     .maybeSingle();
 
   if (revError || !revision || revision.user_id !== user.id) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Saved caption revision not found for this project." },
       { status: 404 }
     );
@@ -165,8 +178,8 @@ export async function POST(
   );
 
   if (rpcError || !rpcData) {
-    return NextResponse.json(
-      { error: "Failed to create export job.", detail: rpcError?.message },
+    return noStoreJson(
+      { error: "Failed to create export job." },
       { status: 500 }
     );
   }
@@ -192,7 +205,6 @@ export async function POST(
     );
     const objectKey = `${user.id}/${project.id}/exports/${job.id}.srt`;
 
-    // Upload complete UTF-8 SRT artifact to private storage before publishing
     const { error: uploadError } = await admin.storage
       .from(MEDIA_BUCKET)
       .upload(objectKey, srtBuffer, {
@@ -207,12 +219,12 @@ export async function POST(
           status: "failed",
           stage_message: "SRT upload failed",
           error_code: "storage_error",
-          error_message: uploadError.message.slice(0, 500),
+          error_message: "Unable to store subtitle export artifact.",
           completed_at: new Date().toISOString(),
         })
         .eq("id", job.id);
 
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Failed to store SRT subtitle file." },
         { status: 500 }
       );
@@ -232,7 +244,7 @@ export async function POST(
     );
 
     if (pubError || !pubData || !(pubData as { ok: boolean }).ok) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: "Failed to finalize SRT export." },
         { status: 500 }
       );
@@ -241,7 +253,7 @@ export async function POST(
     job = (pubData as { ok: true; job: ExportJobRow }).job;
   }
 
-  return NextResponse.json(
+  return noStoreJson(
     {
       job,
       idempotent: result.idempotent,

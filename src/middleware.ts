@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { sanitizeNextPath } from "@/lib/security/redirects";
 
-const PROTECTED_PREFIXES = ["/projects", "/upload"];
+const PROTECTED_PREFIXES = ["/projects", "/upload", "/admin"];
 
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // If Supabase env is not yet configured, never break public pages
   if (!url || !anonKey) {
     return NextResponse.next();
   }
@@ -24,20 +24,22 @@ export async function middleware(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        response = NextResponse.next({
-          request,
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value);
         });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options)
-        );
+        response = NextResponse.next({
+          request: {
+            headers: request.headers,
+          },
+        });
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
       },
     },
   });
 
-  // Always verify the JWT with the Supabase Auth server
+  // Always verify session with Supabase Auth server via getUser()
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -47,26 +49,36 @@ export async function middleware(request: NextRequest) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
 
+  if (isProtected) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, private"
+    );
+    response.headers.set("Pragma", "no-cache");
+  }
+
   if (isProtected && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    loginUrl.search = "";
-    loginUrl.searchParams.set("next", `${pathname}${search}`);
+    loginUrl.searchParams.set(
+      "next",
+      sanitizeNextPath(`${pathname}${search}`, "/projects")
+    );
     return NextResponse.redirect(loginUrl);
   }
 
   if (pathname === "/login" && user) {
-    const nextPath = request.nextUrl.searchParams.get("next");
-    const safeNext =
-      nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
-        ? nextPath
-        : "/projects";
-    return NextResponse.redirect(new URL(safeNext, request.url));
+    const safeNext = sanitizeNextPath(
+      request.nextUrl.searchParams.get("next"),
+      "/projects"
+    );
+    const dest = new URL(safeNext, request.url);
+    return NextResponse.redirect(dest);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/projects/:path*", "/upload/:path*", "/login"],
+  matcher: ["/projects/:path*", "/upload/:path*", "/admin/:path*", "/login"],
 };

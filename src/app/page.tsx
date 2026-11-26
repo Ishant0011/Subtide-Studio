@@ -50,7 +50,9 @@ export default async function HomePage() {
     <div className="relative min-h-screen overflow-x-clip bg-page text-ink">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(websiteJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       {/* Subtle violet studio glow */}

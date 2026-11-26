@@ -1,8 +1,14 @@
 import { randomUUID } from "crypto";
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicEnv, isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  noStoreJson,
+  readBoundedJson,
+  validateSameOrigin,
+} from "@/lib/security/http";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/security/rate-limit";
 import {
   MAX_DURATION_MINUTES,
   MAX_UPLOAD_BYTES,
@@ -14,10 +20,15 @@ import {
 
 export async function POST(request: NextRequest) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
+  }
+
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
   }
 
   // 1. Server-verified authentication
@@ -28,20 +39,27 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  let body: {
+  const rate = await checkRateLimit({
+    policy: RATE_LIMIT_POLICIES.uploadInit,
+    subjectKey: user.id,
+    request,
+    actorUserId: user.id,
+  });
+  if (!rate.ok) return rate.response;
+
+  const parsed = await readBoundedJson<{
     title?: string;
     filename?: string;
     mimeType?: string;
     sizeBytes?: number;
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }>(request, 16 * 1024);
+  if (!parsed.ok) {
+    return noStoreJson({ error: parsed.error }, { status: parsed.status });
   }
+  const body = parsed.data;
 
   const validation = validateUploadFile({
     filename: typeof body.filename === "string" ? body.filename : "",
@@ -50,7 +68,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+    return noStoreJson({ error: validation.error }, { status: 400 });
   }
 
   const projectTitle =
@@ -61,14 +79,9 @@ export async function POST(request: NextRequest) {
   let admin;
   try {
     admin = createSupabaseAdminClient();
-  } catch (err) {
-    return NextResponse.json(
-      {
-        error:
-          err instanceof Error
-            ? err.message
-            : "Server allocation credentials are not configured.",
-      },
+  } catch {
+    return noStoreJson(
+      { error: "Upload service is temporarily unavailable." },
       { status: 503 }
     );
   }
@@ -86,8 +99,8 @@ export async function POST(request: NextRequest) {
   });
 
   if (projectError) {
-    return NextResponse.json(
-      { error: "Failed to create project record.", detail: projectError.message },
+    return noStoreJson(
+      { error: "Failed to create project record." },
       { status: 500 }
     );
   }
@@ -105,10 +118,9 @@ export async function POST(request: NextRequest) {
   });
 
   if (assetError) {
-    // Clean up orphaned project row if asset insert fails
     await admin.from("projects").delete().eq("id", projectId).eq("user_id", user.id);
-    return NextResponse.json(
-      { error: "Failed to initialize media asset.", detail: assetError.message },
+    return noStoreJson(
+      { error: "Failed to initialize media asset." },
       { status: 500 }
     );
   }
@@ -126,5 +138,5 @@ export async function POST(request: NextRequest) {
     maxDurationMinutes: MAX_DURATION_MINUTES,
   };
 
-  return NextResponse.json(response, { status: 201 });
+  return noStoreJson(response, { status: 201 });
 }

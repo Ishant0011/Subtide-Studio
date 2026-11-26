@@ -81,33 +81,42 @@ export function AuthForm({
     setLoading(true);
 
     try {
-      const supabase = createSupabaseBrowserClient();
-
       if (mode === "signin") {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+        const res = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
         });
-        if (signInError) {
-          setError(signInError.message);
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(data.error || "Sign-in failed.");
           return;
         }
         router.push(nextPath);
         router.refresh();
       } else {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
-          },
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            nextPath,
+          }),
         });
-        if (signUpError) {
-          setError(signUpError.message);
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          hasSession?: boolean;
+        };
+        if (!res.ok) {
+          setError(data.error || "Could not create account.");
           return;
         }
 
-        if (data.session) {
+        if (data.hasSession) {
           router.push(nextPath);
           router.refresh();
         } else {
@@ -117,8 +126,8 @@ export function AuthForm({
           setMode("signin");
         }
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed.");
+    } catch {
+      setError("Network error while authenticating. Please try again.");
     } finally {
       setLoading(false);
     }

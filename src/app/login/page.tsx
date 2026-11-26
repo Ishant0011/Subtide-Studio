@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AuthForm } from "@/components/AuthForm";
 import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
+import { sanitizeNextPath } from "@/lib/security/http";
 import { PRIVATE_PAGE_ROBOTS } from "@/lib/site";
 import {
   getEnabledOAuthProviders,
@@ -25,10 +26,7 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const nextPath =
-    params.next && params.next.startsWith("/") && !params.next.startsWith("//")
-      ? params.next
-      : "/projects";
+  const nextPath = sanitizeNextPath(params.next, "/projects");
 
   const initialMode = params.mode === "signup" ? "signup" : "signin";
 

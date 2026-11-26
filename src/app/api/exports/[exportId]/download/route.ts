@@ -1,6 +1,7 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isUuid, noStoreJson } from "@/lib/security/http";
 import { MEDIA_BUCKET } from "@/lib/uploads";
 
 const SIGNED_DOWNLOAD_TTL_SECONDS = 60;
@@ -10,13 +11,17 @@ export async function GET(
   context: { params: Promise<{ exportId: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
   const { exportId } = await context.params;
+  if (!isUuid(exportId)) {
+    return noStoreJson({ error: "Export not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -24,13 +29,9 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 }
-    );
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  // Strict RLS-scoped ownership check
   const { data: job, error: jobError } = await supabase
     .from("export_jobs")
     .select(
@@ -40,17 +41,16 @@ export async function GET(
     .maybeSingle();
 
   if (jobError || !job || job.user_id !== user.id) {
-    return NextResponse.json({ error: "Export not found." }, { status: 404 });
+    return noStoreJson({ error: "Export not found." }, { status: 404 });
   }
 
   if (job.status !== "ready" || !job.output_object_key) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Export artifact is not ready for download." },
       { status: 409 }
     );
   }
 
-  // Generate short-lived owner-only signed download URL via the user's RLS session
   const { data: signed, error: signError } = await supabase.storage
     .from(job.bucket_id || MEDIA_BUCKET)
     .createSignedUrl(job.output_object_key, SIGNED_DOWNLOAD_TTL_SECONDS, {
@@ -58,13 +58,13 @@ export async function GET(
     });
 
   if (signError || !signed?.signedUrl) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Failed to create signed export download URL." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({
+  return noStoreJson({
     signedUrl: signed.signedUrl,
     filename: job.output_filename,
     mimeType: job.output_mime_type,

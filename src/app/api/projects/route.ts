@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { noStoreJson } from "@/lib/security/http";
 import { MEDIA_BUCKET, type ProjectWithMedia } from "@/lib/uploads";
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
@@ -18,10 +18,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json(
-      { error: "Authentication required." },
-      { status: 401 }
-    );
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
   const { data, error } = await supabase
@@ -33,10 +30,7 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json(
-      { error: "Failed to load projects.", detail: error.message },
-      { status: 500 }
-    );
+    return noStoreJson({ error: "Failed to load projects." }, { status: 500 });
   }
 
   const rawProjects = (data ?? []) as ProjectWithMedia[];
@@ -59,11 +53,11 @@ export async function GET() {
 
       const { data: signed } = await supabase.storage
         .from(MEDIA_BUCKET)
-        .createSignedUrl(key, 300);
+        .createSignedUrl(key, 60);
 
       return { ...project, thumbnail_url: signed?.signedUrl ?? null };
     })
   );
 
-  return NextResponse.json({ projects });
+  return noStoreJson({ projects });
 }

@@ -161,22 +161,22 @@ async function transcribeWithDeepgramNova3(
       body: audioBytes,
       signal: controller.signal,
     });
-  } catch (err) {
+  } catch {
     clearTimeout(timer);
     throw new WorkerError(
       "provider_failure",
-      `Deepgram request failed: ${err instanceof Error ? err.message : String(err)}`,
+      "Transcription provider request failed.",
       true
     );
   }
   clearTimeout(timer);
 
   if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
+    await response.text().catch(() => "");
     const retryable = response.status === 429 || response.status >= 500;
     throw new WorkerError(
       "provider_failure",
-      `Deepgram Nova-3 returned HTTP ${response.status}: ${bodyText.slice(0, 200)}`,
+      `Transcription provider returned HTTP ${response.status}.`,
       retryable
     );
   }

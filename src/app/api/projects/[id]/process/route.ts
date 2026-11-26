@@ -1,25 +1,31 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isUuid, noStoreJson, validateSameOrigin } from "@/lib/security/http";
+import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/security/rate-limit";
 
-/**
- * Owner-authorized endpoint to start processing an already-finalized upload
- * (such as a Phase 2 clip uploaded before Phase 3) or retry a failed ingest job
- * without re-uploading.
- */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const { id: projectId } = await context.params;
+  if (!isUuid(projectId)) {
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -27,10 +33,17 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  // Server-verified ownership via RLS-scoped read
+  const rate = await checkRateLimit({
+    policy: RATE_LIMIT_POLICIES.processJob,
+    subjectKey: user.id,
+    request,
+    actorUserId: user.id,
+  });
+  if (!rate.ok) return rate.response;
+
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, user_id, media_assets(id, status, user_id)")
@@ -38,7 +51,7 @@ export async function POST(
     .maybeSingle();
 
   if (projectError || !project || project.user_id !== user.id) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
   const assets = Array.isArray(project.media_assets) ? project.media_assets : [];
@@ -48,7 +61,7 @@ export async function POST(
   );
 
   if (!uploadedAsset) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "No finalized upload found for this project." },
       { status: 409 }
     );
@@ -62,11 +75,11 @@ export async function POST(
   });
 
   if (error || !data) {
-    return NextResponse.json(
-      { error: "Failed to enqueue processing job.", detail: error?.message },
+    return noStoreJson(
+      { error: "Failed to enqueue processing job." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json(data, { status: 200 });
+  return noStoreJson(data, { status: 200 });
 }

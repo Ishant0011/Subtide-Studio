@@ -1,20 +1,27 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { isUuid, noStoreJson } from "@/lib/security/http";
 import { MEDIA_BUCKET } from "@/lib/uploads";
+
+const SIGNED_MEDIA_TTL_SECONDS = 60;
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ assetId: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
   const { assetId } = await context.params;
+  if (!isUuid(assetId)) {
+    return noStoreJson({ error: "Media asset not found." }, { status: 404 });
+  }
+
   const kind = request.nextUrl.searchParams.get("kind");
 
   const supabase = await createSupabaseServerClient();
@@ -24,7 +31,7 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
   const { data: asset, error: assetError } = await supabase
@@ -34,11 +41,11 @@ export async function GET(
     .maybeSingle();
 
   if (assetError || !asset || asset.user_id !== user.id) {
-    return NextResponse.json({ error: "Media asset not found." }, { status: 404 });
+    return noStoreJson({ error: "Media asset not found." }, { status: 404 });
   }
 
   if (asset.status !== "uploaded") {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Media asset has not finished uploading." },
       { status: 409 }
     );
@@ -62,18 +69,18 @@ export async function GET(
 
   const { data: signed, error: signError } = await supabase.storage
     .from(MEDIA_BUCKET)
-    .createSignedUrl(targetKey, 60);
+    .createSignedUrl(targetKey, SIGNED_MEDIA_TTL_SECONDS);
 
   if (signError || !signed?.signedUrl) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Failed to create signed download URL." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({
+  return noStoreJson({
     signedUrl: signed.signedUrl,
     kind: targetKind,
-    expiresInSeconds: 60,
+    expiresInSeconds: SIGNED_MEDIA_TTL_SECONDS,
   });
 }

@@ -1,21 +1,36 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { validateCaptionRevisionInput } from "@/lib/caption-editor";
+import {
+  isUuid,
+  noStoreJson,
+  readBoundedJson,
+  validateSameOrigin,
+} from "@/lib/security/http";
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const { id: projectId } = await context.params;
+  if (!isUuid(projectId)) {
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -23,10 +38,9 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  // Server-verified ownership check via RLS-scoped read
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, user_id, duration_ms, active_revision_id")
@@ -34,24 +48,30 @@ export async function POST(
     .maybeSingle();
 
   if (projectError || !project || project.user_id !== user.id) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
-  let body: {
+  const parsed = await readBoundedJson<{
     baseRevisionId?: string | null;
     cues?: unknown;
     style?: unknown;
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  }>(request, 512 * 1024);
+  if (!parsed.ok) {
+    return noStoreJson({ error: parsed.error }, { status: parsed.status });
   }
+  const body = parsed.data;
 
   const baseRevisionId =
     typeof body.baseRevisionId === "string" && body.baseRevisionId.trim()
       ? body.baseRevisionId.trim()
       : null;
+
+  if (baseRevisionId !== null && !isUuid(baseRevisionId)) {
+    return noStoreJson(
+      { error: "Invalid baseRevisionId." },
+      { status: 400 }
+    );
+  }
 
   const validation = validateCaptionRevisionInput({
     cues: body.cues,
@@ -60,7 +80,7 @@ export async function POST(
   });
 
   if (!validation.ok) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+    return noStoreJson({ error: validation.error }, { status: 400 });
   }
 
   const admin = createSupabaseAdminClient();
@@ -77,8 +97,8 @@ export async function POST(
   );
 
   if (rpcError || !rpcData) {
-    return NextResponse.json(
-      { error: "Failed to save caption revision.", detail: rpcError?.message },
+    return noStoreJson(
+      { error: "Failed to save caption revision." },
       { status: 500 }
     );
   }
@@ -91,7 +111,7 @@ export async function POST(
   };
 
   if (!result.ok && result.reason === "stale_revision") {
-    return NextResponse.json(
+    return noStoreJson(
       {
         error: "A newer revision was saved in another tab.",
         code: "stale_revision",
@@ -101,5 +121,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ revision: result.revision }, { status: 201 });
+  return noStoreJson({ revision: result.revision }, { status: 201 });
 }

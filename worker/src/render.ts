@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
+import { buildMinimalToolEnv } from "./security";
 
 export type RenderErrorCode =
   | "corrupt_media"
@@ -568,6 +569,7 @@ function runProcess(
     const child = spawn(binary, args, {
       cwd,
       stdio: ["ignore", "pipe", "pipe"],
+      env: buildMinimalToolEnv(),
     });
     let stdout = "";
     let stderr = "";
@@ -633,11 +635,11 @@ function runProcess(
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString("utf8");
     });
-    child.on("error", (err) => {
+    child.on("error", () => {
       finish(
         new RenderError(
           "internal_error",
-          `Failed to spawn ${binary}: ${err.message}`,
+          "Render tool failed to start.",
           true
         )
       );
@@ -649,7 +651,7 @@ function runProcess(
         finish(
           new RenderError(
             "render_failed",
-            `${path.basename(binary)} exited with code ${code}: ${stderr.slice(-400)}`,
+            `Render process exited with status ${code}.`,
             false
           )
         );
@@ -685,6 +687,8 @@ async function probeFile(
     [
       "-v",
       "error",
+      "-protocol_whitelist",
+      "file,pipe",
       "-print_format",
       "json",
       "-show_format",
@@ -966,6 +970,8 @@ export async function renderExportArtifact(
 
     args = [
       "-y",
+      "-protocol_whitelist",
+      "file,pipe",
       "-threads",
       String(renderThreads),
       ...(usedPreviewSource ? [] : ["-noautorotate"]),

@@ -1,19 +1,34 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  isUuid,
+  noStoreJson,
+  readBoundedJson,
+  validateSameOrigin,
+} from "@/lib/security/http";
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Supabase is not configured on this server." },
       { status: 503 }
     );
   }
 
+  const originCheck = validateSameOrigin(request);
+  if (!originCheck.ok) {
+    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
+  }
+
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -21,19 +36,17 @@ export async function PATCH(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return noStoreJson({ error: "Authentication required." }, { status: 401 });
   }
 
-  let body: { title?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+  const parsed = await readBoundedJson<{ title?: string }>(request, 4096);
+  if (!parsed.ok) {
+    return noStoreJson({ error: parsed.error }, { status: parsed.status });
   }
 
-  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const title = typeof parsed.data.title === "string" ? parsed.data.title.trim() : "";
   if (!title || title.length > 120) {
-    return NextResponse.json(
+    return noStoreJson(
       { error: "Project title must be between 1 and 120 characters." },
       { status: 400 }
     );
@@ -48,15 +61,12 @@ export async function PATCH(
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json(
-      { error: "Failed to update project.", detail: error.message },
-      { status: 500 }
-    );
+    return noStoreJson({ error: "Failed to update project." }, { status: 500 });
   }
 
   if (!data) {
-    return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ project: data });
+  return noStoreJson({ project: data });
 }
