@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-function buildContentSecurityPolicy(): string {
+function buildContentSecurityPolicy(isDevelopmentServer: boolean): string {
   const supabaseOrigin = (() => {
     try {
       const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,7 +44,10 @@ function buildContentSecurityPolicy(): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
-    "script-src 'self' 'unsafe-inline'",
+    // Next's development runtime evaluates modules for its source maps.
+    isDevelopmentServer
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imgSources.join(" ")}`,
     "font-src 'self' data:",
@@ -53,25 +57,27 @@ function buildContentSecurityPolicy(): string {
   ].join("; ");
 }
 
-const securityHeaders = [
-  { key: "Content-Security-Policy", value: buildContentSecurityPolicy() },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-  },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  ...(process.env.NODE_ENV === "production"
-    ? [
-        {
-          key: "Strict-Transport-Security",
-          value: "max-age=31536000; includeSubDomains",
-        },
-      ]
-    : []),
-];
+function buildSecurityHeaders(isDevelopmentServer: boolean) {
+  return [
+    { key: "Content-Security-Policy", value: buildContentSecurityPolicy(isDevelopmentServer) },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "X-Frame-Options", value: "DENY" },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    {
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    },
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    ...(process.env.NODE_ENV === "production"
+      ? [
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ]
+      : []),
+  ];
+}
 
 const noStoreHeaders = [
   {
@@ -81,14 +87,14 @@ const noStoreHeaders = [
   { key: "Pragma", value: "no-cache" },
 ];
 
-const nextConfig: NextConfig = {
+const nextConfig = (phase: string): NextConfig => ({
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: buildSecurityHeaders(phase === PHASE_DEVELOPMENT_SERVER),
       },
       {
         source: "/api/:path*",
@@ -108,6 +114,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-};
+});
 
 export default nextConfig;
