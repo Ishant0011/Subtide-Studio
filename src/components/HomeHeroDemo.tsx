@@ -120,7 +120,7 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[264px] rounded-[1.6rem] border border-accent/25 bg-panel p-2.5 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[332px] sm:rounded-[1.85rem] sm:p-3 lg:max-w-[344px]"
+      className="relative mx-auto w-full max-w-[292px] rounded-[1.6rem] border border-accent/25 bg-panel p-2.5 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[350px] sm:rounded-[1.85rem] sm:p-3 lg:max-w-[clamp(17.5rem,37svh,23rem)]"
     >
       {/* Top Synchronized Before / After Switcher */}
       <div className="mb-2 flex items-center justify-between gap-2 px-0.5 sm:mb-2.5">
@@ -153,7 +153,7 @@ export function HomeHeroDemo() {
                 data-testid={`before-after-mode-${mode.id}`}
                 aria-pressed={active}
                 onClick={() => setCompareMode(mode.id)}
-                className={`rounded-full px-2 py-0.5 transition sm:px-2.5 ${
+                className={`min-h-7 rounded-full px-2.5 py-1 transition sm:px-3 ${
                   active
                     ? "bg-accent text-page"
                     : "text-ink-secondary hover:text-ink"

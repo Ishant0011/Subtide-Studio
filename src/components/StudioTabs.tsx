@@ -55,8 +55,8 @@ export function StudioTabs({
     <div
       role="tablist"
       aria-label="Workspace panels"
-      data-testid="mobile-panel-tabs"
-      className="grid grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1 lg:hidden"
+      data-testid="workspace-panel-tabs"
+      className="grid grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1"
     >
       <button
         ref={(el) => {

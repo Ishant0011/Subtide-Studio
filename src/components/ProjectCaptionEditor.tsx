@@ -26,8 +26,8 @@ import {
   RotateCcw,
   RotateCw,
   Search,
-  SlidersHorizontal,
   Undo2,
+  Upload,
   Volume2,
   VolumeX,
   X,
@@ -47,6 +47,7 @@ import {
   type EditorCue,
   type SavedCaptionPresetRow,
 } from "@/lib/caption-editor";
+import { generateSrtFromCues } from "@/lib/exports";
 import { AccountMenu } from "@/components/AccountMenu";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
 import { EditorTimeline } from "@/components/EditorTimeline";
@@ -68,21 +69,34 @@ interface EditorHistorySnapshot {
   style: CaptionStyleConfig;
 }
 
-interface ProjectCaptionEditorProps {
-  userEmail: string;
-  projectId: string;
+interface EditorWorkspaceProps {
   projectTitle: string;
   mediaKind: "video" | "audio";
   previewUrl: string;
+  previewPoster?: string;
   previewWidth?: number | null;
   previewHeight?: number | null;
   durationMs: number;
-  initialRevisionId: string | null;
-  initialRevisionNumber: number;
   initialCues: EditorCue[];
   initialStyle: CaptionStyleConfig;
-  initialPresets?: SavedCaptionPresetRow[];
 }
+
+type ProjectCaptionEditorProps = EditorWorkspaceProps & (
+  | {
+      projectId: string;
+      userEmail: string;
+      initialRevisionId: string | null;
+      initialRevisionNumber: number;
+      initialPresets?: SavedCaptionPresetRow[];
+    }
+  | {
+      projectId?: never;
+      userEmail?: never;
+      initialRevisionId?: never;
+      initialRevisionNumber?: never;
+      initialPresets?: never;
+    }
+);
 
 const MAX_HISTORY_DEPTH = 50;
 
@@ -92,15 +106,17 @@ export function ProjectCaptionEditor({
   projectTitle,
   mediaKind,
   previewUrl,
+  previewPoster,
   previewWidth = null,
   previewHeight = null,
   durationMs,
-  initialRevisionId,
-  initialRevisionNumber,
+  initialRevisionId = null,
+  initialRevisionNumber = 0,
   initialCues,
   initialStyle,
   initialPresets = [],
 }: ProjectCaptionEditorProps) {
+  const isSample = projectId === undefined;
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const playButtonRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -452,7 +468,7 @@ export function ProjectCaptionEditor({
 
   // Core save runner preserving newer local edits across in-flight saves, conflicts, and failures
   const performSave = useCallback(async () => {
-    if (inFlightRef.current) return;
+    if (!projectId || inFlightRef.current) return;
 
     const snapshotVersion = localVersionRef.current;
     const snapshotCues = latestCuesRef.current;
@@ -542,6 +558,7 @@ export function ProjectCaptionEditor({
   }, [clipDurationMs, projectId, setSaveStatusSynced]);
 
   const scheduleAutosave = useCallback(() => {
+    if (isSample) return;
     localVersionRef.current += 1;
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -554,7 +571,7 @@ export function ProjectCaptionEditor({
     debounceTimerRef.current = setTimeout(() => {
       void performSave();
     }, 650);
-  }, [performSave, setSaveStatusSynced]);
+  }, [isSample, performSave, setSaveStatusSynced]);
 
   useEffect(() => {
     return () => {
@@ -918,17 +935,43 @@ export function ProjectCaptionEditor({
     void performSave();
   };
 
+  const downloadSampleSrt = () => {
+    if (!clientValidation.ok) return;
+    const content = generateSrtFromCues(clientValidation.normalizedCues);
+    if (!content) return;
+    const url = URL.createObjectURL(
+      new Blob([content], { type: "application/x-subrip;charset=utf-8" })
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "clipcaptions-sample.srt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    flashNotice("Downloaded sample SRT.");
+  };
+
+  const resetSample = () => {
+    recordUndoSnapshot({ cues, style });
+    setCues(initialCues);
+    setStyle(initialStyle);
+    setSelectedCueId(initialCues[0]?.id ?? null);
+    setEditingWord(null);
+    flashNotice("Sample reset.");
+  };
+
   return (
     <div className="min-h-screen overflow-x-clip bg-page text-ink">
       {/* Compact Project Header */}
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
           <Link
-            href="/projects"
+            href={isSample ? "/" : "/projects"}
             className="order-1 inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink sm:gap-1.5 sm:px-2.5 sm:py-1.5"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Projects</span>
+            <span>{isSample ? "Home" : "Projects"}</span>
           </Link>
 
           <div className="order-3 flex w-full min-w-0 items-center justify-between gap-2 sm:order-2 sm:w-auto sm:flex-1 sm:justify-start">
@@ -941,7 +984,7 @@ export function ProjectCaptionEditor({
             </h1>
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary sm:text-[11px]">
-                Rev #{revisionNumber}
+                {isSample ? "Sample" : `Rev #${revisionNumber}`}
               </span>
               <span
                 data-testid="editor-media-aspect"
@@ -978,41 +1021,43 @@ export function ProjectCaptionEditor({
               </button>
             </div>
 
-            <span
-              role="status"
-              aria-live="polite"
-              data-testid="autosave-status"
-              data-status={saveStatus}
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
-                saveStatus === "saved"
-                  ? "border border-accent/40 bg-accent-soft text-accent-hover"
-                  : saveStatus === "saving"
-                    ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
-                    : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
-              }`}
-            >
-              {saveStatus === "saving" && (
-                <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "saved" && (
-                <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "error" && (
-                <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "conflict" && (
-                <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              <span>
-                {saveStatus === "saving"
-                  ? "Saving..."
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "conflict"
-                      ? "Conflict"
-                      : "Save failed"}
+            {!isSample && (
+              <span
+                role="status"
+                aria-live="polite"
+                data-testid="autosave-status"
+                data-status={saveStatus}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
+                  saveStatus === "saved"
+                    ? "border border-accent/40 bg-accent-soft text-accent-hover"
+                    : saveStatus === "saving"
+                      ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
+                      : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
+                }`}
+              >
+                {saveStatus === "saving" && (
+                  <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
+                )}
+                {saveStatus === "saved" && (
+                  <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                )}
+                {saveStatus === "error" && (
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                )}
+                {saveStatus === "conflict" && (
+                  <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                )}
+                <span>
+                  {saveStatus === "saving"
+                    ? "Saving..."
+                    : saveStatus === "saved"
+                      ? "Saved"
+                      : saveStatus === "conflict"
+                        ? "Conflict"
+                        : "Save failed"}
+                </span>
               </span>
-            </span>
+            )}
 
             {saveStatus === "error" && (
               <button
@@ -1028,14 +1073,22 @@ export function ProjectCaptionEditor({
             <button
               type="button"
               data-testid="open-export-btn"
-              onClick={() => setExportModalOpen(true)}
+              onClick={isSample ? downloadSampleSrt : () => setExportModalOpen(true)}
+              disabled={isSample && !clientValidation.ok}
               className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
             >
               <Download className="h-3.5 w-3.5" />
-              <span>Export</span>
+              <span>{isSample ? "Download SRT" : "Export"}</span>
             </button>
 
-            <AccountMenu userEmail={userEmail} compactMobile />
+            {userEmail && <AccountMenu userEmail={userEmail} compactMobile />}
+            {isSample && (
+              <Link href="/upload" className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-panel px-2.5 py-1 text-xs font-medium text-ink transition hover:border-accent/55 sm:py-1.5">
+                <Upload className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Upload a clip</span>
+                <span className="sm:hidden">Upload</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -1178,8 +1231,8 @@ export function ProjectCaptionEditor({
                       ? "aspect-video w-full max-w-[360px] sm:max-w-[540px] lg:max-w-[680px]"
                       : "aspect-video w-full max-w-[270px] sm:max-w-[540px] lg:max-w-[680px]"
                     : mobilePreviewExpanded
-                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
-                      : "aspect-[9/16] w-[124px] sm:w-[228px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
+                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[clamp(14rem,34dvh,18rem)]"
+                      : "aspect-[9/16] w-[148px] sm:w-[228px] lg:w-[clamp(14rem,34dvh,18rem)]"
                 }`}
               >
                 {mediaKind === "video" ? (
@@ -1188,6 +1241,7 @@ export function ProjectCaptionEditor({
                       mediaRef.current = el;
                     }}
                     src={previewUrl}
+                    poster={previewPoster}
                     playsInline
                     preload="auto"
                     muted={isMuted}
@@ -1430,8 +1484,7 @@ export function ProjectCaptionEditor({
 
           {/* Right Side Unified Inspector: Transcript / Style Tabs */}
           <aside className="flex min-w-0 flex-col">
-            {/* Mobile accessible tabs */}
-            <div className="mb-2.5 lg:hidden">
+            <div className="mb-2.5">
               <StudioTabs
                 activeTab={inspectorTab}
                 onChange={setInspectorTab}
@@ -1439,48 +1492,6 @@ export function ProjectCaptionEditor({
                 activePresetName={activePresetShortLabel}
                 idPrefix="editor"
               />
-            </div>
-
-            {/* Desktop Inspector Switcher (Transcript | Style) */}
-            <div
-              role="tablist"
-              aria-label="Inspector sections"
-              className="mb-2.5 hidden grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1 lg:grid"
-            >
-              <button
-                type="button"
-                role="tab"
-                data-testid="inspector-tab-captions"
-                aria-selected={inspectorTab === "captions"}
-                onClick={() => setInspectorTab("captions")}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
-                  inspectorTab === "captions"
-                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
-                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
-                }`}
-              >
-                <Captions className="h-3.5 w-3.5" />
-                <span>Transcript</span>
-                <span className="rounded-full bg-page/60 px-1.5 py-0.5 font-mono text-[10px]">
-                  {cues.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                data-testid="inspector-tab-style"
-                aria-selected={inspectorTab === "style"}
-                onClick={() => setInspectorTab("style")}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
-                  inspectorTab === "style"
-                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
-                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
-                }`}
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>Style &amp; Presets</span>
-              </button>
             </div>
 
             {/* Transcript Panel */}
@@ -1962,13 +1973,22 @@ export function ProjectCaptionEditor({
               <StudioStylePanel
                 style={style}
                 onUpdateStyle={updateStyle}
-                subtitle="Autosaves"
+                subtitle={isSample ? "Sample edits stay in this tab" : "Autosaves"}
                 showSafeArea={showSafeArea}
                 onToggleSafeArea={setShowSafeArea}
-                enablePersonalPresets
+                enablePersonalPresets={!isSample}
                 personalPresets={personalPresets}
                 onPersonalPresetsChange={setPersonalPresets}
               />
+              {isSample && (
+                <button
+                  type="button"
+                  onClick={resetSample}
+                  className="mt-3 self-start rounded-lg border border-ink/15 px-3 py-2 text-xs font-medium text-ink-secondary hover:border-accent/55 hover:text-ink"
+                >
+                  Reset sample
+                </button>
+              )}
             </section>
           </aside>
         </div>
@@ -2000,17 +2020,19 @@ export function ProjectCaptionEditor({
         </section>
       </main>
 
-      <ProjectExportModal
-        open={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        projectId={projectId}
-        projectTitle={projectTitle}
-        mediaKind={mediaKind}
-        savedRevisionId={savedRevisionId}
-        savedRevisionNumber={revisionNumber}
-        hasUnsavedChanges={saveStatus !== "saved"}
-        saveStatus={saveStatus}
-      />
+      {projectId && (
+        <ProjectExportModal
+          open={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          projectId={projectId}
+          projectTitle={projectTitle}
+          mediaKind={mediaKind}
+          savedRevisionId={savedRevisionId}
+          savedRevisionNumber={revisionNumber}
+          hasUnsavedChanges={saveStatus !== "saved"}
+          saveStatus={saveStatus}
+        />
+      )}
     </div>
   );
 }

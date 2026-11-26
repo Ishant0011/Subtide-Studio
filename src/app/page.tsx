@@ -65,18 +65,18 @@ export default async function HomePage() {
 
       <main className="relative z-10">
         {/* Hero Section: Synchronized Before / After Playable Demo */}
-        <section className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:pb-16 lg:pt-8">
-          <div className="grid grid-cols-1 items-center gap-5 sm:gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+        <section className="mx-auto max-w-[84rem] px-4 pb-12 pt-7 sm:px-8 lg:px-14 lg:pb-16 lg:pt-9">
+          <div className="grid grid-cols-1 items-center gap-7 sm:gap-9 lg:min-h-[calc(100svh-9rem)] lg:grid-cols-[minmax(0,1fr)_minmax(21rem,0.82fr)] lg:gap-10 xl:gap-16">
             <div>
-              <h1 className="text-[1.85rem] font-extrabold leading-[1.06] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.6rem] lg:leading-[1.04]">
+              <h1 className="max-w-[13ch] text-[clamp(2.35rem,6vw,5.75rem)] font-extrabold leading-[1.02] tracking-[-0.055em] text-ink">
                 {HOMEPAGE_HEADLINE}
               </h1>
 
-              <p className="mt-2.5 max-w-md text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg">
+              <p className="mt-4 max-w-lg text-base leading-relaxed text-ink-secondary lg:mt-6 lg:text-xl">
                 Upload a clip, style your captions, and export.
               </p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3">
+              <div className="mt-5 flex flex-wrap items-center gap-2.5 lg:mt-8 lg:gap-3">
                 <Link
                   href="/upload"
                   data-testid="home-upload-cta"
@@ -98,7 +98,11 @@ export default async function HomePage() {
             </div>
 
             {/* Synchronized Before / After Interactive Demo */}
-            <div className="flex justify-center lg:justify-end">
+            <div className="relative flex min-w-0 justify-center">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 hidden rounded-[3rem] bg-accent/10 blur-[72px] lg:block"
+              />
               <HomeHeroDemo />
             </div>
           </div>
