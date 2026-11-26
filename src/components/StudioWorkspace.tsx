@@ -316,6 +316,7 @@ export function StudioWorkspace() {
                 <video
                   ref={videoRef}
                   src={SAMPLE_CLIP.src}
+                  poster={SAMPLE_CLIP.poster}
                   playsInline
                   preload="auto"
                   muted={isMuted}
@@ -365,7 +366,7 @@ export function StudioWorkspace() {
                 {!isPlaying && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                    className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md"
                   >
                     <Play className="ml-0.5 h-5 w-5 fill-current" />
                   </div>

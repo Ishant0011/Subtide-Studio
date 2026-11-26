@@ -63,24 +63,22 @@ export default async function HomePage() {
 
       <main className="relative z-10">
         {/* Hero Section: Synchronized Before / After Playable Demo */}
-        <section className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6 lg:pb-16 lg:pt-8">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+        <section className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pt-6 lg:pb-16 lg:pt-8">
+          <div className="grid grid-cols-1 items-center gap-5 sm:gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
             <div>
-              <h1 className="text-4xl font-extrabold leading-[1.04] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.6rem]">
+              <h1 className="text-[1.85rem] font-extrabold leading-[1.06] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.6rem] lg:leading-[1.04]">
                 {HOMEPAGE_HEADLINE}
               </h1>
 
-              <p className="mt-5 max-w-lg text-base leading-relaxed text-ink-secondary sm:text-lg">
-                Upload a video or audio clip, refine words and split or merge
-                cues on a full-width timeline, save personal brand presets, and
-                export burned-in MP4, UTF-8 SRT, or transparent ProRes 4444 MOV.
+              <p className="mt-2.5 max-w-md text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg">
+                Upload a clip, style your captions, and export.
               </p>
 
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3">
                 <Link
                   href="/upload"
                   data-testid="home-upload-cta"
-                  className="inline-flex items-center gap-2.5 rounded-xl bg-accent px-6 py-3.5 text-sm font-semibold text-page shadow-[0_10px_32px_rgba(167,139,250,0.3)] transition hover:bg-accent-hover"
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_10px_32px_rgba(167,139,250,0.3)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5"
                 >
                   <Upload className="h-4 w-4" />
                   <span>Upload a clip</span>
@@ -89,17 +87,12 @@ export default async function HomePage() {
                 <Link
                   href="/studio"
                   data-testid="home-sample-cta"
-                  className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-5 py-3.5 text-sm font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover"
+                  className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover sm:px-5 sm:py-3.5"
                 >
                   <Play className="h-4 w-4 fill-current" />
                   <span>Try a sample</span>
                 </Link>
               </div>
-
-              <p className="mt-5 text-xs text-ink-muted">
-                MP4, MOV, MP3 &amp; WAV up to 150 MB / 3 min · Edit the sample
-                transcript and download a free UTF-8 SRT without signing in.
-              </p>
             </div>
 
             {/* Synchronized Before / After Interactive Demo */}
@@ -170,6 +163,7 @@ export default async function HomePage() {
                   </div>
 
                   <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
+                    Upload MP4, MOV, MP3, or WAV up to 150 MB and 3 minutes.
                     Private resumable uploads recover from drops while the
                     worker normalizes your preview and aligns word timestamps.
                   </p>
@@ -276,8 +270,9 @@ export default async function HomePage() {
                   Three production outputs, one saved revision.
                 </h2>
                 <p className="mt-1.5 text-sm text-ink-secondary">
-                  Preview and rendered video share the same bundled fonts,
-                  colors, outlines, and timing.
+                  Export burned-in MP4, deterministic UTF-8 SRT, or transparent
+                  ProRes 4444 MOV — or edit the sample and download a free SRT
+                  without signing in.
                 </p>
               </div>
               <Link

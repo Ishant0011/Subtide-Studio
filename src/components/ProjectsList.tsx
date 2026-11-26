@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   AudioLines,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ExternalLink,
   Film,
@@ -651,9 +652,73 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           {job?.error_message || project.last_error_message}
                         </p>
                       )}
+                  </div>
 
-                    {primaryAsset && (
-                      <dl className="mt-3.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-page/75 p-3 text-xs">
+                  {/* Primary Card Action Row */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {primaryAsset && isAssetUploaded && project.status === "ready" && (
+                        <Link
+                          href={`/projects/${project.id}/editor`}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          <span>Open editor</span>
+                        </Link>
+                      )}
+
+                      {canStartProcessing && (
+                        <button
+                          type="button"
+                          disabled={startingId === project.id}
+                          onClick={() => void startProcessing(project.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-60"
+                        >
+                          {startingId === project.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : job?.status === "failed" ? (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 fill-current" />
+                          )}
+                          <span>
+                            {job?.status === "failed"
+                              ? "Retry processing"
+                              : "Start processing"}
+                          </span>
+                        </button>
+                      )}
+
+                      {primaryAsset && isAssetUploaded && (
+                        <button
+                          type="button"
+                          disabled={loadingAssetId === primaryAsset.id}
+                          onClick={() => void openPreview(primaryAsset.id, project, revision)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/12 bg-elevated px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/45 hover:text-ink disabled:opacity-60"
+                        >
+                          {loadingAssetId === primaryAsset.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          )}
+                          <span>Preview clip</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Collapsible Diagnostics Disclosure */}
+                  {primaryAsset && (
+                    <details
+                      data-testid={`project-details-${project.id}`}
+                      className="group mt-3.5 border-t border-ink/8 pt-2.5"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-ink-secondary transition hover:text-ink [&::-webkit-details-marker]:hidden">
+                        <span>Details</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-ink-muted transition-transform group-open:rotate-180" />
+                      </summary>
+
+                      <dl className="mt-2.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-page/75 p-3 text-xs">
                         <div>
                           <dt className="text-ink-muted">File</dt>
                           <dd className="mt-0.5 truncate font-medium text-ink">
@@ -689,69 +754,19 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                               : job?.stage_message || "Waiting for worker"}
                           </dd>
                         </div>
+                        <div className="col-span-2 border-t border-ink/8 pt-2">
+                          <dt className="text-ink-muted">Revision</dt>
+                          <dd className="mt-0.5 font-mono text-[11px] text-ink-secondary">
+                            {revision
+                              ? `Rev #${revision.revision_number} · ${revision.source}`
+                              : stage.spinning
+                                ? "Processing in worker"
+                                : "Ready for processing"}
+                          </dd>
+                        </div>
                       </dl>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 border-t border-ink/8 pt-3.5">
-                    <span className="font-mono text-[11px] text-ink-muted">
-                      {revision
-                        ? `Rev #${revision.revision_number} · ${revision.source}`
-                        : stage.spinning
-                          ? "Processing in worker"
-                          : "Ready for processing"}
-                    </span>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {canStartProcessing && (
-                        <button
-                          type="button"
-                          disabled={startingId === project.id}
-                          onClick={() => void startProcessing(project.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-60"
-                        >
-                          {startingId === project.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : job?.status === "failed" ? (
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          ) : (
-                            <Play className="h-3.5 w-3.5 fill-current" />
-                          )}
-                          <span>
-                            {job?.status === "failed"
-                              ? "Retry processing"
-                              : "Start processing"}
-                          </span>
-                        </button>
-                      )}
-
-                      {primaryAsset && isAssetUploaded && project.status === "ready" && (
-                        <Link
-                          href={`/projects/${project.id}/editor`}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          <span>Open editor</span>
-                        </Link>
-                      )}
-
-                      {primaryAsset && isAssetUploaded && (
-                        <button
-                          type="button"
-                          disabled={loadingAssetId === primaryAsset.id}
-                          onClick={() => void openPreview(primaryAsset.id, project, revision)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page disabled:opacity-60"
-                        >
-                          {loadingAssetId === primaryAsset.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          )}
-                          <span>Preview clip</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                    </details>
+                  )}
                 </div>
               </article>
             );

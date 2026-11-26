@@ -184,34 +184,43 @@ export function EditorTimeline({
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
 
+    // Subtle horizontal reference baseline
+    ctx.fillStyle = "rgba(167, 139, 250, 0.2)";
+    ctx.fillRect(0, Math.floor(height / 2), width, 1);
+
     const barWidth = width / waveformPeaks.length;
-    ctx.fillStyle = "rgba(167, 139, 250, 0.24)";
+    ctx.fillStyle = "rgba(196, 181, 253, 0.56)";
     for (let i = 0; i < waveformPeaks.length; i++) {
-      const amp = waveformPeaks[i];
-      const barH = Math.max(2, Math.round(amp * (height - 4)));
+      const amp = Math.pow(Math.max(0, Math.min(1, waveformPeaks[i])), 0.78);
+      const barH = Math.max(3, Math.round(amp * (height - 6)));
       const y = Math.round((height - barH) / 2);
       ctx.fillRect(
         Math.round(i * barWidth),
         y,
-        Math.max(1, Math.floor(barWidth - 1)),
+        Math.max(2, Math.floor(barWidth - 1.5)),
         barH
       );
     }
   }, [waveformPeaks, zoom]);
 
-  const ticks = useMemo(() => {
+  const { ticks, minorTicks } = useMemo(() => {
     const stepMs = chooseTickStepMs(safeDurationMs, zoom);
-    const list: Array<{ ms: number; pct: number; label: string }> = [];
+    const major: Array<{ ms: number; pct: number; label: string }> = [];
+    const minor: Array<{ ms: number; pct: number }> = [];
     for (let ms = 0; ms <= safeDurationMs; ms += stepMs) {
       const pct = (ms / safeDurationMs) * 100;
       if (pct > 86 && pct < 100) continue;
-      list.push({
+      major.push({
         ms,
         pct,
         label: formatMsClock(ms),
       });
+      const halfMs = ms + stepMs / 2;
+      if (halfMs < safeDurationMs) {
+        minor.push({ ms: halfMs, pct: (halfMs / safeDurationMs) * 100 });
+      }
     }
-    return list;
+    return { ticks: major, minorTicks: minor };
   }, [safeDurationMs, zoom]);
 
   const playheadPct = Math.min(
@@ -390,7 +399,7 @@ export function EditorTimeline({
   return (
     <div
       data-testid="editor-timeline"
-      className="rounded-2xl border border-ink/10 bg-panel p-3"
+      className="rounded-2xl border border-ink/10 bg-panel p-2.5"
     >
       {/* Timeline Toolbar: Cue readout + Split / Merge / Play Cue + Zoom */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -512,8 +521,16 @@ export function EditorTimeline({
             onPointerMove={handleScrubMove}
             onPointerUp={endScrub}
             onPointerCancel={endScrub}
-            className="relative h-6 cursor-ew-resize border-b border-ink/10"
+            className="relative h-7 cursor-ew-resize border-b border-ink/15"
           >
+            {minorTicks.map((tick) => (
+              <span
+                key={`minor-${tick.ms}`}
+                aria-hidden="true"
+                style={{ left: `${tick.pct}%` }}
+                className="pointer-events-none absolute bottom-0 h-1.5 w-px bg-ink/18"
+              />
+            ))}
             {ticks.map((tick) => {
               const nearRightEdge = tick.pct > 90;
               return (
@@ -525,32 +542,32 @@ export function EditorTimeline({
                   }`}
                 >
                   <span
-                    className={`font-mono text-[10px] leading-none tabular-nums text-ink-muted ${
+                    className={`font-mono text-[11px] font-medium leading-none tabular-nums text-ink-secondary ${
                       nearRightEdge ? "mr-1" : "ml-1"
                     }`}
                   >
                     {tick.label}
                   </span>
-                  <span className="mt-1 h-1.5 w-px bg-ink/20" />
+                  <span className="mt-1 h-2 w-px bg-ink/35" />
                 </div>
               );
             })}
           </div>
 
-          {/* Cue Track with Optional Real Audio Waveform Behind Cues */}
+          {/* Cue Track with Real Audio Waveform Clearly Visible Behind Cues */}
           <div
             data-testid="timeline-track"
             onPointerDown={startScrub}
             onPointerMove={handleScrubMove}
             onPointerUp={endScrub}
             onPointerCancel={endScrub}
-            className="relative mt-2 h-12 cursor-pointer overflow-hidden rounded-lg bg-inset/90"
+            className="relative mt-2 h-14 cursor-pointer overflow-hidden rounded-lg border border-ink/8 bg-inset"
           >
             {waveformPeaks && (
               <canvas
                 ref={waveformCanvasRef}
                 width={960}
-                height={48}
+                height={56}
                 data-testid="timeline-waveform-canvas"
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 h-full w-full"
@@ -589,10 +606,10 @@ export function EditorTimeline({
                   }}
                   className={`group absolute bottom-1 top-1 flex items-center overflow-hidden rounded-lg border text-left transition-colors ${
                     isSelected || isDraggingThis
-                      ? "z-20 border-accent bg-accent-soft/90 text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.45)]"
+                      ? "z-20 border-accent bg-accent-soft/60 text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.45)]"
                       : isActive
-                        ? "z-10 border-accent/65 bg-accent-soft/75 text-ink"
-                        : "z-10 border-ink/15 bg-elevated/90 text-ink-secondary hover:border-accent/45 hover:text-ink"
+                        ? "z-10 border-accent/65 bg-accent-soft/45 text-ink"
+                        : "z-10 border-ink/20 bg-elevated/55 text-ink-secondary hover:border-accent/45 hover:text-ink"
                   }`}
                 >
                   {/* Left (Start) Draggable Handle */}

@@ -16,7 +16,8 @@ import {
   Frame,
   Keyboard,
   Loader2,
-  Merge,
+  Maximize2,
+  Minimize2,
   Pause,
   Pencil,
   Play,
@@ -24,7 +25,6 @@ import {
   RefreshCw,
   RotateCcw,
   RotateCw,
-  Scissors,
   Search,
   SlidersHorizontal,
   Undo2,
@@ -127,6 +127,10 @@ export function ProjectCaptionEditor({
   const [inspectorTab, setInspectorTab] = useState<StudioMobileTab>("captions");
   const [showSafeArea, setShowSafeArea] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [mobilePreviewExpanded, setMobilePreviewExpanded] = useState(false);
+  const [expandedWordCueIds, setExpandedWordCueIds] = useState<
+    Record<string, boolean>
+  >({});
 
   const [cues, setCues] = useState<EditorCue[]>(initialCues);
   const [style, setStyle] = useState<CaptionStyleConfig>(initialStyle);
@@ -918,10 +922,10 @@ export function ProjectCaptionEditor({
     <div className="min-h-screen overflow-x-clip bg-page text-ink">
       {/* Compact Project Header */}
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
           <Link
             href="/projects"
-            className="order-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink/12 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink"
+            className="order-1 inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink sm:gap-1.5 sm:px-2.5 sm:py-1.5"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Projects</span>
@@ -932,16 +936,16 @@ export function ProjectCaptionEditor({
               aria-hidden="true"
               className="hidden h-4 w-px shrink-0 bg-ink/12 sm:inline-block"
             />
-            <h1 className="truncate text-sm font-bold tracking-tight text-ink lg:text-base">
+            <h1 className="truncate text-xs font-bold tracking-tight text-ink sm:text-sm lg:text-base">
               {projectTitle}
             </h1>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
+              <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary sm:text-[11px]">
                 Rev #{revisionNumber}
               </span>
               <span
                 data-testid="editor-media-aspect"
-                className="rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover"
+                className="hidden rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover sm:inline-block"
               >
                 {mediaAspectBadge}
               </span>
@@ -979,7 +983,7 @@ export function ProjectCaptionEditor({
               aria-live="polite"
               data-testid="autosave-status"
               data-status={saveStatus}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:px-3 sm:text-xs ${
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
                 saveStatus === "saved"
                   ? "border border-accent/40 bg-accent-soft text-accent-hover"
                   : saveStatus === "saving"
@@ -988,16 +992,16 @@ export function ProjectCaptionEditor({
               }`}
             >
               {saveStatus === "saving" && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
               )}
               {saveStatus === "saved" && (
-                <CheckCircle2 className="h-3.5 w-3.5" />
+                <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               )}
               {saveStatus === "error" && (
-                <AlertCircle className="h-3.5 w-3.5" />
+                <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               )}
               {saveStatus === "conflict" && (
-                <AlertTriangle className="h-3.5 w-3.5" />
+                <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               )}
               <span>
                 {saveStatus === "saving"
@@ -1025,19 +1029,19 @@ export function ProjectCaptionEditor({
               type="button"
               data-testid="open-export-btn"
               onClick={() => setExportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover sm:px-3"
+              className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Export</span>
             </button>
 
-            <AccountMenu userEmail={userEmail} />
+            <AccountMenu userEmail={userEmail} compactMobile />
           </div>
         </div>
       </header>
 
       {/* Main Creator Studio Workspace */}
-      <main className="mx-auto w-full max-w-[1440px] px-3 py-3 sm:px-5 lg:px-6 lg:py-3.5">
+      <main className="mx-auto w-full max-w-[1440px] px-3 py-2.5 sm:px-5 lg:px-6 lg:py-2.5">
         {/* Action Toast */}
         {actionNotice && (
           <div
@@ -1120,20 +1124,41 @@ export function ProjectCaptionEditor({
           )}
 
         {/* Top Row: Centered Video Stage + Right Transcript/Style Inspector */}
-        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start xl:grid-cols-[minmax(0,1fr)_460px] xl:gap-5">
+        <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start xl:grid-cols-[minmax(0,1fr)_420px] xl:gap-5">
           {/* Centered Preview Stage + Transport Bar */}
           <section
             aria-label="Caption preview and playback"
             className="flex min-w-0 flex-col"
           >
-            <div className="relative flex items-center justify-center rounded-2xl border border-ink/10 bg-inset px-3 py-3 sm:px-6 sm:py-4">
+            <div className="relative flex items-center justify-center rounded-2xl border border-ink/10 bg-inset px-3 py-2 sm:px-6 sm:py-3 lg:py-2.5">
+              {/* Mobile Expand / Collapse Preview Toggle */}
+              <button
+                type="button"
+                data-testid="toggle-expand-preview-btn"
+                aria-expanded={mobilePreviewExpanded}
+                onClick={() => setMobilePreviewExpanded((v) => !v)}
+                className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-lg border border-ink/12 bg-page/85 px-2 py-1 text-[10px] font-semibold text-ink-secondary transition hover:border-accent/45 hover:text-ink lg:hidden"
+              >
+                {mobilePreviewExpanded ? (
+                  <>
+                    <Minimize2 className="h-3 w-3 text-accent" />
+                    <span>Collapse</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-3 w-3 text-accent" />
+                    <span>Expand preview</span>
+                  </>
+                )}
+              </button>
+
               {/* Quick Safe-Area Guide Button on Stage */}
               <button
                 type="button"
                 onClick={() => setShowSafeArea((v) => !v)}
                 aria-pressed={showSafeArea}
                 title="Toggle Reels/Shorts safe-area guide"
-                className={`absolute right-3 top-3 z-20 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
+                className={`absolute right-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition sm:right-3 sm:top-3 ${
                   showSafeArea
                     ? "border-accent bg-accent-soft text-accent-hover"
                     : "border-ink/12 bg-page/80 text-ink-secondary hover:border-accent/45 hover:text-ink"
@@ -1146,10 +1171,15 @@ export function ProjectCaptionEditor({
               <div
                 data-testid="editor-preview-stage"
                 data-orientation={isLandscapeVideo ? "landscape" : "portrait"}
-                className={`studio-stage-container relative overflow-hidden rounded-[1.35rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] ${
+                data-mobile-expanded={mobilePreviewExpanded ? "true" : "false"}
+                className={`studio-stage-container relative overflow-hidden rounded-[1.25rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] transition-[width,max-width] duration-200 sm:rounded-[1.35rem] ${
                   isLandscapeVideo
-                    ? "aspect-video w-full max-w-[600px]"
-                    : "aspect-[9/16] w-[196px] sm:w-[228px] lg:w-[234px] xl:w-[252px]"
+                    ? mobilePreviewExpanded
+                      ? "aspect-video w-full max-w-[360px] sm:max-w-[540px] lg:max-w-[680px]"
+                      : "aspect-video w-full max-w-[270px] sm:max-w-[540px] lg:max-w-[680px]"
+                    : mobilePreviewExpanded
+                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
+                      : "aspect-[9/16] w-[124px] sm:w-[228px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
                 }`}
               >
                 {mediaKind === "video" ? (
@@ -1238,16 +1268,18 @@ export function ProjectCaptionEditor({
                 {!isPlaying && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-1/2 top-[42%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-xl backdrop-blur-md"
+                    className={`pointer-events-none absolute left-1/2 top-[54%] z-10 h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-xl backdrop-blur-md ${
+                      mobilePreviewExpanded ? "flex" : "hidden sm:flex"
+                    }`}
                   >
-                    <Play className="ml-0.5 h-5 w-5 fill-current" />
+                    <Play className="ml-0.5 h-4 w-4 fill-current" />
                   </div>
                 )}
               </div>
             </div>
 
             {/* Centered Transport Bar directly under Preview */}
-            <div className="mt-2.5 rounded-2xl border border-ink/10 bg-panel px-3 py-2.5">
+            <div className="mt-2 rounded-2xl border border-ink/10 bg-panel px-3 py-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
@@ -1399,7 +1431,7 @@ export function ProjectCaptionEditor({
           {/* Right Side Unified Inspector: Transcript / Style Tabs */}
           <aside className="flex min-w-0 flex-col">
             {/* Mobile accessible tabs */}
-            <div className="mb-3 lg:hidden">
+            <div className="mb-2.5 lg:hidden">
               <StudioTabs
                 activeTab={inspectorTab}
                 onChange={setInspectorTab}
@@ -1473,7 +1505,7 @@ export function ProjectCaptionEditor({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1">
-                    {/* Mobile Undo/Redo */}
+                    {/* Mobile Undo/Redo (Split & Merge live in the Timeline toolbar) */}
                     <div className="flex items-center gap-1 sm:hidden">
                       <button
                         type="button"
@@ -1494,27 +1526,6 @@ export function ProjectCaptionEditor({
                         <Redo2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-
-                    <button
-                      type="button"
-                      disabled={!canSplitAtPlayhead}
-                      onClick={handleSplitAtPlayhead}
-                      title="Split at playhead"
-                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35"
-                    >
-                      <Scissors className="h-3 w-3" />
-                      <span className="hidden sm:inline">Split</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!canMergeSelected}
-                      onClick={handleMergeSelectedWithNext}
-                      title="Merge selected cue with next"
-                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink/12 bg-elevated px-2 text-[11px] font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35"
-                    >
-                      <Merge className="h-3 w-3" />
-                      <span className="hidden sm:inline">Merge</span>
-                    </button>
                   </div>
                 </div>
 
@@ -1607,7 +1618,7 @@ export function ProjectCaptionEditor({
                 ) : (
                   <div
                     ref={transcriptScrollRef}
-                    className="studio-scroll relative mt-3 space-y-2.5 lg:max-h-[410px] lg:overflow-y-auto lg:pr-1 xl:max-h-[445px]"
+                    className="studio-scroll relative mt-2.5 space-y-2.5 lg:max-h-[385px] lg:overflow-y-auto lg:pr-1 xl:max-h-[455px]"
                   >
                     {cues.map((cue, idx) => {
                       const isActive = activeCue?.id === cue.id;
@@ -1617,6 +1628,9 @@ export function ProjectCaptionEditor({
                       const isCurrentMatch = currentMatchedCueId === cue.id;
                       const hasWordSync =
                         cue.timing_mode === "word" && cue.words.length > 0;
+                      const isWordsExpanded =
+                        Boolean(expandedWordCueIds[cue.id]) ||
+                        editingWord?.cueId === cue.id;
 
                       return (
                         <div
@@ -1676,7 +1690,34 @@ export function ProjectCaptionEditor({
                               </span>
                             </button>
 
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              {hasWordSync && (
+                                <button
+                                  type="button"
+                                  data-testid={`cue-${idx + 1}-edit-words-btn`}
+                                  aria-expanded={isWordsExpanded}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCueId(cue.id);
+                                    setExpandedWordCueIds((prev) => ({
+                                      ...prev,
+                                      [cue.id]: !prev[cue.id],
+                                    }));
+                                  }}
+                                  className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] font-semibold transition ${
+                                    isWordsExpanded
+                                      ? "border-accent bg-accent-soft text-accent-hover"
+                                      : "border-ink/12 bg-page text-ink-secondary hover:border-accent/50 hover:text-ink"
+                                  }`}
+                                >
+                                  <Pencil className="h-2.5 w-2.5" />
+                                  <span>
+                                    {isWordsExpanded
+                                      ? "Hide words"
+                                      : "Edit words"}
+                                  </span>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 data-testid={`cue-${idx + 1}-play-btn`}
@@ -1696,25 +1737,34 @@ export function ProjectCaptionEditor({
                               >
                                 <Play className="h-3 w-3 fill-current" />
                               </button>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                                  cue.timing_mode === "word"
-                                    ? "bg-accent-soft text-accent-hover"
-                                    : "bg-track text-ink-secondary"
-                                }`}
-                              >
-                                {cue.timing_mode === "word"
-                                  ? "Word-synced"
-                                  : "Cue-level"}
-                              </span>
+                              {!hasWordSync && (
+                                <span className="rounded-full bg-track px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-secondary">
+                                  Cue-level
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {/* Click-to-Seek + Individual Timed Word Editor */}
-                          {hasWordSync && (
+                          {/* Editable Caption Text (shown cleanly by default) */}
+                          <div className="mt-2 pl-1">
+                            <textarea
+                              rows={2}
+                              aria-label={`Cue ${idx + 1} text`}
+                              value={cue.text}
+                              onFocus={() => setSelectedCueId(cue.id)}
+                              onChange={(e) =>
+                                updateCueText(cue.id, e.target.value)
+                              }
+                              className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-1.5 text-xs leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+                            />
+                          </div>
+
+                          {/* Click-to-Seek + Individual Timed Word Editor (revealed via Edit words) */}
+                          {hasWordSync && isWordsExpanded && (
                             <div
+                              data-testid={`cue-${idx + 1}-word-chips`}
                               aria-label={`Cue ${idx + 1} word timing`}
-                              className="mt-2 flex flex-wrap items-center gap-1 pl-1"
+                              className="mt-2 flex flex-wrap items-center gap-1 rounded-lg border border-ink/10 bg-page/75 p-2 pl-2"
                             >
                               {cue.words.map((word, wIdx) => {
                                 const isWordActive =
@@ -1843,20 +1893,6 @@ export function ProjectCaptionEditor({
                             </div>
                           )}
 
-                          {/* Editable Caption Text */}
-                          <div className="mt-2 pl-1">
-                            <textarea
-                              rows={2}
-                              aria-label={`Cue ${idx + 1} text`}
-                              value={cue.text}
-                              onFocus={() => setSelectedCueId(cue.id)}
-                              onChange={(e) =>
-                                updateCueText(cue.id, e.target.value)
-                              }
-                              className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-1.5 text-xs leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
-                            />
-                          </div>
-
                           {/* Numeric Start / End Timing Controls */}
                           <div className="mt-2 grid grid-cols-2 gap-2 pl-1">
                             <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
@@ -1940,7 +1976,7 @@ export function ProjectCaptionEditor({
         {/* Full-Width Interactive Timeline Bar Below */}
         <section
           aria-label="Full-width caption timeline"
-          className="mt-3.5 w-full"
+          className="mt-2.5 w-full"
         >
           <EditorTimeline
             cues={cues}

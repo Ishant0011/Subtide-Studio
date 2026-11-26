@@ -43,6 +43,7 @@ export const SAMPLE_CLIP = {
   title: "Creator Hook — Sample Clip",
   filename: "sample-clip.mp4",
   src: "/sample-clip.mp4",
+  poster: "/sample-poster.jpg",
   duration: 13.75,
   aspectLabel: "9:16 Portrait",
 };

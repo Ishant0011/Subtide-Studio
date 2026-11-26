@@ -6,9 +6,13 @@ import { ChevronDown, FolderKanban, LogOut, Upload, User } from "lucide-react";
 
 interface AccountMenuProps {
   userEmail: string;
+  compactMobile?: boolean;
 }
 
-export function AccountMenu({ userEmail }: AccountMenuProps) {
+export function AccountMenu({
+  userEmail,
+  compactMobile = false,
+}: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -56,7 +60,7 @@ export function AccountMenu({ userEmail }: AccountMenuProps) {
         >
           {userEmail}
         </span>
-        <span className="sm:hidden">Account</span>
+        {!compactMobile && <span className="sm:hidden">Account</span>}
         <ChevronDown
           className={`h-3.5 w-3.5 text-ink-muted transition ${
             open ? "rotate-180" : ""

@@ -22,7 +22,7 @@ export function HomeHeroDemo() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [compareMode, setCompareMode] = useState<CompareMode>("split");
+  const [compareMode, setCompareMode] = useState<CompareMode>("after");
   const [splitPercent, setSplitPercent] = useState(34);
   const [templateId, setTemplateId] = useState<string>(
     BUILTIN_STYLE_TEMPLATES[0].id
@@ -120,10 +120,10 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[336px] rounded-[1.85rem] border border-accent/25 bg-panel p-3 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[352px]"
+      className="relative mx-auto w-full max-w-[264px] rounded-[1.6rem] border border-accent/25 bg-panel p-2.5 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[332px] sm:rounded-[1.85rem] sm:p-3 lg:max-w-[344px]"
     >
       {/* Top Synchronized Before / After Switcher */}
-      <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
+      <div className="mb-2 flex items-center justify-between gap-2 px-0.5 sm:mb-2.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
           <span
             className={`h-2 w-2 rounded-full ${
@@ -153,7 +153,7 @@ export function HomeHeroDemo() {
                 data-testid={`before-after-mode-${mode.id}`}
                 aria-pressed={active}
                 onClick={() => setCompareMode(mode.id)}
-                className={`rounded-full px-2.5 py-0.5 transition ${
+                className={`rounded-full px-2 py-0.5 transition sm:px-2.5 ${
                   active
                     ? "bg-accent text-page"
                     : "text-ink-secondary hover:text-ink"
@@ -167,10 +167,11 @@ export function HomeHeroDemo() {
       </div>
 
       {/* Synchronized Single-Video 9:16 Stage */}
-      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.45rem] border border-ink/12 bg-page">
+      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.25rem] border border-ink/12 bg-page sm:rounded-[1.45rem]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
+          poster={SAMPLE_CLIP.poster}
           playsInline
           preload="auto"
           muted={isMuted}
@@ -247,11 +248,11 @@ export function HomeHeroDemo() {
           </div>
         )}
 
-        {/* Center play affordance */}
+        {/* Center play affordance (positioned below face over chest) */}
         {!isPlaying && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[38%] z-10 flex h-13 w-13 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
+            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
           >
             <Play className="ml-0.5 h-5 w-5 fill-current" />
           </div>
