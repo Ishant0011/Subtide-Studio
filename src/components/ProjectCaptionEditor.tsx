@@ -123,6 +123,7 @@ export function ProjectCaptionEditor({
       : null
   );
   const [hasInitializedSeek, setHasInitializedSeek] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   // Shared inspector tab across desktop inspector & phone tabs
   const [inspectorTab, setInspectorTab] = useState<StudioMobileTab>("captions");
   const [showSafeArea, setShowSafeArea] = useState(false);
@@ -379,6 +380,7 @@ export function ProjectCaptionEditor({
     playUntilMsRef.current = null;
     const el = mediaRef.current;
     if (!el) return;
+    setMediaError(null);
     if (el.paused || el.ended) {
       if (el.ended || el.currentTime * 1000 >= clipDurationMs - 50) {
         el.currentTime = 0;
@@ -389,12 +391,24 @@ export function ProjectCaptionEditor({
       } catch {
         el.muted = true;
         setIsMuted(true);
-        await el.play().catch(() => {});
+        try {
+          await el.play();
+        } catch {
+          setMediaError("Preview media could not start playback.");
+        }
       }
     } else {
       el.pause();
     }
   }, [clipDurationMs]);
+
+  const retryMediaPlayback = useCallback(() => {
+    const el = mediaRef.current;
+    setMediaError(null);
+    if (!el) return;
+    el.load();
+    void togglePlay();
+  }, [togglePlay]);
 
   const playSelectedCue = useCallback(async () => {
     const cue = selectedCue;
@@ -1194,9 +1208,17 @@ export function ProjectCaptionEditor({
                     onLoadedMetadata={handleLoadedMetadata}
                     onTimeUpdate={handleTimeUpdate}
                     onSeeked={handleTimeUpdate}
-                    onPlay={() => setIsPlaying(true)}
+                    onPlay={() => {
+                      setMediaError(null);
+                      setIsPlaying(true);
+                    }}
                     onPause={() => setIsPlaying(false)}
                     onEnded={() => setIsPlaying(false)}
+                    onError={() =>
+                      setMediaError(
+                        "Preview media failed to load. Try reloading or retrying."
+                      )
+                    }
                     onClick={() => void togglePlay()}
                     className="h-full w-full cursor-pointer bg-page object-contain"
                   />
@@ -1225,9 +1247,17 @@ export function ProjectCaptionEditor({
                       onLoadedMetadata={handleLoadedMetadata}
                       onTimeUpdate={handleTimeUpdate}
                       onSeeked={handleTimeUpdate}
-                      onPlay={() => setIsPlaying(true)}
+                      onPlay={() => {
+                        setMediaError(null);
+                        setIsPlaying(true);
+                      }}
                       onPause={() => setIsPlaying(false)}
                       onEnded={() => setIsPlaying(false)}
+                      onError={() =>
+                        setMediaError(
+                          "Audio preview failed to load. Try reloading or retrying."
+                        )
+                      }
                     />
                   </div>
                 )}
@@ -1277,6 +1307,28 @@ export function ProjectCaptionEditor({
                 )}
               </div>
             </div>
+
+            {/* Media Load / Playback Error Banner */}
+            {mediaError && (
+              <div
+                role="alert"
+                data-testid="editor-media-error"
+                className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-rose-400/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{mediaError}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={retryMediaPlayback}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-rose-300/30 bg-panel px-2.5 py-1 text-xs font-semibold text-rose-100 hover:border-accent/55"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  <span>Retry</span>
+                </button>
+              </div>
+            )}
 
             {/* Centered Transport Bar directly under Preview */}
             <div className="mt-2 rounded-2xl border border-ink/10 bg-panel px-3 py-2">

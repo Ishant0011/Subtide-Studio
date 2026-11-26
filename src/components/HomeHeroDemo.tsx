@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { AlertCircle, Pause, Play, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import {
   SAMPLE_CAPTIONS,
   SAMPLE_CLIP,
@@ -30,6 +30,7 @@ export function HomeHeroDemo() {
   const [currentTime, setCurrentTime] = useState(0.5);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const selectedTemplate: BuiltInStyleTemplate = useMemo(
     () =>
@@ -73,6 +74,7 @@ export function HomeHeroDemo() {
   const togglePlay = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
+    setMediaError(null);
     if (video.paused || video.ended) {
       if (video.ended || video.currentTime >= duration - 0.05) {
         video.currentTime = 0;
@@ -83,12 +85,24 @@ export function HomeHeroDemo() {
       } catch {
         video.muted = true;
         setIsMuted(true);
-        await video.play().catch(() => {});
+        try {
+          await video.play();
+        } catch {
+          setMediaError("Demo clip could not start playback.");
+        }
       }
     } else {
       video.pause();
     }
   }, [duration]);
+
+  const retryMedia = useCallback(() => {
+    const video = videoRef.current;
+    setMediaError(null);
+    if (!video) return;
+    video.load();
+    void togglePlay();
+  }, [togglePlay]);
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
@@ -187,9 +201,13 @@ export function HomeHeroDemo() {
             setCurrentTime(e.currentTarget.currentTime);
           }}
           onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => {
+            setMediaError(null);
+            setIsPlaying(true);
+          }}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
+          onError={() => setMediaError("Could not load demo video.")}
           onClick={() => void togglePlay()}
           className="h-full w-full cursor-pointer object-cover"
         />
@@ -277,6 +295,28 @@ export function HomeHeroDemo() {
           <span className="text-[10px] font-medium text-accent-hover">
             After
           </span>
+        </div>
+      )}
+
+      {/* Media Error / Retry Alert */}
+      {mediaError && (
+        <div
+          role="alert"
+          data-testid="hero-media-error"
+          className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-rose-400/35 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-200"
+        >
+          <span className="inline-flex items-center gap-1.5 truncate">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{mediaError}</span>
+          </span>
+          <button
+            type="button"
+            onClick={retryMedia}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-300/30 bg-panel px-2 py-0.5 font-semibold text-rose-100 hover:border-accent/55"
+          >
+            <RefreshCw className="h-3 w-3" />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 

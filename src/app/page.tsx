@@ -79,6 +79,7 @@ export default async function HomePage() {
               <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3">
                 <Link
                   href="/upload"
+                  prefetch={false}
                   data-testid="home-upload-cta"
                   className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_10px_32px_rgba(167,139,250,0.3)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5"
                 >
@@ -415,13 +416,13 @@ viewers in two seconds.
             <Link href="/studio" className="transition hover:text-ink">
               Sample Studio
             </Link>
-            <Link href="/upload" className="transition hover:text-ink">
+            <Link href="/upload" prefetch={false} className="transition hover:text-ink">
               Upload a clip
             </Link>
-            <Link href="/projects" className="transition hover:text-ink">
+            <Link href="/projects" prefetch={false} className="transition hover:text-ink">
               Projects
             </Link>
-            <Link href="/login" className="transition hover:text-ink">
+            <Link href="/login" prefetch={false} className="transition hover:text-ink">
               Sign in
             </Link>
           </nav>

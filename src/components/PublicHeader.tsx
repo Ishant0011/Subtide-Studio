@@ -64,6 +64,7 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
           >
             <Link
               href="/login?mode=signin"
+              prefetch={false}
               data-testid="header-signin-link"
               className="rounded-xl border border-ink/15 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-accent/55 hover:text-accent-hover sm:px-3.5 sm:py-2"
             >
@@ -71,6 +72,7 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
             </Link>
             <Link
               href="/login?mode=signup"
+              prefetch={false}
               data-testid="header-signup-link"
               className="rounded-xl bg-accent px-2.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover sm:px-3.5 sm:py-2"
             >

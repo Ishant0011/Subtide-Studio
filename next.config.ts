@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-function buildContentSecurityPolicy(): string {
+function buildContentSecurityPolicy(isDevelopmentServer: boolean): string {
   const supabaseOrigin = (() => {
     try {
       const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,13 +38,19 @@ function buildContentSecurityPolicy(): string {
     ...(supabaseOrigin ? [supabaseOrigin] : []),
   ];
 
+  // Next.js development runtime requires 'unsafe-eval' for source-mapped client chunks;
+  // production builds and servers keep 'unsafe-eval' strictly disabled.
+  const scriptSrc = isDevelopmentServer
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'";
+
   return [
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
     "object-src 'none'",
-    "script-src 'self' 'unsafe-inline'",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imgSources.join(" ")}`,
     "font-src 'self' data:",
@@ -53,25 +60,30 @@ function buildContentSecurityPolicy(): string {
   ].join("; ");
 }
 
-const securityHeaders = [
-  { key: "Content-Security-Policy", value: buildContentSecurityPolicy() },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  {
-    key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-  },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  ...(process.env.NODE_ENV === "production"
-    ? [
-        {
-          key: "Strict-Transport-Security",
-          value: "max-age=31536000; includeSubDomains",
-        },
-      ]
-    : []),
-];
+function buildSecurityHeaders(isDevelopmentServer: boolean) {
+  return [
+    {
+      key: "Content-Security-Policy",
+      value: buildContentSecurityPolicy(isDevelopmentServer),
+    },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "X-Frame-Options", value: "DENY" },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    {
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    },
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    ...(!isDevelopmentServer && process.env.NODE_ENV === "production"
+      ? [
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ]
+      : []),
+  ];
+}
 
 const noStoreHeaders = [
   {
@@ -81,33 +93,34 @@ const noStoreHeaders = [
   { key: "Pragma", value: "no-cache" },
 ];
 
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  poweredByHeader: false,
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: securityHeaders,
-      },
-      {
-        source: "/api/:path*",
-        headers: noStoreHeaders,
-      },
-      {
-        source: "/admin/:path*",
-        headers: noStoreHeaders,
-      },
-      {
-        source: "/projects/:path*",
-        headers: noStoreHeaders,
-      },
-      {
-        source: "/upload/:path*",
-        headers: noStoreHeaders,
-      },
-    ];
-  },
-};
-
-export default nextConfig;
+export default function nextConfig(phase: string): NextConfig {
+  const isDevelopmentServer = phase === PHASE_DEVELOPMENT_SERVER;
+  return {
+    reactStrictMode: true,
+    poweredByHeader: false,
+    async headers() {
+      return [
+        {
+          source: "/:path*",
+          headers: buildSecurityHeaders(isDevelopmentServer),
+        },
+        {
+          source: "/api/:path*",
+          headers: noStoreHeaders,
+        },
+        {
+          source: "/admin/:path*",
+          headers: noStoreHeaders,
+        },
+        {
+          source: "/projects/:path*",
+          headers: noStoreHeaders,
+        },
+        {
+          source: "/upload/:path*",
+          headers: noStoreHeaders,
+        },
+      ];
+    },
+  };
+}
