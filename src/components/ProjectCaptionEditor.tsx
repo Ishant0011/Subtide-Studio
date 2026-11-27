@@ -7,11 +7,13 @@ import {
   AlertTriangle,
   ArrowLeft,
   AudioLines,
-  Captions,
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
+  Clock,
   Download,
   Frame,
   Keyboard,
@@ -23,10 +25,7 @@ import {
   Play,
   Redo2,
   RefreshCw,
-  RotateCcw,
-  RotateCw,
   Search,
-  SlidersHorizontal,
   Undo2,
   Upload,
   Volume2,
@@ -58,6 +57,7 @@ import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
 import { generateSrtFromCues } from "@/lib/exports";
 
 type SaveStatus = "saved" | "saving" | "error" | "conflict";
+type WorkspaceViewMode = "editor" | "timeline";
 
 interface ConflictRevisionPayload {
   id: string;
@@ -116,9 +116,13 @@ export function ProjectCaptionEditor({
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const cueCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const playUntilMsRef = useRef<number | null>(null);
+  const openTimelineBtnRef = useRef<HTMLButtonElement | null>(null);
+  const backToEditorBtnRef = useRef<HTMLButtonElement | null>(null);
 
+  const [viewMode, setViewMode] = useState<WorkspaceViewMode>("editor");
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isMediaReady, setIsMediaReady] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(
     initialCues[0] ? initialCues[0].start_ms : 0
   );
@@ -132,12 +136,18 @@ export function ProjectCaptionEditor({
   );
   const [hasInitializedSeek, setHasInitializedSeek] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  // Shared inspector tab across desktop inspector & phone tabs
-  const [inspectorTab, setInspectorTab] = useState<StudioMobileTab>("captions");
+
+  // Phone single-panel switcher (Captions | Style)
+  const [mobileTab, setMobileTab] = useState<StudioMobileTab>("captions");
   const [showSafeArea, setShowSafeArea] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [mobilePreviewExpanded, setMobilePreviewExpanded] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+
+  // Explicit per-cue disclosures in Transcript (Edit words & exact Timing)
   const [expandedWordCueIds, setExpandedWordCueIds] = useState<
+    Record<string, boolean>
+  >({});
+  const [expandedTimingCueIds, setExpandedTimingCueIds] = useState<
     Record<string, boolean>
   >({});
 
@@ -200,6 +210,14 @@ export function ProjectCaptionEditor({
     latestStyleRef.current = style;
   }, [style]);
 
+  // Check if media already cached on mount
+  useEffect(() => {
+    const el = mediaRef.current;
+    if (el && el.readyState >= 1) {
+      setIsMediaReady(true);
+    }
+  }, [previewUrl]);
+
   const syncHistoryCounts = useCallback(() => {
     setHistoryCounts({
       undo: undoStackRef.current.length,
@@ -239,11 +257,11 @@ export function ProjectCaptionEditor({
   }, [mediaKind, videoDims]);
 
   const mediaAspectBadge = useMemo(() => {
-    if (mediaKind === "audio") return "Audio 9:16";
+    if (mediaKind === "audio") return "Audio";
     if (!videoDims) return "Video";
-    if (videoDims.w > videoDims.h) return "Video 16:9";
-    if (videoDims.w === videoDims.h) return "Video 1:1";
-    return "Video 9:16";
+    if (videoDims.w > videoDims.h) return "16:9";
+    if (videoDims.w === videoDims.h) return "1:1";
+    return "9:16";
   }, [mediaKind, videoDims]);
 
   const activeCue = useMemo(
@@ -264,7 +282,11 @@ export function ProjectCaptionEditor({
     [cues, selectedCueId]
   );
   const selectedCue =
-    selectedCueIndex >= 0 ? cues[selectedCueIndex] : activeCue;
+    selectedCueIndex >= 0 ? cues[selectedCueIndex] : activeCue ?? cues[0] ?? null;
+  const effectiveSelectedIndex = useMemo(
+    () => (selectedCue ? cues.findIndex((c) => c.id === selectedCue.id) : -1),
+    [cues, selectedCue]
+  );
 
   const activePresetShortLabel = useMemo(() => {
     if (style.preset === "word-highlight") return "Highlight";
@@ -308,6 +330,20 @@ export function ProjectCaptionEditor({
       }),
     [cues, style, clipDurationMs]
   );
+
+  const openTimelineView = useCallback(() => {
+    setViewMode("timeline");
+    requestAnimationFrame(() => {
+      backToEditorBtnRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const returnToEditorView = useCallback(() => {
+    setViewMode("editor");
+    requestAnimationFrame(() => {
+      openTimelineBtnRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
 
   // Close shortcuts popover on outside click / Escape
   useEffect(() => {
@@ -413,6 +449,7 @@ export function ProjectCaptionEditor({
   const retryMediaPlayback = useCallback(() => {
     const el = mediaRef.current;
     setMediaError(null);
+    setIsMediaReady(false);
     if (!el) return;
     el.load();
     void togglePlay();
@@ -445,10 +482,16 @@ export function ProjectCaptionEditor({
   const handleLoadedMetadata = useCallback(() => {
     const el = mediaRef.current;
     if (!el) return;
+    setIsMediaReady(true);
+    setMediaError(null);
     if (Number.isFinite(el.duration) && el.duration > 0) {
       setClipDurationMs(Math.round(el.duration * 1000));
     }
-    if (el instanceof HTMLVideoElement && el.videoWidth > 0 && el.videoHeight > 0) {
+    if (
+      el instanceof HTMLVideoElement &&
+      el.videoWidth > 0 &&
+      el.videoHeight > 0
+    ) {
       setVideoDims({ w: el.videoWidth, h: el.videoHeight });
     }
     if (!hasInitializedSeek && initialCues[0]) {
@@ -639,12 +682,15 @@ export function ProjectCaptionEditor({
   const handleSplitAtPlayhead = useCallback(() => {
     const target = activeCue ?? selectedCue;
     if (!target) return;
-    const res = splitCueAtTimeMs(latestCuesRef.current, target.id, currentTimeMs);
+    const res = splitCueAtTimeMs(
+      latestCuesRef.current,
+      target.id,
+      currentTimeMs
+    );
     if (!res.ok) {
       flashNotice(res.error);
       return;
     }
-    // Single undoable action
     recordUndoSnapshot({
       cues: latestCuesRef.current,
       style: latestStyleRef.current,
@@ -671,7 +717,6 @@ export function ProjectCaptionEditor({
       flashNotice(res.error);
       return;
     }
-    // Single undoable action
     recordUndoSnapshot({
       cues: latestCuesRef.current,
       style: latestStyleRef.current,
@@ -720,9 +765,12 @@ export function ProjectCaptionEditor({
 
       if (isMod && event.key.toLowerCase() === "f") {
         event.preventDefault();
-        setInspectorTab("captions");
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
+        setViewMode("editor");
+        setMobileTab("captions");
+        requestAnimationFrame(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        });
         return;
       }
 
@@ -772,6 +820,14 @@ export function ProjectCaptionEditor({
       } else if (event.key === "?") {
         event.preventDefault();
         setShortcutsOpen((prev) => !prev);
+      } else if (
+        event.key === "Escape" &&
+        viewMode === "timeline" &&
+        !shortcutsOpen &&
+        !exportModalOpen
+      ) {
+        event.preventDefault();
+        returnToEditorView();
       }
     };
 
@@ -779,11 +835,15 @@ export function ProjectCaptionEditor({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     currentTimeMs,
+    exportModalOpen,
     handleRedo,
     handleSplitAtPlayhead,
     handleUndo,
+    returnToEditorView,
     seekToMs,
+    shortcutsOpen,
     togglePlay,
+    viewMode,
   ]);
 
   const navigateSearchMatch = useCallback(
@@ -798,7 +858,7 @@ export function ProjectCaptionEditor({
       const found = cues.find((c) => c.id === targetId);
       if (found) {
         seekToMs(found.start_ms);
-        scrollCueCardIntoContainer(found.id);
+        scrollCueCardIntoContainer(targetId);
       }
     },
     [boundedMatchIdx, cues, matchingCueIds, scrollCueCardIntoContainer, seekToMs]
@@ -808,12 +868,8 @@ export function ProjectCaptionEditor({
     (cueId: string, startMs: number) => {
       setSelectedCueId(cueId);
       seekToMs(startMs);
-      const activeTag = document.activeElement?.tagName;
-      if (activeTag !== "TEXTAREA" && activeTag !== "INPUT") {
-        scrollCueCardIntoContainer(cueId);
-      }
     },
-    [scrollCueCardIntoContainer, seekToMs]
+    [seekToMs]
   );
 
   const handleTimelinePreviewCues = useCallback((nextCues: EditorCue[]) => {
@@ -823,7 +879,10 @@ export function ProjectCaptionEditor({
 
   const handleTimelineCommitCues = useCallback(
     (beforeCues: EditorCue[], afterCues: EditorCue[]) => {
-      recordUndoSnapshot({ cues: beforeCues, style: latestStyleRef.current });
+      recordUndoSnapshot({
+        cues: beforeCues,
+        style: latestStyleRef.current,
+      });
       latestCuesRef.current = afterCues;
       setCues(afterCues);
       scheduleAutosave();
@@ -836,6 +895,7 @@ export function ProjectCaptionEditor({
       { cues: latestCuesRef.current, style: latestStyleRef.current },
       `text:${cueId}`
     );
+
     setCues((prev) => {
       const next = prev.map((cue) => {
         if (cue.id !== cueId) return cue;
@@ -861,15 +921,15 @@ export function ProjectCaptionEditor({
   const updateCueTiming = (
     cueId: string,
     field: "start_ms" | "end_ms",
-    secondsStr: string
+    secondsInput: string
   ) => {
-    const parsedSec = Number.parseFloat(secondsStr);
+    const parsedSec = Number(secondsInput);
     if (!Number.isFinite(parsedSec)) return;
-    const nextMs = Math.round(parsedSec * 1000);
+    const nextMs = Math.max(0, Math.round(parsedSec * 1000));
 
     recordUndoSnapshot(
       { cues: latestCuesRef.current, style: latestStyleRef.current },
-      `timing:${cueId}:${field}`
+      `time:${cueId}:${field}`
     );
 
     setCues((prev) => {
@@ -973,15 +1033,41 @@ export function ProjectCaptionEditor({
     flashNotice("Reset sample to original captions and style");
   }, [flashNotice, initialCues, initialStyle, syncHistoryCounts]);
 
+  const playheadProgressPct =
+    clipDurationMs > 0
+      ? Math.min(100, Math.max(0, (currentTimeMs / clipDurationMs) * 100))
+      : 0;
+
+  // Compute responsive stage dimensions for Default Editor vs Focused Timeline View
+  const stageSizeClasses = useMemo(() => {
+    if (viewMode === "timeline") {
+      return isLandscapeVideo
+        ? "aspect-video w-full max-w-[270px] sm:max-w-[330px] lg:max-w-[370px]"
+        : "aspect-[9/16] w-[124px] sm:w-[138px] lg:w-[146px]";
+    }
+    if (isLandscapeVideo) {
+      return previewExpanded
+        ? "aspect-video w-full max-w-[360px] sm:max-w-[580px] lg:max-w-[640px] xl:max-w-[760px]"
+        : "aspect-video w-full max-w-[276px] sm:max-w-[520px] lg:max-w-[540px] xl:max-w-[660px]";
+    }
+    return previewExpanded
+      ? "aspect-[9/16] w-[232px] sm:w-[268px] lg:w-[304px] xl:w-[332px]"
+      : "aspect-[9/16] w-[144px] sm:w-[236px] lg:w-[266px] xl:w-[292px]";
+  }, [isLandscapeVideo, previewExpanded, viewMode]);
+
   return (
-    <div className="min-h-screen overflow-x-clip bg-page text-ink">
-      {/* Unified Compact Studio Header (Sample & Private Project Modes) */}
+    <div
+      data-testid="caption-editor-root"
+      data-view-mode={viewMode}
+      className="min-h-screen overflow-x-clip bg-page text-ink"
+    >
+      {/* Compact Header: Back, Project Name, Undo/Redo, Quiet Save Status, Primary Export/Upload */}
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2 lg:px-6">
+        <div className="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2 lg:px-6">
           <Link
             href={isSampleMode ? "/" : "/projects"}
             prefetch={isSampleMode ? undefined : false}
-            className="order-1 inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink sm:gap-1.5 sm:px-2.5 sm:py-1.5"
+            className="order-1 inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink sm:gap-1.5 sm:px-2.5 sm:py-1.5"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>{isSampleMode ? "Home" : "Projects"}</span>
@@ -993,9 +1079,9 @@ export function ProjectCaptionEditor({
               className="hidden h-4 w-px shrink-0 bg-ink/12 sm:inline-block"
             />
             {isSampleMode && (
-              <ClipCaptionsMark size={20} className="hidden shrink-0 sm:block" />
+              <ClipCaptionsMark size={18} className="hidden shrink-0 sm:block" />
             )}
-            <h1 className="truncate text-xs font-bold tracking-tight text-ink sm:text-sm lg:text-base">
+            <h1 className="truncate text-xs font-semibold tracking-tight text-ink sm:text-sm lg:text-base">
               {projectTitle}
             </h1>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -1007,13 +1093,13 @@ export function ProjectCaptionEditor({
                   Guest sample · Local edits
                 </span>
               ) : (
-                <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary sm:text-[11px]">
+                <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-muted sm:text-[11px]">
                   Rev #{revisionNumber}
                 </span>
               )}
               <span
                 data-testid="editor-media-aspect"
-                className="hidden rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover md:inline-block"
+                className="hidden rounded-full border border-ink/10 bg-panel px-2 py-0.5 text-[11px] font-medium text-ink-secondary xl:inline-block"
               >
                 {mediaAspectBadge}
               </span>
@@ -1021,7 +1107,8 @@ export function ProjectCaptionEditor({
           </div>
 
           <div className="order-2 flex shrink-0 items-center gap-1.5 sm:order-3 sm:gap-2">
-            <div className="hidden items-center gap-1 sm:flex">
+            {/* Single Accessible Undo / Redo Pair (Never Repeated Elsewhere) */}
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 data-testid="editor-undo-btn"
@@ -1029,7 +1116,7 @@ export function ProjectCaptionEditor({
                 onClick={handleUndo}
                 title="Undo (Ctrl+Z)"
                 aria-label="Undo"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/55 hover:text-ink disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35 sm:h-8 sm:w-8"
               >
                 <Undo2 className="h-3.5 w-3.5" />
               </button>
@@ -1040,7 +1127,7 @@ export function ProjectCaptionEditor({
                 onClick={handleRedo}
                 title="Redo (Ctrl+Shift+Z)"
                 aria-label="Redo"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/55 hover:text-ink disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-35 sm:h-8 sm:w-8"
               >
                 <Redo2 className="h-3.5 w-3.5" />
               </button>
@@ -1063,9 +1150,9 @@ export function ProjectCaptionEditor({
                   type="button"
                   data-testid="sample-download-srt-btn"
                   onClick={downloadSampleSrt}
-                  className="inline-flex items-center gap-1 rounded-lg border border-accent/45 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page sm:gap-1.5 sm:px-3 sm:py-1.5"
+                  className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-panel px-2 py-1 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5 text-accent" />
                   <span>Download SRT</span>
                 </button>
 
@@ -1080,30 +1167,31 @@ export function ProjectCaptionEditor({
               </>
             ) : (
               <>
+                {/* Quiet Save Indicator (does not compete visually with Export) */}
                 <span
                   role="status"
                   aria-live="polite"
                   data-testid="autosave-status"
                   data-status={saveStatus}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium sm:gap-1.5 sm:px-2.5 sm:text-xs ${
                     saveStatus === "saved"
-                      ? "border border-accent/40 bg-accent-soft text-accent-hover"
+                      ? "border border-ink/10 bg-panel text-ink-secondary"
                       : saveStatus === "saving"
-                        ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
+                        ? "border border-amber-400/30 bg-amber-400/10 text-amber-200"
                         : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
                   }`}
                 >
                   {saveStatus === "saving" && (
-                    <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   )}
                   {saveStatus === "saved" && (
-                    <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <CheckCircle2 className="h-3 w-3 text-accent" />
                   )}
                   {saveStatus === "error" && (
-                    <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <AlertCircle className="h-3 w-3" />
                   )}
                   {saveStatus === "conflict" && (
-                    <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                    <AlertTriangle className="h-3 w-3" />
                   )}
                   <span>
                     {saveStatus === "saving"
@@ -1120,7 +1208,7 @@ export function ProjectCaptionEditor({
                   <button
                     type="button"
                     onClick={() => void performSave()}
-                    className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2.5 py-1 text-xs font-medium text-ink transition hover:border-accent/55"
+                    className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2 py-1 text-xs font-medium text-ink transition hover:border-accent/55"
                   >
                     <RefreshCw className="h-3 w-3" />
                     <span>Retry</span>
@@ -1131,7 +1219,7 @@ export function ProjectCaptionEditor({
                   type="button"
                   data-testid="open-export-btn"
                   onClick={() => setExportModalOpen(true)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
+                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3.5 sm:py-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Export</span>
@@ -1144,8 +1232,8 @@ export function ProjectCaptionEditor({
         </div>
       </header>
 
-      {/* Main Creator Studio Workspace */}
-      <main className="mx-auto w-full max-w-[1440px] px-3 py-2.5 sm:px-5 lg:px-6 lg:py-2.5">
+      {/* Main Workspace */}
+      <main className="mx-auto w-full max-w-[1480px] px-3 py-2.5 sm:px-5 lg:px-6 lg:py-3.5">
         {/* Action Toast */}
         {actionNotice && (
           <div
@@ -1157,7 +1245,7 @@ export function ProjectCaptionEditor({
           </div>
         )}
 
-        {/* Conflict Banner */}
+        {/* Stale-Tab Conflict Recovery Banner */}
         {saveStatus === "conflict" && (
           <div
             role="alert"
@@ -1171,8 +1259,8 @@ export function ProjectCaptionEditor({
                   {saveError || "This project was updated in another tab."}
                 </p>
                 <p className="mt-0.5 text-amber-200/80">
-                  Your local edits have been preserved. Choose whether to reload
-                  the latest revision or save your edits as a new revision.
+                  Your local edits are preserved. Reload the latest revision or
+                  save your edits as a new revision.
                 </p>
               </div>
             </div>
@@ -1227,42 +1315,114 @@ export function ProjectCaptionEditor({
             </div>
           )}
 
-        {/* Top Row: Centered Video Stage + Right Transcript/Style Inspector */}
-        <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start xl:grid-cols-[minmax(0,1fr)_420px] xl:gap-5">
-          {/* Centered Preview Stage + Transport Bar */}
+        {/* Focused Timeline View Header Bar */}
+        {viewMode === "timeline" && (
+          <div
+            data-testid="timeline-view-header"
+            className="mb-2.5 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink/10 bg-panel px-3.5 py-2"
+          >
+            <div className="flex items-center gap-2.5">
+              <button
+                ref={backToEditorBtnRef}
+                type="button"
+                data-testid="back-to-editor-btn"
+                onClick={returnToEditorView}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-accent/45 bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back to editor</span>
+              </button>
+              <div className="hidden sm:block">
+                <p className="text-xs font-semibold text-ink">
+                  Focused Timeline
+                </p>
+                <p className="text-[11px] text-ink-muted">
+                  Scrub the waveform, drag cue boundaries, or enter exact times
+                  below
+                </p>
+              </div>
+            </div>
+
+            {cues.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={effectiveSelectedIndex <= 0}
+                  onClick={() => {
+                    const prev = cues[effectiveSelectedIndex - 1];
+                    if (prev) {
+                      setSelectedCueId(prev.id);
+                      seekToMs(prev.start_ms);
+                    }
+                  }}
+                  aria-label="Select previous cue"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-page text-ink-secondary transition hover:border-accent/45 hover:text-ink disabled:opacity-35"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <span className="font-mono text-xs text-ink-secondary">
+                  Cue #{Math.max(1, effectiveSelectedIndex + 1)}/{cues.length}
+                </span>
+                <button
+                  type="button"
+                  disabled={
+                    effectiveSelectedIndex < 0 ||
+                    effectiveSelectedIndex >= cues.length - 1
+                  }
+                  onClick={() => {
+                    const next = cues[effectiveSelectedIndex + 1];
+                    if (next) {
+                      setSelectedCueId(next.id);
+                      seekToMs(next.start_ms);
+                    }
+                  }}
+                  aria-label="Select next cue"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-page text-ink-secondary transition hover:border-accent/45 hover:text-ink disabled:opacity-35"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Persistent Workspace Grid:
+            - Default Editor (Desktop): [Left Transcript] | [Center Live Preview] | [Right Style & Presets]
+            - Default Editor (Phone): [Preview] -> [Captions/Style/Timeline bar] -> [Active Panel]
+            - Focused Timeline: [Compact Preview + Transport] -> [Full-Width Timeline + Numeric Timing]
+            Keeping Center Preview in the same React tree slot preserves <video>/<audio> across view switches! */}
+        <div
+          className={
+            viewMode === "timeline"
+              ? "flex flex-col gap-3"
+              : "flex flex-col gap-2.5 sm:gap-3.5 lg:grid lg:grid-cols-[minmax(300px,350px)_minmax(0,1fr)_minmax(300px,350px)] lg:items-start lg:gap-4 xl:grid-cols-[368px_minmax(0,1fr)_368px] xl:gap-5"
+          }
+        >
+          {/* =================================================================
+              CHILD 1: CENTER LIVE PREVIEW + PLAYBACK BAR
+              (Mobile order-1; Desktop Default Editor order-2; Timeline order-1)
+             ================================================================= */}
           <section
             aria-label="Caption preview and playback"
-            className="flex min-w-0 flex-col"
+            className={`order-1 flex min-w-0 flex-col ${
+              viewMode === "editor" ? "lg:order-2" : ""
+            }`}
           >
-            <div className="relative flex items-center justify-center rounded-2xl border border-ink/10 bg-inset px-3 py-2 sm:px-6 sm:py-3 lg:py-2.5">
-              {/* Mobile Expand / Collapse Preview Toggle */}
+            <div
+              className={`relative flex items-center justify-center rounded-2xl border border-ink/10 bg-panel/60 px-3 ${
+                viewMode === "timeline"
+                  ? "py-2"
+                  : "py-2.5 sm:px-5 sm:py-3.5 lg:py-4"
+              }`}
+            >
+              {/* Optional Safe-Area Guide Button */}
               <button
                 type="button"
-                data-testid="toggle-expand-preview-btn"
-                aria-expanded={mobilePreviewExpanded}
-                onClick={() => setMobilePreviewExpanded((v) => !v)}
-                className="absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-lg border border-ink/12 bg-page/85 px-2 py-1 text-[10px] font-semibold text-ink-secondary transition hover:border-accent/45 hover:text-ink lg:hidden"
-              >
-                {mobilePreviewExpanded ? (
-                  <>
-                    <Minimize2 className="h-3 w-3 text-accent" />
-                    <span>Collapse</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-3 w-3 text-accent" />
-                    <span>Expand preview</span>
-                  </>
-                )}
-              </button>
-
-              {/* Quick Safe-Area Guide Button on Stage */}
-              <button
-                type="button"
+                data-testid="stage-safe-area-btn"
                 onClick={() => setShowSafeArea((v) => !v)}
                 aria-pressed={showSafeArea}
-                title="Toggle Reels/Shorts safe-area guide"
-                className={`absolute right-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition sm:right-3 sm:top-3 ${
+                title="Toggle social safe-area guide"
+                className={`absolute right-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium transition sm:right-3 sm:top-3 ${
                   showSafeArea
                     ? "border-accent bg-accent-soft text-accent-hover"
                     : "border-ink/12 bg-page/80 text-ink-secondary hover:border-accent/45 hover:text-ink"
@@ -1275,16 +1435,8 @@ export function ProjectCaptionEditor({
               <div
                 data-testid="editor-preview-stage"
                 data-orientation={isLandscapeVideo ? "landscape" : "portrait"}
-                data-mobile-expanded={mobilePreviewExpanded ? "true" : "false"}
-                className={`studio-stage-container relative overflow-hidden rounded-[1.25rem] border border-ink/12 bg-panel shadow-[0_20px_60px_rgba(0,0,0,0.65)] transition-[width,max-width] duration-200 sm:rounded-[1.35rem] ${
-                  isLandscapeVideo
-                    ? mobilePreviewExpanded
-                      ? "aspect-video w-full max-w-[360px] sm:max-w-[540px] lg:max-w-[680px]"
-                      : "aspect-video w-full max-w-[270px] sm:max-w-[540px] lg:max-w-[680px]"
-                    : mobilePreviewExpanded
-                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[248px] xl:w-[264px] 2xl:w-[288px]"
-                      : "aspect-[9/16] w-[152px] sm:w-[228px] lg:w-[248px] xl:w-[264px] 2xl:w-[288px]"
-                }`}
+                data-mobile-expanded={previewExpanded ? "true" : "false"}
+                className={`studio-stage-container relative overflow-hidden rounded-[1.2rem] border border-ink/12 bg-page shadow-[0_20px_60px_rgba(0,0,0,0.6)] transition-[width,max-width] duration-200 ${stageSizeClasses}`}
               >
                 {mediaKind === "video" ? (
                   <video
@@ -1297,6 +1449,7 @@ export function ProjectCaptionEditor({
                     preload="auto"
                     muted={isMuted}
                     onLoadedMetadata={handleLoadedMetadata}
+                    onCanPlay={() => setIsMediaReady(true)}
                     onTimeUpdate={handleTimeUpdate}
                     onSeeked={handleTimeUpdate}
                     onPlay={() => {
@@ -1317,16 +1470,16 @@ export function ProjectCaptionEditor({
                   <div
                     data-testid="editor-audio-stage"
                     onClick={() => void togglePlay()}
-                    className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-5 text-center"
+                    className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page p-4 text-center"
                   >
-                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent shadow-[0_0_24px_rgba(167,139,250,0.24)]">
-                      <AudioLines className="h-7 w-7" />
+                    <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent shadow-[0_0_24px_rgba(167,139,250,0.22)]">
+                      <AudioLines className="h-6 w-6" />
                     </span>
-                    <p className="mt-3 max-w-full truncate text-xs font-semibold text-ink">
+                    <p className="mt-2.5 max-w-full truncate text-xs font-semibold text-ink">
                       {projectTitle}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-ink-muted">
-                      Audio portrait stage
+                    <p className="mt-0.5 text-[10px] text-ink-muted">
+                      Audio preview
                     </p>
                     <audio
                       ref={(el) => {
@@ -1336,6 +1489,7 @@ export function ProjectCaptionEditor({
                       preload="auto"
                       muted={isMuted}
                       onLoadedMetadata={handleLoadedMetadata}
+                      onCanPlay={() => setIsMediaReady(true)}
                       onTimeUpdate={handleTimeUpdate}
                       onSeeked={handleTimeUpdate}
                       onPlay={() => {
@@ -1353,7 +1507,19 @@ export function ProjectCaptionEditor({
                   </div>
                 )}
 
-                {/* Safe-area guide overlay (social UI exclusion zones) */}
+                {/* Loading indicator before media metadata arrives */}
+                {!isMediaReady && !mediaError && !posterUrl && (
+                  <div
+                    role="status"
+                    data-testid="editor-media-loading"
+                    className="pointer-events-none absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-page/85 px-2.5 py-0.5 text-[10px] font-medium text-ink-secondary backdrop-blur-md"
+                  >
+                    <Loader2 className="h-3 w-3 animate-spin text-accent" />
+                    <span>Loading preview...</span>
+                  </div>
+                )}
+
+                {/* Safe-area guide overlay */}
                 {showSafeArea && (
                   <div
                     aria-hidden="true"
@@ -1368,16 +1534,7 @@ export function ProjectCaptionEditor({
                   </div>
                 )}
 
-                <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full border border-ink/15 bg-page/70 px-2 py-0.5 text-[10px] font-medium text-ink/90 backdrop-blur-md">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      isPlaying ? "animate-pulse bg-accent" : "bg-ink-secondary"
-                    }`}
-                  />
-                  <span>{isPlaying ? "Playing" : "Paused"}</span>
-                </div>
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
 
                 <EditorCaptionOverlay
                   activeCue={activeCue}
@@ -1386,11 +1543,11 @@ export function ProjectCaptionEditor({
                   currentTimeMs={currentTimeMs}
                 />
 
-                {!isPlaying && (
+                {!isPlaying && viewMode === "editor" && (
                   <div
                     aria-hidden="true"
-                    className={`pointer-events-none absolute left-1/2 top-[54%] z-10 h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/55 bg-page/75 text-accent shadow-xl backdrop-blur-md ${
-                      mobilePreviewExpanded ? "flex" : "hidden sm:flex"
+                    className={`pointer-events-none absolute left-1/2 top-1/2 z-10 h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-ink/20 bg-page/75 text-ink shadow-xl backdrop-blur-md ${
+                      previewExpanded ? "flex" : "hidden sm:flex"
                     }`}
                   >
                     <Play className="ml-0.5 h-4 w-4 fill-current" />
@@ -1399,7 +1556,7 @@ export function ProjectCaptionEditor({
               </div>
             </div>
 
-            {/* Media Load / Playback Error Banner */}
+            {/* Media Load / Playback Error Banner with Retry */}
             {mediaError && (
               <div
                 role="alert"
@@ -1421,257 +1578,231 @@ export function ProjectCaptionEditor({
               </div>
             )}
 
-            {/* Centered Transport Bar directly under Preview */}
+            {/* Playback Bar Immediately Below Video: Play/Pause, Seek, Time, Mute, Expand, Shortcuts */}
             <div className="mt-2 rounded-2xl border border-ink/10 bg-panel px-3 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    ref={playButtonRef}
-                    type="button"
-                    data-testid="play-pause-btn"
-                    onClick={() => void togglePlay()}
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-3.5 w-3.5 fill-current" />
-                    ) : (
-                      <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => seekToMs(currentTimeMs - 2000)}
-                    aria-label="Rewind 2 seconds"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => seekToMs(currentTimeMs + 2000)}
-                    aria-label="Forward 2 seconds"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleMute}
-                    aria-label={isMuted ? "Unmute" : "Mute"}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink"
-                  >
-                    {isMuted ? (
-                      <VolumeX className="h-3.5 w-3.5" />
-                    ) : (
-                      <Volume2 className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+              <div className="flex items-center gap-2">
+                <button
+                  ref={playButtonRef}
+                  type="button"
+                  data-testid="play-pause-btn"
+                  onClick={() => void togglePlay()}
+                  title="Play / Pause (Space)"
+                  aria-label={isPlaying ? "Pause" : "Play"}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-accent text-page transition hover:bg-accent-hover"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-3.5 w-3.5 fill-current" />
+                  ) : (
+                    <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+                  )}
+                </button>
+
+                {/* Direct Seek Scrubber next to video */}
+                <div className="relative flex h-6 min-w-0 flex-1 items-center">
+                  <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${playheadProgressPct}%` }}
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(1000, clipDurationMs)}
+                    step={20}
+                    value={currentTimeMs}
+                    data-testid="preview-seek-slider"
+                    onChange={(e) => seekToMs(Number(e.target.value))}
+                    aria-label="Seek preview"
+                    aria-valuetext={`${formatMsClock(currentTimeMs)} of ${formatMsClock(clipDurationMs)}`}
+                    className="studio-scrubber relative z-10 w-full"
+                  />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div
-                    data-testid="editor-time-readout"
-                    className="font-mono text-xs font-semibold tabular-nums text-ink-secondary"
-                  >
-                    <span className="text-ink">
-                      {formatMsClock(currentTimeMs)}
-                    </span>
-                    <span className="mx-1 text-ink-muted">/</span>
-                    <span>{formatMsClock(clipDurationMs)}</span>
-                  </div>
+                <div
+                  data-testid="editor-time-readout"
+                  className="shrink-0 font-mono text-[11px] font-medium tabular-nums text-ink-secondary sm:text-xs"
+                >
+                  <span className="text-ink">
+                    {formatMsClock(currentTimeMs)}
+                  </span>
+                  <span className="mx-0.5 text-ink-muted">/</span>
+                  <span>{formatMsClock(clipDurationMs)}</span>
+                </div>
 
-                  <span
-                    data-testid="active-cue-indicator"
-                    className={`hidden truncate rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums sm:inline-block ${
-                      activeCueIndex >= 0
-                        ? "border border-accent/35 bg-accent-soft text-accent-hover"
-                        : "border border-ink/10 bg-elevated text-ink-muted"
+                <button
+                  type="button"
+                  data-testid="mute-btn"
+                  onClick={toggleMute}
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                  title={isMuted ? "Unmute" : "Mute"}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-page text-ink-secondary transition hover:border-accent/45 hover:text-ink"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
+
+                {viewMode === "editor" && (
+                  <button
+                    type="button"
+                    data-testid="toggle-expand-preview-btn"
+                    aria-expanded={previewExpanded}
+                    onClick={() => setPreviewExpanded((v) => !v)}
+                    title={
+                      previewExpanded ? "Collapse preview" : "Expand preview"
+                    }
+                    aria-label={
+                      previewExpanded ? "Collapse preview" : "Expand preview"
+                    }
+                    className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border px-2 text-xs font-medium transition ${
+                      previewExpanded
+                        ? "border-accent bg-accent-soft text-accent-hover"
+                        : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
                     }`}
                   >
-                    {activeCueIndex >= 0
-                      ? `Cue #${activeCueIndex + 1}/${cues.length}`
-                      : `${cues.length} cues`}
-                  </span>
-
-                  {/* Discoverable Shortcuts Popover */}
-                  <div ref={shortcutsRef} className="relative">
-                    <button
-                      type="button"
-                      data-testid="shortcuts-toggle-btn"
-                      aria-expanded={shortcutsOpen}
-                      aria-label="Keyboard shortcuts"
-                      onClick={() => setShortcutsOpen((prev) => !prev)}
-                      className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2 text-[11px] font-medium transition ${
-                        shortcutsOpen
-                          ? "border-accent bg-accent-soft text-accent-hover"
-                          : "border-ink/12 bg-elevated text-ink-secondary hover:border-accent/50 hover:text-ink"
-                      }`}
-                    >
-                      <Keyboard className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Shortcuts</span>
-                    </button>
-
-                    {shortcutsOpen && (
-                      <div
-                        role="dialog"
-                        aria-label="Keyboard shortcuts reference"
-                        data-testid="shortcuts-popover"
-                        className="absolute bottom-10 right-0 z-40 w-64 rounded-xl border border-ink/15 bg-panel p-3 text-xs shadow-[0_18px_50px_rgba(0,0,0,0.75)]"
-                      >
-                        <p className="font-semibold text-ink">
-                          Playback &amp; Edit Shortcuts
-                        </p>
-                        <dl className="mt-2 space-y-1.5 text-[11px]">
-                          <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Play / Pause</dt>
-                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              Space
-                            </dd>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Seek ±1s / ±5s</dt>
-                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              ← / → (Shift)
-                            </dd>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Split at playhead</dt>
-                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              S
-                            </dd>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Undo / Redo</dt>
-                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              Ctrl+Z / Shift+Z
-                            </dd>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <dt className="text-ink-secondary">Search cues</dt>
-                            <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
-                              Ctrl+F
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
+                    {previewExpanded ? (
+                      <>
+                        <Minimize2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Shrink</span>
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Expand</span>
+                      </>
                     )}
-                  </div>
+                  </button>
+                )}
+
+                {/* Keyboard Shortcuts Hints Popover */}
+                <div ref={shortcutsRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    data-testid="shortcuts-toggle-btn"
+                    aria-expanded={shortcutsOpen}
+                    aria-label="Keyboard shortcuts"
+                    title="Keyboard shortcuts (?)"
+                    onClick={() => setShortcutsOpen((prev) => !prev)}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-xl border text-xs transition ${
+                      shortcutsOpen
+                        ? "border-accent bg-accent-soft text-accent-hover"
+                        : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
+                    }`}
+                  >
+                    <Keyboard className="h-3.5 w-3.5" />
+                  </button>
+
+                  {shortcutsOpen && (
+                    <div
+                      role="dialog"
+                      aria-label="Keyboard shortcuts reference"
+                      data-testid="shortcuts-popover"
+                      className="absolute bottom-10 right-0 z-40 w-64 rounded-xl border border-ink/15 bg-panel p-3 text-xs shadow-[0_18px_50px_rgba(0,0,0,0.75)]"
+                    >
+                      <p className="font-semibold text-ink">
+                        Keyboard Shortcuts
+                      </p>
+                      <dl className="mt-2 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-ink-secondary">Play / Pause</dt>
+                          <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                            Space
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-ink-secondary">Seek ±1s / ±5s</dt>
+                          <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                            ← / → (Shift)
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-ink-secondary">
+                            Split at playhead
+                          </dt>
+                          <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                            S
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-ink-secondary">Undo / Redo</dt>
+                          <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                            Ctrl+Z / Shift+Z
+                          </dd>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <dt className="text-ink-secondary">Search cues</dt>
+                          <dd className="rounded bg-elevated px-1.5 py-0.5 font-mono text-accent-hover">
+                            Ctrl+F
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Right Side Unified Inspector: Transcript / Style Tabs */}
-          <aside className="flex min-w-0 flex-col">
-            {/* Mobile accessible tabs */}
-            <div className="mb-2.5 lg:hidden">
+          {/* =================================================================
+              MOBILE PANEL SWITCHER (Captions | Style + Timeline)
+              Only visible on phone/tablet when in Default Editor view
+             ================================================================= */}
+          {viewMode === "editor" && (
+            <div className="order-2 lg:hidden">
               <StudioTabs
-                activeTab={inspectorTab}
-                onChange={setInspectorTab}
+                activeTab={mobileTab}
+                onChange={setMobileTab}
                 cueCount={cues.length}
                 activePresetName={activePresetShortLabel}
                 idPrefix="editor"
+                onOpenTimeline={openTimelineView}
               />
             </div>
+          )}
 
-            {/* Desktop Inspector Switcher (Transcript | Style) */}
-            <div
-              role="tablist"
-              aria-label="Inspector sections"
-              className="mb-2.5 hidden grid-cols-2 gap-1.5 rounded-2xl border border-ink/10 bg-panel p-1 lg:grid"
-            >
-              <button
-                type="button"
-                role="tab"
-                data-testid="inspector-tab-captions"
-                aria-selected={inspectorTab === "captions"}
-                onClick={() => setInspectorTab("captions")}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
-                  inspectorTab === "captions"
-                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
-                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
-                }`}
-              >
-                <Captions className="h-3.5 w-3.5" />
-                <span>Transcript</span>
-                <span className="rounded-full bg-page/60 px-1.5 py-0.5 font-mono text-[10px]">
-                  {cues.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                data-testid="inspector-tab-style"
-                aria-selected={inspectorTab === "style"}
-                onClick={() => setInspectorTab("style")}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
-                  inspectorTab === "style"
-                    ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
-                    : "text-ink-secondary hover:bg-elevated hover:text-ink"
-                }`}
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>Style &amp; Presets</span>
-              </button>
-            </div>
-
-            {/* Transcript Panel */}
+          {/* =================================================================
+              CHILD 2: LEFT COLUMN — TRANSCRIPT (Default Editor View)
+              Compact rows, click to seek + inline edit, explicit Edit words / Timing
+             ================================================================= */}
+          {viewMode === "editor" && (
             <section
               id="editor-panel-captions"
               role="tabpanel"
               aria-labelledby="editor-tab-captions"
               data-testid="panel-captions"
-              className={`min-w-0 flex-col ${
-                inspectorTab === "captions" ? "flex" : "hidden"
+              className={`order-3 min-w-0 flex-col lg:order-1 ${
+                mobileTab === "captions" ? "flex" : "hidden lg:flex"
               }`}
             >
               <div className="flex flex-col rounded-2xl border border-ink/10 bg-panel p-3.5 sm:p-4">
-                <div className="flex items-center justify-between gap-2 border-b border-ink/8 pb-2.5">
+                {/* Transcript Header + Clearly Labeled Timeline Action Beside Transcript */}
+                <div className="flex items-center justify-between gap-2 pb-2.5">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
-                      <Captions className="h-3.5 w-3.5" />
+                    <h2 className="text-sm font-semibold tracking-tight text-ink">
+                      Transcript
+                    </h2>
+                    <span className="rounded-full border border-ink/10 bg-page px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink-secondary">
+                      {cues.length}
                     </span>
-                    <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
-                        Transcript
-                      </h2>
-                      <p className="truncate text-[10px] text-ink-muted">
-                        {isSampleMode
-                          ? "Local sample — download SRT or upload your own clip"
-                          : "Autosaves edits to immutable project revisions"}
-                      </p>
-                    </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1">
-                    {/* Mobile Undo/Redo (Split & Merge live in the Timeline toolbar) */}
-                    <div className="flex items-center gap-1 sm:hidden">
-                      <button
-                        type="button"
-                        disabled={historyCounts.undo === 0}
-                        onClick={handleUndo}
-                        aria-label="Undo"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
-                      >
-                        <Undo2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={historyCounts.redo === 0}
-                        onClick={handleRedo}
-                        aria-label="Redo"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary disabled:opacity-35"
-                      >
-                        <Redo2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    ref={openTimelineBtnRef}
+                    type="button"
+                    data-testid="open-timeline-btn"
+                    onClick={openTimelineView}
+                    className="hidden items-center gap-1.5 rounded-xl border border-ink/15 bg-page px-2.5 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover lg:inline-flex"
+                  >
+                    <Clock className="h-3.5 w-3.5 text-accent" />
+                    <span>Timeline</span>
+                  </button>
                 </div>
 
-                {/* Transcript Search Bar */}
-                <div className="mt-2.5 flex items-center gap-1.5 rounded-xl border border-ink/10 bg-page px-2.5 py-1.5 focus-within:border-accent">
+                {/* Calm Search Bar with Keyboard Hint */}
+                <div className="flex items-center gap-1.5 rounded-xl border border-ink/10 bg-page px-2.5 py-1.5 focus-within:border-accent">
                   <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                   <input
                     ref={searchInputRef}
@@ -1702,12 +1833,16 @@ export function ProjectCaptionEditor({
                         setActiveMatchIdx(0);
                       }
                     }}
-                    placeholder="Search transcript..."
+                    placeholder="Search cues..."
                     aria-label="Search transcript"
                     className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
                   />
 
-                  {trimmedQuery && (
+                  {!trimmedQuery ? (
+                    <kbd className="hidden rounded border border-ink/10 bg-panel px-1.5 py-0.5 font-mono text-[10px] text-ink-muted sm:inline-block">
+                      Ctrl+F
+                    </kbd>
+                  ) : (
                     <div className="flex shrink-0 items-center gap-1">
                       <span
                         data-testid="transcript-search-count"
@@ -1759,20 +1894,121 @@ export function ProjectCaptionEditor({
                 ) : (
                   <div
                     ref={transcriptScrollRef}
-                    className="studio-scroll relative mt-2.5 space-y-2.5 lg:max-h-[320px] lg:overflow-y-auto lg:pr-1 xl:max-h-[410px]"
+                    className="studio-scroll relative mt-3 space-y-2 lg:max-h-[540px] lg:overflow-y-auto lg:pr-1 xl:max-h-[600px]"
                   >
                     {cues.map((cue, idx) => {
                       const isActive = activeCue?.id === cue.id;
-                      const isSelected = selectedCueId === cue.id;
+                      const isSelected = selectedCue?.id === cue.id;
                       const isSearchMatch =
-                        Boolean(trimmedQuery) && matchingCueIds.includes(cue.id);
+                        Boolean(trimmedQuery) &&
+                        matchingCueIds.includes(cue.id);
                       const isCurrentMatch = currentMatchedCueId === cue.id;
                       const hasWordSync =
                         cue.timing_mode === "word" && cue.words.length > 0;
                       const isWordsExpanded =
                         Boolean(expandedWordCueIds[cue.id]) ||
                         editingWord?.cueId === cue.id;
+                      const isTimingExpanded = Boolean(
+                        expandedTimingCueIds[cue.id]
+                      );
 
+                      // COMPACT ROW (unselected): calm timestamp + readable text + discreet play button
+                      if (!isSelected) {
+                        return (
+                          <div
+                            key={cue.id}
+                            ref={(el) => {
+                              cueCardRefs.current[cue.id] = el;
+                            }}
+                            data-testid={`editor-cue-${idx + 1}`}
+                            data-active-cue={isActive ? "true" : "false"}
+                            data-selected-cue="false"
+                            data-search-match={isSearchMatch ? "true" : "false"}
+                            data-timing-mode={cue.timing_mode}
+                            onClick={() => {
+                              setSelectedCueId(cue.id);
+                              seekToMs(cue.start_ms);
+                            }}
+                            onKeyDown={(e) => {
+                              if (
+                                e.target === e.currentTarget &&
+                                (e.key === "Enter" || e.key === " ")
+                              ) {
+                                e.preventDefault();
+                                setSelectedCueId(cue.id);
+                                seekToMs(cue.start_ms);
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            className={`group relative flex cursor-pointer items-start justify-between gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                              isCurrentMatch
+                                ? "border-accent bg-elevated/80 ring-1 ring-accent/45"
+                                : isActive
+                                  ? "border-accent/40 bg-inset"
+                                  : isSearchMatch
+                                    ? "border-accent/30 bg-inset/80"
+                                    : "border-ink/8 bg-page/60 hover:border-ink/20 hover:bg-inset"
+                            }`}
+                          >
+                            {/* Playing indicator bar (distinct from selected state) */}
+                            {isActive && (
+                              <span
+                                aria-hidden="true"
+                                className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-accent"
+                              />
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[11px] font-medium tabular-nums text-ink-muted">
+                                  {formatMsClock(cue.start_ms)}
+                                </span>
+                                {isActive && (
+                                  <span
+                                    data-testid={`cue-${idx + 1}-playing-badge`}
+                                    className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent-hover"
+                                  >
+                                    <span
+                                      className={`h-1.5 w-1.5 rounded-full bg-accent ${
+                                        isPlaying ? "animate-pulse" : ""
+                                      }`}
+                                    />
+                                    <span>
+                                      {isPlaying ? "Playing" : "Current"}
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-ink">
+                                {cue.text}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              data-testid={`cue-${idx + 1}-play-btn`}
+                              aria-label={`Play cue ${idx + 1}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCueId(cue.id);
+                                const el = mediaRef.current;
+                                if (el) {
+                                  playUntilMsRef.current = cue.end_ms;
+                                  el.currentTime = cue.start_ms / 1000;
+                                  setCurrentTimeMs(cue.start_ms);
+                                  void el.play().catch(() => {});
+                                }
+                              }}
+                              className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-transparent text-ink-muted opacity-70 transition hover:border-ink/15 hover:bg-panel hover:text-accent-hover group-hover:opacity-100"
+                            >
+                              <Play className="h-3 w-3 fill-current" />
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      // SELECTED CUE ROW: editable inline textarea + explicit Edit words & Timing disclosures
                       return (
                         <div
                           key={cue.id}
@@ -1781,91 +2017,96 @@ export function ProjectCaptionEditor({
                           }}
                           data-testid={`editor-cue-${idx + 1}`}
                           data-active-cue={isActive ? "true" : "false"}
-                          data-selected-cue={isSelected ? "true" : "false"}
+                          data-selected-cue="true"
                           data-search-match={isSearchMatch ? "true" : "false"}
-                          data-search-current={isCurrentMatch ? "true" : "false"}
                           data-timing-mode={cue.timing_mode}
-                          onClick={() => setSelectedCueId(cue.id)}
-                          className={`relative overflow-hidden rounded-xl border p-3 transition ${
-                            isCurrentMatch
-                              ? "border-accent bg-elevated ring-1 ring-accent/55"
-                              : isActive
-                                ? "border-accent/60 bg-elevated shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
-                                : isSelected
-                                  ? "border-accent/40 bg-elevated/60"
-                                  : isSearchMatch
-                                    ? "border-accent/35 bg-inset"
-                                    : "border-ink/10 bg-inset hover:border-ink/20"
-                          }`}
+                          className="relative overflow-hidden rounded-xl border border-accent/65 bg-elevated p-3 shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
                         >
-                          <span
-                            aria-hidden="true"
-                            className={`absolute bottom-2.5 left-0 top-2.5 w-1 rounded-r-full transition ${
-                              isActive || isCurrentMatch
-                                ? "bg-accent"
-                                : "bg-transparent"
-                            }`}
-                          />
-
-                          {/* Timestamp + Quick Cue Actions */}
-                          <div className="flex flex-wrap items-center justify-between gap-1.5 pl-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedCueId(cue.id);
-                                seekToMs(cue.start_ms);
-                              }}
-                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 font-mono text-xs font-medium tabular-nums transition ${
-                                isActive
-                                  ? "border-accent/45 bg-accent-soft text-accent-hover"
-                                  : "border-ink/10 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
-                              }`}
-                            >
-                              <span className="font-semibold">#{idx + 1}</span>
-                              <span aria-hidden="true" className="opacity-50">
-                                ·
-                              </span>
-                              <span>
-                                {formatMsClock(cue.start_ms)} –{" "}
-                                {formatMsClock(cue.end_ms)}
-                              </span>
-                            </button>
-
+                          {/* Timestamp + Explicit Edit words / Timing / Play Actions */}
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
                             <div className="flex items-center gap-1.5">
-                              {hasWordSync && (
+                              <button
+                                type="button"
+                                onClick={() => seekToMs(cue.start_ms)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-ink/12 bg-page px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums text-ink transition hover:border-accent/50"
+                              >
+                                <span className="text-accent-hover">
+                                  #{idx + 1}
+                                </span>
+                                <span aria-hidden="true" className="opacity-40">
+                                  ·
+                                </span>
+                                <span>
+                                  {formatMsClock(cue.start_ms)} –{" "}
+                                  {formatMsClock(cue.end_ms)}
+                                </span>
+                              </button>
+
+                              {isActive && isPlaying && (
+                                <span
+                                  data-testid={`cue-${idx + 1}-playing-badge`}
+                                  className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent-hover"
+                                >
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                                  <span>Playing</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {hasWordSync ? (
                                 <button
                                   type="button"
                                   data-testid={`cue-${idx + 1}-edit-words-btn`}
                                   aria-expanded={isWordsExpanded}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedCueId(cue.id);
+                                  onClick={() =>
                                     setExpandedWordCueIds((prev) => ({
                                       ...prev,
                                       [cue.id]: !prev[cue.id],
-                                    }));
-                                  }}
-                                  className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] font-semibold transition ${
+                                    }))
+                                  }
+                                  className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition ${
                                     isWordsExpanded
                                       ? "border-accent bg-accent-soft text-accent-hover"
-                                      : "border-ink/12 bg-page text-ink-secondary hover:border-accent/50 hover:text-ink"
+                                      : "border-ink/12 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
                                   }`}
                                 >
                                   <Pencil className="h-2.5 w-2.5" />
                                   <span>
-                                    {isWordsExpanded
-                                      ? "Hide words"
-                                      : "Edit words"}
+                                    {isWordsExpanded ? "Hide words" : "Edit words"}
                                   </span>
                                 </button>
+                              ) : (
+                                <span className="rounded-md border border-ink/10 bg-page px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+                                  Cue-level
+                                </span>
                               )}
+
+                              <button
+                                type="button"
+                                data-testid={`cue-${idx + 1}-timing-btn`}
+                                aria-expanded={isTimingExpanded}
+                                onClick={() =>
+                                  setExpandedTimingCueIds((prev) => ({
+                                    ...prev,
+                                    [cue.id]: !prev[cue.id],
+                                  }))
+                                }
+                                className={`inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition ${
+                                  isTimingExpanded
+                                    ? "border-accent bg-accent-soft text-accent-hover"
+                                    : "border-ink/12 bg-page text-ink-secondary hover:border-accent/45 hover:text-ink"
+                                }`}
+                              >
+                                <Clock className="h-2.5 w-2.5" />
+                                <span>Timing</span>
+                              </button>
+
                               <button
                                 type="button"
                                 data-testid={`cue-${idx + 1}-play-btn`}
                                 aria-label={`Play cue ${idx + 1}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedCueId(cue.id);
+                                onClick={() => {
                                   const el = mediaRef.current;
                                   if (el) {
                                     playUntilMsRef.current = cue.end_ms;
@@ -1874,271 +2115,369 @@ export function ProjectCaptionEditor({
                                     void el.play().catch(() => {});
                                   }
                                 }}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/10 bg-page text-ink-secondary transition hover:border-accent/50 hover:text-accent-hover"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink/12 bg-page text-ink-secondary transition hover:border-accent/45 hover:text-accent-hover"
                               >
                                 <Play className="h-3 w-3 fill-current" />
                               </button>
-                              {!hasWordSync && (
-                                <span className="rounded-full bg-track px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-secondary">
-                                  Cue-level
-                                </span>
-                              )}
                             </div>
                           </div>
 
-                          {/* Editable Caption Text (shown cleanly by default) */}
-                          <div className="mt-2 pl-1">
+                          {/* Editable Caption Text in Place */}
+                          <div className="mt-2">
                             <textarea
                               rows={2}
                               aria-label={`Cue ${idx + 1} text`}
                               value={cue.text}
-                              onFocus={() => setSelectedCueId(cue.id)}
                               onChange={(e) =>
                                 updateCueText(cue.id, e.target.value)
                               }
-                              className="w-full resize-none rounded-lg border border-ink/12 bg-page px-3 py-1.5 text-xs leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
+                              className="w-full resize-none rounded-lg border border-ink/15 bg-page px-3 py-2 text-xs leading-relaxed text-ink transition placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/50"
                             />
                           </div>
 
-                          {/* Click-to-Seek + Individual Timed Word Editor (revealed via Edit words) */}
+                          {/* Timed Word Chips (revealed only when Edit words is chosen) */}
                           {hasWordSync && isWordsExpanded && (
                             <div
                               data-testid={`cue-${idx + 1}-word-chips`}
                               aria-label={`Cue ${idx + 1} word timing`}
-                              className="mt-2 flex flex-wrap items-center gap-1 rounded-lg border border-ink/10 bg-page/75 p-2 pl-2"
+                              className="mt-2 rounded-lg border border-ink/10 bg-page/80 p-2"
                             >
-                              {cue.words.map((word, wIdx) => {
-                                const isWordActive =
-                                  isActive && activeWord?.id === word.id;
-                                const isWordPast =
-                                  isActive && currentTimeMs >= word.end_ms;
-                                const isEditingThisWord =
-                                  editingWord?.cueId === cue.id &&
-                                  editingWord?.wordId === word.id;
+                              <div className="flex flex-wrap items-center gap-1">
+                                {cue.words.map((word, wIdx) => {
+                                  const isWordActive =
+                                    isActive && activeWord?.id === word.id;
+                                  const isWordPast =
+                                    isActive && currentTimeMs >= word.end_ms;
+                                  const isEditingThisWord =
+                                    editingWord?.cueId === cue.id &&
+                                    editingWord?.wordId === word.id;
 
-                                if (isEditingThisWord) {
+                                  if (isEditingThisWord) {
+                                    return (
+                                      <span
+                                        key={word.id}
+                                        className="inline-flex items-center gap-1 rounded-md border border-accent bg-page px-1 py-0.5"
+                                      >
+                                        <input
+                                          type="text"
+                                          autoFocus
+                                          data-testid="inline-word-input"
+                                          aria-label={`Edit word ${wIdx + 1} in cue ${idx + 1}`}
+                                          value={editingWord.draft}
+                                          onChange={(e) =>
+                                            setEditingWord({
+                                              ...editingWord,
+                                              draft: e.target.value,
+                                            })
+                                          }
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              commitInlineWordEdit();
+                                            } else if (e.key === "Escape") {
+                                              e.preventDefault();
+                                              setEditingWord(null);
+                                            }
+                                          }}
+                                          className="w-24 bg-transparent text-xs font-semibold text-ink focus:outline-none"
+                                        />
+                                        <button
+                                          type="button"
+                                          data-testid="inline-word-save-btn"
+                                          aria-label="Save word edit"
+                                          onClick={commitInlineWordEdit}
+                                          className="inline-flex h-5 w-5 items-center justify-center rounded bg-accent text-page"
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          aria-label="Cancel word edit"
+                                          onClick={() => setEditingWord(null)}
+                                          className="inline-flex h-5 w-5 items-center justify-center rounded text-ink-muted hover:text-ink"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </button>
+                                      </span>
+                                    );
+                                  }
+
                                   return (
                                     <span
                                       key={word.id}
-                                      className="inline-flex items-center gap-1 rounded-md border border-accent bg-page px-1 py-0.5"
+                                      className="inline-flex items-center"
                                     >
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        data-testid="inline-word-input"
-                                        aria-label={`Edit word ${wIdx + 1} in cue ${idx + 1}`}
-                                        value={editingWord.draft}
-                                        onChange={(e) =>
-                                          setEditingWord({
-                                            ...editingWord,
-                                            draft: e.target.value,
-                                          })
+                                      <button
+                                        type="button"
+                                        data-testid={`cue-${idx + 1}-word-${wIdx + 1}`}
+                                        data-active-word={
+                                          isWordActive ? "true" : "false"
                                         }
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            commitInlineWordEdit();
-                                          } else if (e.key === "Escape") {
-                                            e.preventDefault();
-                                            setEditingWord(null);
-                                          }
-                                        }}
-                                        className="w-24 bg-transparent text-xs font-semibold text-ink focus:outline-none"
-                                      />
-                                      <button
-                                        type="button"
-                                        data-testid="inline-word-save-btn"
-                                        aria-label="Save word edit"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          commitInlineWordEdit();
-                                        }}
-                                        className="inline-flex h-5 w-5 items-center justify-center rounded bg-accent text-page"
-                                      >
-                                        <Check className="h-3 w-3" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        aria-label="Cancel word edit"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingWord(null);
-                                        }}
-                                        className="inline-flex h-5 w-5 items-center justify-center rounded text-ink-muted hover:text-ink"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    </span>
-                                  );
-                                }
-
-                                return (
-                                  <span
-                                    key={word.id}
-                                    className="group/word inline-flex items-center"
-                                  >
-                                    <button
-                                      type="button"
-                                      data-testid={`cue-${idx + 1}-word-${wIdx + 1}`}
-                                      data-active-word={
-                                        isWordActive ? "true" : "false"
-                                      }
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedCueId(cue.id);
-                                        seekToMs(word.start_ms);
-                                      }}
-                                      onDoubleClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedCueId(cue.id);
-                                        setEditingWord({
-                                          cueId: cue.id,
-                                          wordId: word.id,
-                                          draft: word.text,
-                                        });
-                                      }}
-                                      title={`Seek to ${formatMsClock(word.start_ms)} (double-click to edit word)`}
-                                      className={`rounded-md px-1.5 py-0.5 text-xs leading-snug transition ${
-                                        isWordActive
-                                          ? "bg-accent font-semibold text-page shadow-[0_0_12px_rgba(167,139,250,0.4)]"
-                                          : isWordPast
-                                            ? "bg-track/70 text-ink hover:bg-track"
-                                            : isActive
-                                              ? "bg-page/60 text-ink-secondary hover:text-ink"
-                                              : "text-ink-secondary/85 hover:bg-elevated hover:text-ink"
-                                      }`}
-                                    >
-                                      {word.text}
-                                    </button>
-                                    {isWordActive && (
-                                      <button
-                                        type="button"
-                                        data-testid={`edit-active-word-btn-${idx + 1}`}
-                                        aria-label={`Edit timed word ${word.text}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
+                                        onClick={() => seekToMs(word.start_ms)}
+                                        onDoubleClick={() =>
                                           setEditingWord({
                                             cueId: cue.id,
                                             wordId: word.id,
                                             draft: word.text,
-                                          });
-                                        }}
-                                        className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded bg-accent-soft text-accent-hover hover:bg-accent hover:text-page"
+                                          })
+                                        }
+                                        title={`Seek to ${formatMsClock(word.start_ms)} (double-click to edit)`}
+                                        className={`rounded-md px-1.5 py-0.5 text-xs transition ${
+                                          isWordActive
+                                            ? "bg-accent font-semibold text-page"
+                                            : isWordPast
+                                              ? "bg-track/70 text-ink"
+                                              : "text-ink-secondary hover:bg-elevated hover:text-ink"
+                                        }`}
                                       >
-                                        <Pencil className="h-2.5 w-2.5" />
+                                        {word.text}
                                       </button>
-                                    )}
-                                  </span>
-                                );
-                              })}
+                                      {isWordActive && (
+                                        <button
+                                          type="button"
+                                          data-testid={`edit-active-word-btn-${idx + 1}`}
+                                          aria-label={`Edit timed word ${word.text}`}
+                                          onClick={() =>
+                                            setEditingWord({
+                                              cueId: cue.id,
+                                              wordId: word.id,
+                                              draft: word.text,
+                                            })
+                                          }
+                                          className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded bg-accent-soft text-accent-hover hover:bg-accent hover:text-page"
+                                        >
+                                          <Pencil className="h-2.5 w-2.5" />
+                                        </button>
+                                      )}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1.5 text-[10px] text-ink-muted">
+                                Click word to seek · Double-click word to edit
+                              </p>
                             </div>
                           )}
 
-                          {/* Numeric Start / End Timing Controls */}
-                          <div className="mt-2 grid grid-cols-2 gap-2 pl-1">
-                            <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
-                              <span className="shrink-0 font-medium">
-                                Start (s)
-                              </span>
-                              <input
-                                type="number"
-                                step="0.05"
-                                min="0"
-                                max={(clipDurationMs / 1000).toFixed(2)}
-                                aria-label={`Cue ${idx + 1} start seconds`}
-                                value={(cue.start_ms / 1000).toFixed(2)}
-                                onFocus={() => setSelectedCueId(cue.id)}
-                                onChange={(e) =>
-                                  updateCueTiming(
-                                    cue.id,
-                                    "start_ms",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
-                              />
-                            </label>
+                          {/* Exact Start / End Timing Controls (revealed when Timing is chosen) */}
+                          {isTimingExpanded && (
+                            <div
+                              data-testid={`cue-${idx + 1}-timing-panel`}
+                              className="mt-2 space-y-2 rounded-lg border border-ink/10 bg-page/80 p-2"
+                            >
+                              <div className="grid grid-cols-2 gap-2">
+                                <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/12 bg-page px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
+                                  <span className="shrink-0 font-medium">
+                                    Start (s)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    step="0.05"
+                                    min="0"
+                                    max={(clipDurationMs / 1000).toFixed(2)}
+                                    aria-label={`Cue ${idx + 1} start seconds`}
+                                    value={(cue.start_ms / 1000).toFixed(2)}
+                                    onChange={(e) =>
+                                      updateCueTiming(
+                                        cue.id,
+                                        "start_ms",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                                  />
+                                </label>
 
-                            <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-page/85 px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
-                              <span className="shrink-0 font-medium">
-                                End (s)
-                              </span>
-                              <input
-                                type="number"
-                                step="0.05"
-                                min="0"
-                                max={(clipDurationMs / 1000).toFixed(2)}
-                                aria-label={`Cue ${idx + 1} end seconds`}
-                                value={(cue.end_ms / 1000).toFixed(2)}
-                                onFocus={() => setSelectedCueId(cue.id)}
-                                onChange={(e) =>
-                                  updateCueTiming(
-                                    cue.id,
-                                    "end_ms",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
-                              />
-                            </label>
-                          </div>
+                                <label className="flex items-center justify-between gap-2 rounded-lg border border-ink/12 bg-page px-2.5 py-1 text-[11px] text-ink-muted focus-within:border-accent">
+                                  <span className="shrink-0 font-medium">
+                                    End (s)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    step="0.05"
+                                    min="0"
+                                    max={(clipDurationMs / 1000).toFixed(2)}
+                                    aria-label={`Cue ${idx + 1} end seconds`}
+                                    value={(cue.end_ms / 1000).toFixed(2)}
+                                    onChange={(e) =>
+                                      updateCueTiming(
+                                        cue.id,
+                                        "end_ms",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                                  />
+                                </label>
+                              </div>
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="text-ink-muted">
+                                  Duration:{" "}
+                                  {(
+                                    (cue.end_ms - cue.start_ms) /
+                                    1000
+                                  ).toFixed(2)}
+                                  s
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={openTimelineView}
+                                  className="font-medium text-accent-hover transition hover:underline"
+                                >
+                                  Adjust on waveform →
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
+
+                <p className="mt-2.5 text-[11px] text-ink-muted">
+                  {isSampleMode
+                    ? "Sample edits stay local in your browser. Download an SRT anytime."
+                    : "Select a cue to seek and edit inline. Changes autosave automatically."}
+                </p>
               </div>
             </section>
+          )}
 
-            {/* Style & Saved Presets Panel */}
-            <section
+          {/* =================================================================
+              CHILD 3: RIGHT COLUMN — PRESETS & STYLE (Default Editor View)
+             ================================================================= */}
+          {viewMode === "editor" && (
+            <aside
               id="editor-panel-style"
               role="tabpanel"
               aria-labelledby="editor-tab-style"
               data-testid="panel-style"
-              className={`studio-scroll min-w-0 flex-col lg:max-h-[540px] lg:overflow-y-auto lg:pr-1 ${
-                inspectorTab === "style" ? "flex" : "hidden"
+              className={`studio-scroll order-4 min-w-0 flex-col lg:order-3 lg:max-h-[650px] lg:overflow-y-auto lg:pr-1 ${
+                mobileTab === "style" ? "flex" : "hidden lg:flex"
               }`}
             >
               <StudioStylePanel
                 style={style}
                 onUpdateStyle={updateStyle}
-                subtitle={isSampleMode ? "Local preview" : "Autosaves"}
+                subtitle={isSampleMode ? "Local preview" : "Live preview"}
                 showSafeArea={showSafeArea}
                 onToggleSafeArea={setShowSafeArea}
                 enablePersonalPresets={!isSampleMode}
                 personalPresets={personalPresets}
                 onPersonalPresetsChange={setPersonalPresets}
               />
-            </section>
-          </aside>
-        </div>
+            </aside>
+          )}
 
-        {/* Full-Width Interactive Timeline Bar Below */}
-        <section
-          aria-label="Full-width caption timeline"
-          className="mt-2.5 w-full"
-        >
-          <EditorTimeline
-            cues={cues}
-            style={style}
-            durationMs={clipDurationMs}
-            currentTimeMs={currentTimeMs}
-            activeCueId={activeCue?.id ?? null}
-            selectedCueId={selectedCueId}
-            audioSourceUrl={previewUrl}
-            onSeekMs={seekToMs}
-            onSelectCue={handleSelectTimelineCue}
-            onPreviewCuesChange={handleTimelinePreviewCues}
-            onCommitCuesChange={handleTimelineCommitCues}
-            onSplitAtPlayhead={handleSplitAtPlayhead}
-            canSplitAtPlayhead={canSplitAtPlayhead}
-            onMergeSelectedWithNext={handleMergeSelectedWithNext}
-            canMergeSelected={canMergeSelected}
-            onPlaySelectedCue={() => void playSelectedCue()}
-            canPlaySelectedCue={Boolean(selectedCue)}
-          />
-        </section>
+          {/* =================================================================
+              CHILD 4: FOCUSED FULL-WIDTH TIMELINE + NUMERIC TIMING INSPECTOR
+             ================================================================= */}
+          {viewMode === "timeline" && (
+            <section
+              aria-label="Focused caption timeline"
+              data-testid="focused-timeline-view"
+              className="order-2 flex min-w-0 flex-col gap-2.5"
+            >
+              <EditorTimeline
+                cues={cues}
+                style={style}
+                durationMs={clipDurationMs}
+                currentTimeMs={currentTimeMs}
+                activeCueId={activeCue?.id ?? null}
+                selectedCueId={selectedCue?.id ?? null}
+                audioSourceUrl={previewUrl}
+                onSeekMs={seekToMs}
+                onSelectCue={handleSelectTimelineCue}
+                onPreviewCuesChange={handleTimelinePreviewCues}
+                onCommitCuesChange={handleTimelineCommitCues}
+                onSplitAtPlayhead={handleSplitAtPlayhead}
+                canSplitAtPlayhead={canSplitAtPlayhead}
+                onMergeSelectedWithNext={handleMergeSelectedWithNext}
+                canMergeSelected={canMergeSelected}
+                onPlaySelectedCue={() => void playSelectedCue()}
+                canPlaySelectedCue={Boolean(selectedCue)}
+              />
+
+              {/* Precise Keyboard & Touch Numeric Timing + Text Bar for Selected Cue */}
+              {selectedCue && (
+                <div
+                  data-testid="timeline-selected-cue-inspector"
+                  className="rounded-2xl border border-ink/10 bg-panel p-3 sm:px-4 sm:py-3"
+                >
+                  <div className="grid grid-cols-1 items-center gap-2.5 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded-lg border border-accent/35 bg-accent-soft px-2 py-1 font-mono text-xs font-semibold text-accent-hover">
+                        Cue #{Math.max(1, effectiveSelectedIndex + 1)}
+                      </span>
+                      <input
+                        type="text"
+                        aria-label="Selected timeline cue text"
+                        value={selectedCue.text}
+                        onChange={(e) =>
+                          updateCueText(selectedCue.id, e.target.value)
+                        }
+                        className="min-w-0 flex-1 rounded-xl border border-ink/12 bg-page px-3 py-1.5 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                      <label className="flex items-center justify-between gap-2 rounded-xl border border-ink/12 bg-page px-2.5 py-1.5 text-xs text-ink-muted focus-within:border-accent">
+                        <span className="font-medium">Start (s)</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          min="0"
+                          max={(clipDurationMs / 1000).toFixed(2)}
+                          data-testid="timeline-start-seconds-input"
+                          aria-label="Selected cue start seconds"
+                          value={(selectedCue.start_ms / 1000).toFixed(2)}
+                          onChange={(e) =>
+                            updateCueTiming(
+                              selectedCue.id,
+                              "start_ms",
+                              e.target.value
+                            )
+                          }
+                          className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between gap-2 rounded-xl border border-ink/12 bg-page px-2.5 py-1.5 text-xs text-ink-muted focus-within:border-accent">
+                        <span className="font-medium">End (s)</span>
+                        <input
+                          type="number"
+                          step="0.05"
+                          min="0"
+                          max={(clipDurationMs / 1000).toFixed(2)}
+                          data-testid="timeline-end-seconds-input"
+                          aria-label="Selected cue end seconds"
+                          value={(selectedCue.end_ms / 1000).toFixed(2)}
+                          onChange={(e) =>
+                            updateCueTiming(
+                              selectedCue.id,
+                              "end_ms",
+                              e.target.value
+                            )
+                          }
+                          className="w-16 bg-transparent text-right font-mono text-xs tabular-nums text-ink focus:outline-none"
+                        />
+                      </label>
+
+                      <span className="hidden rounded-lg border border-ink/10 bg-inset px-2 py-1.5 font-mono text-[11px] tabular-nums text-ink-secondary sm:inline-block">
+                        {(
+                          (selectedCue.end_ms - selectedCue.start_ms) /
+                          1000
+                        ).toFixed(2)}
+                        s
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+        </div>
       </main>
 
       {!isSampleMode && projectId && (
