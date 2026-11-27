@@ -306,8 +306,8 @@ export function StudioStylePanel({
         </div>
       </div>
 
-      {/* Personal Saved Presets (Owner-Scoped) */}
-      {enablePersonalPresets && (
+      {/* Personal Saved Presets (Owner-Scoped) or Guest Sample Mode Explanation */}
+      {enablePersonalPresets ? (
         <div
           data-testid="personal-presets-section"
           className="mt-4 border-t border-ink/8 pt-4"
@@ -455,6 +455,14 @@ export function StudioStylePanel({
               })}
             </div>
           )}
+        </div>
+      ) : (
+        <div
+          data-testid="sample-presets-note"
+          className="mt-4 rounded-xl border border-ink/10 bg-inset px-3 py-2.5 text-[11px] leading-relaxed text-ink-secondary"
+        >
+          Style changes preview locally on the sample clip. Upload your own clip
+          to save personal brand presets and render video exports.
         </div>
       )}
 

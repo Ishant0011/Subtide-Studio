@@ -28,6 +28,7 @@ import {
   Search,
   SlidersHorizontal,
   Undo2,
+  Upload,
   Volume2,
   VolumeX,
   X,
@@ -48,11 +49,13 @@ import {
   type SavedCaptionPresetRow,
 } from "@/lib/caption-editor";
 import { AccountMenu } from "@/components/AccountMenu";
+import { ClipCaptionsMark } from "@/components/ClipCaptionsLogo";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
 import { EditorTimeline } from "@/components/EditorTimeline";
 import { ProjectExportModal } from "@/components/ProjectExportModal";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
+import { generateSrtFromCues } from "@/lib/exports";
 
 type SaveStatus = "saved" | "saving" | "error" | "conflict";
 
@@ -69,16 +72,18 @@ interface EditorHistorySnapshot {
 }
 
 interface ProjectCaptionEditorProps {
-  userEmail: string;
-  projectId: string;
+  mode?: "project" | "sample";
+  userEmail?: string;
+  projectId?: string;
   projectTitle: string;
   mediaKind: "video" | "audio";
   previewUrl: string;
+  posterUrl?: string;
   previewWidth?: number | null;
   previewHeight?: number | null;
   durationMs: number;
-  initialRevisionId: string | null;
-  initialRevisionNumber: number;
+  initialRevisionId?: string | null;
+  initialRevisionNumber?: number;
   initialCues: EditorCue[];
   initialStyle: CaptionStyleConfig;
   initialPresets?: SavedCaptionPresetRow[];
@@ -87,20 +92,23 @@ interface ProjectCaptionEditorProps {
 const MAX_HISTORY_DEPTH = 50;
 
 export function ProjectCaptionEditor({
-  userEmail,
-  projectId,
+  mode,
+  userEmail = "",
+  projectId = "",
   projectTitle,
   mediaKind,
   previewUrl,
+  posterUrl,
   previewWidth = null,
   previewHeight = null,
   durationMs,
-  initialRevisionId,
-  initialRevisionNumber,
+  initialRevisionId = null,
+  initialRevisionNumber = 0,
   initialCues,
   initialStyle,
   initialPresets = [],
 }: ProjectCaptionEditorProps) {
+  const isSampleMode = mode === "sample" || !projectId;
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const playButtonRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -466,7 +474,7 @@ export function ProjectCaptionEditor({
 
   // Core save runner preserving newer local edits across in-flight saves, conflicts, and failures
   const performSave = useCallback(async () => {
-    if (inFlightRef.current) return;
+    if (isSampleMode || !projectId || inFlightRef.current) return;
 
     const snapshotVersion = localVersionRef.current;
     const snapshotCues = latestCuesRef.current;
@@ -553,10 +561,13 @@ export function ProjectCaptionEditor({
         }, 350);
       }
     }
-  }, [clipDurationMs, projectId, setSaveStatusSynced]);
+  }, [clipDurationMs, isSampleMode, projectId, setSaveStatusSynced]);
 
   const scheduleAutosave = useCallback(() => {
     localVersionRef.current += 1;
+    if (isSampleMode || !projectId) {
+      return;
+    }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -568,7 +579,7 @@ export function ProjectCaptionEditor({
     debounceTimerRef.current = setTimeout(() => {
       void performSave();
     }, 650);
-  }, [performSave, setSaveStatusSynced]);
+  }, [isSampleMode, performSave, projectId, setSaveStatusSynced]);
 
   useEffect(() => {
     return () => {
@@ -932,17 +943,48 @@ export function ProjectCaptionEditor({
     void performSave();
   };
 
+  const downloadSampleSrt = useCallback(() => {
+    const srtText = generateSrtFromCues(cues);
+    if (!srtText) return;
+    const blob = new Blob([srtText], {
+      type: "application/x-subrip;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "clipcaptions-sample.srt";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    flashNotice("Downloaded clipcaptions-sample.srt");
+  }, [cues, flashNotice]);
+
+  const resetSampleEdits = useCallback(() => {
+    latestCuesRef.current = initialCues;
+    latestStyleRef.current = initialStyle;
+    setCues(initialCues);
+    setStyle(initialStyle);
+    setSelectedCueId(initialCues[0]?.id ?? null);
+    setEditingWord(null);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    syncHistoryCounts();
+    flashNotice("Reset sample to original captions and style");
+  }, [flashNotice, initialCues, initialStyle, syncHistoryCounts]);
+
   return (
     <div className="min-h-screen overflow-x-clip bg-page text-ink">
-      {/* Compact Project Header */}
+      {/* Unified Compact Studio Header (Sample & Private Project Modes) */}
       <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2.5 lg:px-6">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-1.5 sm:flex-nowrap sm:gap-3 sm:px-5 sm:py-2 lg:px-6">
           <Link
-            href="/projects"
+            href={isSampleMode ? "/" : "/projects"}
+            prefetch={isSampleMode ? undefined : false}
             className="order-1 inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/55 hover:text-ink sm:gap-1.5 sm:px-2.5 sm:py-1.5"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Projects</span>
+            <span>{isSampleMode ? "Home" : "Projects"}</span>
           </Link>
 
           <div className="order-3 flex w-full min-w-0 items-center justify-between gap-2 sm:order-2 sm:w-auto sm:flex-1 sm:justify-start">
@@ -950,16 +992,28 @@ export function ProjectCaptionEditor({
               aria-hidden="true"
               className="hidden h-4 w-px shrink-0 bg-ink/12 sm:inline-block"
             />
+            {isSampleMode && (
+              <ClipCaptionsMark size={20} className="hidden shrink-0 sm:block" />
+            )}
             <h1 className="truncate text-xs font-bold tracking-tight text-ink sm:text-sm lg:text-base">
               {projectTitle}
             </h1>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary sm:text-[11px]">
-                Rev #{revisionNumber}
-              </span>
+              {isSampleMode ? (
+                <span
+                  data-testid="editor-mode-badge"
+                  className="rounded-full border border-ink/12 bg-panel px-2 py-0.5 text-[10px] font-medium text-ink-secondary sm:text-[11px]"
+                >
+                  Guest sample · Local edits
+                </span>
+              ) : (
+                <span className="rounded-full border border-ink/10 bg-panel px-2 py-0.5 font-mono text-[10px] tabular-nums text-ink-secondary sm:text-[11px]">
+                  Rev #{revisionNumber}
+                </span>
+              )}
               <span
                 data-testid="editor-media-aspect"
-                className="hidden rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover sm:inline-block"
+                className="hidden rounded-full border border-accent/35 bg-accent-soft/80 px-2 py-0.5 text-[11px] font-medium text-accent-hover md:inline-block"
               >
                 {mediaAspectBadge}
               </span>
@@ -992,64 +1046,100 @@ export function ProjectCaptionEditor({
               </button>
             </div>
 
-            <span
-              role="status"
-              aria-live="polite"
-              data-testid="autosave-status"
-              data-status={saveStatus}
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
-                saveStatus === "saved"
-                  ? "border border-accent/40 bg-accent-soft text-accent-hover"
-                  : saveStatus === "saving"
-                    ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
-                    : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
-              }`}
-            >
-              {saveStatus === "saving" && (
-                <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "saved" && (
-                <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "error" && (
-                <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              {saveStatus === "conflict" && (
-                <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              )}
-              <span>
-                {saveStatus === "saving"
-                  ? "Saving..."
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "conflict"
-                      ? "Conflict"
-                      : "Save failed"}
-              </span>
-            </span>
+            {isSampleMode ? (
+              <>
+                {historyCounts.undo > 0 && (
+                  <button
+                    type="button"
+                    data-testid="sample-reset-btn"
+                    onClick={resetSampleEdits}
+                    className="hidden rounded-lg border border-ink/12 bg-panel px-2.5 py-1 text-xs font-medium text-ink-secondary transition hover:border-accent/50 hover:text-ink md:inline-flex"
+                  >
+                    Reset
+                  </button>
+                )}
 
-            {saveStatus === "error" && (
-              <button
-                type="button"
-                onClick={() => void performSave()}
-                className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2.5 py-1 text-xs font-medium text-ink transition hover:border-accent/55"
-              >
-                <RefreshCw className="h-3 w-3" />
-                <span>Retry</span>
-              </button>
+                <button
+                  type="button"
+                  data-testid="sample-download-srt-btn"
+                  onClick={downloadSampleSrt}
+                  className="inline-flex items-center gap-1 rounded-lg border border-accent/45 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page sm:gap-1.5 sm:px-3 sm:py-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download SRT</span>
+                </button>
+
+                <a
+                  href="/upload"
+                  data-testid="sample-upload-cta"
+                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Upload a clip</span>
+                </a>
+              </>
+            ) : (
+              <>
+                <span
+                  role="status"
+                  aria-live="polite"
+                  data-testid="autosave-status"
+                  data-status={saveStatus}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold sm:gap-1.5 sm:px-3 sm:text-xs ${
+                    saveStatus === "saved"
+                      ? "border border-accent/40 bg-accent-soft text-accent-hover"
+                      : saveStatus === "saving"
+                        ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
+                        : "border border-rose-400/35 bg-rose-500/10 text-rose-200"
+                  }`}
+                >
+                  {saveStatus === "saving" && (
+                    <Loader2 className="h-3 w-3 animate-spin sm:h-3.5 sm:w-3.5" />
+                  )}
+                  {saveStatus === "saved" && (
+                    <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  )}
+                  {saveStatus === "error" && (
+                    <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  )}
+                  {saveStatus === "conflict" && (
+                    <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  )}
+                  <span>
+                    {saveStatus === "saving"
+                      ? "Saving..."
+                      : saveStatus === "saved"
+                        ? "Saved"
+                        : saveStatus === "conflict"
+                          ? "Conflict"
+                          : "Save failed"}
+                  </span>
+                </span>
+
+                {saveStatus === "error" && (
+                  <button
+                    type="button"
+                    onClick={() => void performSave()}
+                    className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2.5 py-1 text-xs font-medium text-ink transition hover:border-accent/55"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    <span>Retry</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  data-testid="open-export-btn"
+                  onClick={() => setExportModalOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export</span>
+                </button>
+
+                <AccountMenu userEmail={userEmail} compactMobile />
+              </>
             )}
-
-            <button
-              type="button"
-              data-testid="open-export-btn"
-              onClick={() => setExportModalOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export</span>
-            </button>
-
-            <AccountMenu userEmail={userEmail} compactMobile />
           </div>
         </div>
       </header>
@@ -1192,8 +1282,8 @@ export function ProjectCaptionEditor({
                       ? "aspect-video w-full max-w-[360px] sm:max-w-[540px] lg:max-w-[680px]"
                       : "aspect-video w-full max-w-[270px] sm:max-w-[540px] lg:max-w-[680px]"
                     : mobilePreviewExpanded
-                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
-                      : "aspect-[9/16] w-[124px] sm:w-[228px] lg:w-[248px] xl:w-[252px] 2xl:w-[288px]"
+                      ? "aspect-[9/16] w-[232px] sm:w-[252px] lg:w-[248px] xl:w-[264px] 2xl:w-[288px]"
+                      : "aspect-[9/16] w-[152px] sm:w-[228px] lg:w-[248px] xl:w-[264px] 2xl:w-[288px]"
                 }`}
               >
                 {mediaKind === "video" ? (
@@ -1202,6 +1292,7 @@ export function ProjectCaptionEditor({
                       mediaRef.current = el;
                     }}
                     src={previewUrl}
+                    poster={posterUrl}
                     playsInline
                     preload="auto"
                     muted={isMuted}
@@ -1390,15 +1481,6 @@ export function ProjectCaptionEditor({
                     <span>{formatMsClock(clipDurationMs)}</span>
                   </div>
 
-                  {activeWord && (
-                    <span
-                      data-testid="active-word-readout"
-                      className="hidden max-w-[100px] truncate rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover sm:inline-block"
-                    >
-                      {activeWord.text}
-                    </span>
-                  )}
-
                   <span
                     data-testid="active-cue-indicator"
                     className={`hidden truncate rounded-full px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums sm:inline-block ${
@@ -1551,9 +1633,16 @@ export function ProjectCaptionEditor({
                     <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
                       <Captions className="h-3.5 w-3.5" />
                     </span>
-                    <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
-                      Transcript
-                    </h2>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
+                        Transcript
+                      </h2>
+                      <p className="truncate text-[10px] text-ink-muted">
+                        {isSampleMode
+                          ? "Local sample — download SRT or upload your own clip"
+                          : "Autosaves edits to immutable project revisions"}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1">
@@ -1670,7 +1759,7 @@ export function ProjectCaptionEditor({
                 ) : (
                   <div
                     ref={transcriptScrollRef}
-                    className="studio-scroll relative mt-2.5 space-y-2.5 lg:max-h-[385px] lg:overflow-y-auto lg:pr-1 xl:max-h-[455px]"
+                    className="studio-scroll relative mt-2.5 space-y-2.5 lg:max-h-[320px] lg:overflow-y-auto lg:pr-1 xl:max-h-[410px]"
                   >
                     {cues.map((cue, idx) => {
                       const isActive = activeCue?.id === cue.id;
@@ -2014,10 +2103,10 @@ export function ProjectCaptionEditor({
               <StudioStylePanel
                 style={style}
                 onUpdateStyle={updateStyle}
-                subtitle="Autosaves"
+                subtitle={isSampleMode ? "Local preview" : "Autosaves"}
                 showSafeArea={showSafeArea}
                 onToggleSafeArea={setShowSafeArea}
-                enablePersonalPresets
+                enablePersonalPresets={!isSampleMode}
                 personalPresets={personalPresets}
                 onPersonalPresetsChange={setPersonalPresets}
               />
@@ -2052,17 +2141,19 @@ export function ProjectCaptionEditor({
         </section>
       </main>
 
-      <ProjectExportModal
-        open={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        projectId={projectId}
-        projectTitle={projectTitle}
-        mediaKind={mediaKind}
-        savedRevisionId={savedRevisionId}
-        savedRevisionNumber={revisionNumber}
-        hasUnsavedChanges={saveStatus !== "saved"}
-        saveStatus={saveStatus}
-      />
+      {!isSampleMode && projectId && (
+        <ProjectExportModal
+          open={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          projectId={projectId}
+          projectTitle={projectTitle}
+          mediaKind={mediaKind}
+          savedRevisionId={savedRevisionId}
+          savedRevisionNumber={revisionNumber}
+          hasUnsavedChanges={saveStatus !== "saved"}
+          saveStatus={saveStatus}
+        />
+      )}
     </div>
   );
 }

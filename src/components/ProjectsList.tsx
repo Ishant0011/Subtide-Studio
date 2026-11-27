@@ -106,25 +106,33 @@ function getStageDisplay(
       return { label: "Transcribing", tone: "amber", spinning: true };
     }
     if (job.status === "failed") {
-      return { label: formatErrorLabel(job.error_code), tone: "rose", spinning: false };
+      return {
+        label: `Needs retry · ${formatErrorLabel(job.error_code)}`,
+        tone: "rose",
+        spinning: false,
+      };
     }
     if (job.status === "completed") {
       if (revision?.speech_status === "no_speech") {
-        return { label: "Ready · No speech", tone: "accent", spinning: false };
+        return { label: "Ready to edit · No speech", tone: "accent", spinning: false };
       }
-      return { label: "Ready", tone: "accent", spinning: false };
+      return { label: "Ready to edit", tone: "accent", spinning: false };
     }
   }
 
   if (project.status === "failed") {
     return {
-      label: formatErrorLabel(project.last_error_code),
+      label: `Needs retry · ${formatErrorLabel(project.last_error_code)}`,
       tone: "rose",
       spinning: false,
     };
   }
   if (project.status === "ready") {
-    return { label: "Uploaded", tone: "neutral", spinning: false };
+    return {
+      label: project.active_revision_id ? "Ready to edit" : "Uploaded · Ready to process",
+      tone: project.active_revision_id ? "accent" : "neutral",
+      spinning: false,
+    };
   }
   return { label: project.status, tone: "neutral", spinning: false };
 }
@@ -154,6 +162,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [loadingAssetId, setLoadingAssetId] = useState<string | null>(null);
+  const [openingEditorId, setOpeningEditorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const hasActiveJobs = useMemo(
@@ -660,10 +669,20 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       {primaryAsset && isAssetUploaded && project.status === "ready" && (
                         <Link
                           href={`/projects/${project.id}/editor`}
+                          prefetch={false}
+                          onClick={() => setOpeningEditorId(project.id)}
                           className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                          <span>Open editor</span>
+                          {openingEditorId === project.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Pencil className="h-3.5 w-3.5" />
+                          )}
+                          <span>
+                            {openingEditorId === project.id
+                              ? "Opening..."
+                              : "Open editor"}
+                          </span>
                         </Link>
                       )}
 

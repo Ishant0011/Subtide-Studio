@@ -185,19 +185,19 @@ export function EditorTimeline({
     ctx.clearRect(0, 0, width, height);
 
     // Subtle horizontal reference baseline
-    ctx.fillStyle = "rgba(167, 139, 250, 0.2)";
+    ctx.fillStyle = "rgba(196, 181, 253, 0.24)";
     ctx.fillRect(0, Math.floor(height / 2), width, 1);
 
     const barWidth = width / waveformPeaks.length;
-    ctx.fillStyle = "rgba(196, 181, 253, 0.56)";
+    ctx.fillStyle = "rgba(196, 181, 253, 0.72)";
     for (let i = 0; i < waveformPeaks.length; i++) {
-      const amp = Math.pow(Math.max(0, Math.min(1, waveformPeaks[i])), 0.78);
+      const amp = Math.pow(Math.max(0, Math.min(1, waveformPeaks[i])), 0.74);
       const barH = Math.max(3, Math.round(amp * (height - 6)));
       const y = Math.round((height - barH) / 2);
       ctx.fillRect(
         Math.round(i * barWidth),
         y,
-        Math.max(2, Math.floor(barWidth - 1.5)),
+        Math.max(2, Math.floor(barWidth - 1.2)),
         barH
       );
     }
@@ -521,14 +521,14 @@ export function EditorTimeline({
             onPointerMove={handleScrubMove}
             onPointerUp={endScrub}
             onPointerCancel={endScrub}
-            className="relative h-7 cursor-ew-resize border-b border-ink/15"
+            className="relative h-7 cursor-ew-resize border-b border-ink/20"
           >
             {minorTicks.map((tick) => (
               <span
                 key={`minor-${tick.ms}`}
                 aria-hidden="true"
                 style={{ left: `${tick.pct}%` }}
-                className="pointer-events-none absolute bottom-0 h-1.5 w-px bg-ink/18"
+                className="pointer-events-none absolute bottom-0 h-1.5 w-px bg-ink/25"
               />
             ))}
             {ticks.map((tick) => {
@@ -537,31 +537,31 @@ export function EditorTimeline({
                 <div
                   key={tick.ms}
                   style={{ left: `${tick.pct}%` }}
-                  className={`pointer-events-none absolute bottom-0 top-0 flex flex-col justify-end ${
+                  className={`pointer-events-none absolute bottom-0 top-0 flex flex-col justify-between pt-0.5 ${
                     nearRightEdge ? "-translate-x-full items-end" : ""
                   }`}
                 >
                   <span
-                    className={`font-mono text-[11px] font-medium leading-none tabular-nums text-ink-secondary ${
+                    className={`font-mono text-[11px] font-semibold leading-none tabular-nums text-ink ${
                       nearRightEdge ? "mr-1" : "ml-1"
                     }`}
                   >
                     {tick.label}
                   </span>
-                  <span className="mt-1 h-2 w-px bg-ink/35" />
+                  <span className="mt-1 h-2.5 w-px bg-ink/45" />
                 </div>
               );
             })}
           </div>
 
-          {/* Cue Track with Real Audio Waveform Clearly Visible Behind Cues */}
+          {/* Cue Track with High-Contrast Real Audio Waveform */}
           <div
             data-testid="timeline-track"
             onPointerDown={startScrub}
             onPointerMove={handleScrubMove}
             onPointerUp={endScrub}
             onPointerCancel={endScrub}
-            className="relative mt-2 h-14 cursor-pointer overflow-hidden rounded-lg border border-ink/8 bg-inset"
+            className="relative mt-2 h-14 cursor-pointer overflow-hidden rounded-lg border border-ink/12 bg-inset"
           >
             {waveformPeaks && (
               <canvas
@@ -589,7 +589,7 @@ export function EditorTimeline({
                   data-testid={`timeline-cue-${idx + 1}`}
                   data-selected={isSelected ? "true" : "false"}
                   data-active={isActive ? "true" : "false"}
-                  aria-label={`Cue ${idx + 1}: ${cue.text.slice(0, 40)} (${formatMsClock(cue.start_ms)} to ${formatMsClock(cue.end_ms)})`}
+                  aria-label={`Cue ${idx + 1} (${formatMsClock(cue.start_ms)} to ${formatMsClock(cue.end_ms)})`}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     onSelectCue(cue.id, cue.start_ms);
@@ -602,17 +602,17 @@ export function EditorTimeline({
                   }}
                   style={{
                     left: `${Math.min(100, Math.max(0, leftPct))}%`,
-                    width: `${Math.max(2, Math.min(100 - leftPct, widthPct))}%`,
+                    width: `${Math.max(2.2, Math.min(100 - leftPct, widthPct))}%`,
                   }}
-                  className={`group absolute bottom-1 top-1 flex items-center overflow-hidden rounded-lg border text-left transition-colors ${
+                  className={`group absolute bottom-1 top-1 flex items-center justify-between overflow-hidden rounded-lg border text-left transition-colors ${
                     isSelected || isDraggingThis
-                      ? "z-20 border-accent bg-accent-soft/60 text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.45)]"
+                      ? "z-20 border-accent bg-accent-soft/55 text-ink shadow-[0_0_0_1px_rgba(167,139,250,0.55)]"
                       : isActive
-                        ? "z-10 border-accent/65 bg-accent-soft/45 text-ink"
-                        : "z-10 border-ink/20 bg-elevated/55 text-ink-secondary hover:border-accent/45 hover:text-ink"
+                        ? "z-10 border-accent/70 bg-accent-soft/40 text-ink"
+                        : "z-10 border-ink/25 bg-elevated/45 text-ink-secondary hover:border-accent/55 hover:text-ink"
                   }`}
                 >
-                  {/* Left (Start) Draggable Handle */}
+                  {/* Left (Start) High-Contrast Draggable Handle */}
                   <button
                     type="button"
                     tabIndex={-1}
@@ -622,20 +622,22 @@ export function EditorTimeline({
                     onPointerMove={moveBoundaryDrag}
                     onPointerUp={endBoundaryDrag}
                     onPointerCancel={endBoundaryDrag}
-                    className="flex h-full w-2.5 shrink-0 cursor-ew-resize items-center justify-center bg-accent/20 transition hover:bg-accent/70 group-hover:bg-accent/45"
+                    className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center border-r border-accent/35 bg-accent/30 transition hover:bg-accent group-hover:bg-accent/55"
                   >
-                    <span className="h-4 w-0.5 rounded-full bg-accent" />
+                    <span className="h-4 w-0.5 rounded-full bg-ink" />
                   </button>
 
-                  {/* Cue Snippet Label */}
-                  <span className="min-w-0 flex-1 truncate px-1.5 text-[10px] font-medium">
-                    <span className="mr-1 font-mono font-semibold text-accent-hover">
+                  {/* Compact Cue Index Badge (avoids duplicating full transcript sentence over waveform) */}
+                  <span className="min-w-0 flex-1 truncate px-1.5 font-mono text-[10px] font-semibold tabular-nums text-ink">
+                    <span className="rounded bg-page/75 px-1 py-0.5 text-accent-hover">
                       #{idx + 1}
                     </span>
-                    {cue.text}
+                    <span className="ml-1.5 hidden text-ink-secondary sm:inline">
+                      {formatMsClock(cue.start_ms)}–{formatMsClock(cue.end_ms)}
+                    </span>
                   </span>
 
-                  {/* Right (End) Draggable Handle */}
+                  {/* Right (End) High-Contrast Draggable Handle */}
                   <button
                     type="button"
                     tabIndex={-1}
@@ -645,23 +647,23 @@ export function EditorTimeline({
                     onPointerMove={moveBoundaryDrag}
                     onPointerUp={endBoundaryDrag}
                     onPointerCancel={endBoundaryDrag}
-                    className="flex h-full w-2.5 shrink-0 cursor-ew-resize items-center justify-center bg-accent/20 transition hover:bg-accent/70 group-hover:bg-accent/45"
+                    className="flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center border-l border-accent/35 bg-accent/30 transition hover:bg-accent group-hover:bg-accent/55"
                   >
-                    <span className="h-4 w-0.5 rounded-full bg-accent" />
+                    <span className="h-4 w-0.5 rounded-full bg-ink" />
                   </button>
                 </div>
               );
             })}
           </div>
 
-          {/* Playhead Needle + Cap */}
+          {/* High-Contrast Playhead Needle + Cap (anchored below ruler labels so timestamps stay legible) */}
           <div
             data-testid="timeline-playhead"
             style={{ left: `calc(8px + (100% - 16px) * ${playheadPct / 100})` }}
-            className="pointer-events-none absolute bottom-0 top-0 z-30 -translate-x-1/2"
+            className="pointer-events-none absolute bottom-0 top-4 z-30 -translate-x-1/2"
           >
-            <div className="mx-auto h-2.5 w-2.5 rounded-b-sm rounded-t-full bg-accent shadow-[0_0_10px_rgba(167,139,250,0.85)]" />
-            <div className="mx-auto h-[calc(100%-10px)] w-0.5 bg-accent shadow-[0_0_8px_rgba(167,139,250,0.65)]" />
+            <div className="mx-auto h-2.5 w-2.5 rounded-full border border-ink bg-accent shadow-[0_0_12px_rgba(167,139,250,0.95)]" />
+            <div className="mx-auto h-[calc(100%-10px)] w-0.5 bg-ink shadow-[0_0_8px_rgba(167,139,250,0.9)]" />
           </div>
         </div>
       </div>

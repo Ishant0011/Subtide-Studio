@@ -56,10 +56,10 @@ export function EditorCaptionOverlay({
   };
   const responsiveFontSize =
     layout.fontSize === "sm"
-      ? "clamp(0.62rem, 4.4cqw, 0.96rem)"
+      ? "clamp(0.44rem, 4.4cqw, 0.96rem)"
       : layout.fontSize === "lg"
-        ? "clamp(0.8rem, 6.1cqw, 1.32rem)"
-        : "clamp(0.7rem, 5.2cqw, 1.12rem)";
+        ? "clamp(0.56rem, 6.1cqw, 1.32rem)"
+        : "clamp(0.48rem, 5.2cqw, 1.12rem)";
   const textShadow = buildTextShadow(
     layout.outlineWidth,
     layout.outlineColor,

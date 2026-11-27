@@ -14,9 +14,6 @@ function getRequestOrigin(request: NextRequest): string {
     .split(",")[0]
     .trim();
 
-  // Next.js standalone/start server injects x-forwarded-host=localhost:<port>
-  // even when the browser requested 127.0.0.1:<port>; preserve raw Host in that case
-  // so browser fetch/RSC redirects stay strictly same-origin with CSP 'self'.
   const useRawLoopback =
     rawHost.startsWith("127.0.0.1") && forwardedHost.startsWith("localhost");
   const host = (useRawLoopback ? rawHost : forwardedHost || rawHost) || "";
@@ -119,5 +116,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/projects/:path*", "/upload/:path*", "/admin/:path*", "/login"],
+  matcher: [
+    "/projects",
+    "/projects/:path*",
+    "/upload",
+    "/upload/:path*",
+    "/admin",
+    "/admin/:path*",
+    "/login",
+  ],
 };

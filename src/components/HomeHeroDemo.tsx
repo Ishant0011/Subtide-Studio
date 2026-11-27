@@ -23,7 +23,7 @@ export function HomeHeroDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [compareMode, setCompareMode] = useState<CompareMode>("after");
-  const [splitPercent, setSplitPercent] = useState(34);
+  const [splitPercent, setSplitPercent] = useState(38);
   const [templateId, setTemplateId] = useState<string>(
     BUILTIN_STYLE_TEMPLATES[0].id
   );
@@ -134,23 +134,23 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[264px] rounded-[1.6rem] border border-accent/25 bg-panel p-2.5 shadow-[0_32px_90px_rgba(0,0,0,0.75),0_0_60px_rgba(167,139,250,0.12)] sm:max-w-[332px] sm:rounded-[1.85rem] sm:p-3 lg:max-w-[344px]"
+      className="relative mx-auto w-full max-w-[238px] rounded-[1.5rem] border border-accent/30 bg-page/95 p-2.5 shadow-[0_28px_80px_rgba(0,0,0,0.75),0_0_50px_rgba(167,139,250,0.14)] sm:max-w-[268px] sm:rounded-[1.65rem] sm:p-3 lg:max-w-[276px]"
     >
       {/* Top Synchronized Before / After Switcher */}
-      <div className="mb-2 flex items-center justify-between gap-2 px-0.5 sm:mb-2.5">
+      <div className="mb-2 flex items-center justify-between gap-1.5 px-0.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
           <span
             className={`h-2 w-2 rounded-full ${
               isPlaying ? "animate-pulse bg-accent" : "bg-accent/70"
             }`}
           />
-          <span>Before / After</span>
+          <span>Result</span>
         </span>
 
         <div
           role="group"
           aria-label="Before and after caption comparison mode"
-          className="inline-flex rounded-full border border-ink/12 bg-page p-0.5 text-[10px] font-semibold"
+          className="inline-flex rounded-full border border-ink/12 bg-panel p-0.5 text-[10px] font-semibold"
         >
           {(
             [
@@ -180,8 +180,8 @@ export function HomeHeroDemo() {
         </div>
       </div>
 
-      {/* Synchronized Single-Video 9:16 Stage */}
-      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.25rem] border border-ink/12 bg-page sm:rounded-[1.45rem]">
+      {/* Synchronized Single-Video 9:16 Stage (sized so transport & presets stay in view) */}
+      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.2rem] border border-ink/12 bg-panel sm:rounded-[1.3rem]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
@@ -213,14 +213,14 @@ export function HomeHeroDemo() {
         />
 
         {/* Scrims for caption legibility */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-page/65 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-page/85 via-page/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-page/65 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-page/90 via-page/35 to-transparent" />
 
-        {/* Before / After Corner Labels */}
-        <div className="pointer-events-none absolute inset-x-2.5 top-2.5 z-20 flex items-center justify-between text-[10px] font-semibold">
+        {/* Subtle State Pill */}
+        <div className="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-center justify-between text-[10px] font-semibold">
           {compareMode !== "after" ? (
             <span className="rounded-full border border-ink/15 bg-page/80 px-2 py-0.5 text-ink-secondary backdrop-blur-md">
-              Before · Raw
+              Before
             </span>
           ) : (
             <span />
@@ -232,7 +232,7 @@ export function HomeHeroDemo() {
           )}
         </div>
 
-        {/* Synchronized Caption Overlay Layer (clipped live in Split mode) */}
+        {/* Synchronized Caption Overlay Layer */}
         {showCaptionsLayer && (
           <div
             data-testid="before-after-captioned-layer"
@@ -266,20 +266,20 @@ export function HomeHeroDemo() {
           </div>
         )}
 
-        {/* Center play affordance (positioned below face over chest) */}
+        {/* Center play affordance positioned below speaker's face */}
         {!isPlaying && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
+            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
           >
-            <Play className="ml-0.5 h-5 w-5 fill-current" />
+            <Play className="ml-0.5 h-4 w-4 fill-current" />
           </div>
         )}
       </div>
 
       {/* Accessible Split Position Slider (shown in Split mode) */}
       {compareMode === "split" && (
-        <div className="mt-2 flex items-center gap-2 px-1">
+        <div className="mt-1.5 flex items-center gap-2 px-1">
           <span className="text-[10px] font-medium text-ink-muted">Before</span>
           <input
             type="range"
@@ -320,9 +320,36 @@ export function HomeHeroDemo() {
         </div>
       )}
 
-      {/* Playback Bar */}
-      <div className="mt-2 rounded-xl border border-ink/10 bg-page px-3 py-2">
-        <div className="relative flex h-4 items-center">
+      {/* Compact Single-Row Transport Bar (Play, Mute, Scrubber, Time) */}
+      <div className="mt-2 flex items-center gap-2 rounded-xl border border-ink/10 bg-panel px-2 py-1.5">
+        <button
+          type="button"
+          data-testid="hero-play-btn"
+          onClick={() => void togglePlay()}
+          aria-label={isPlaying ? "Pause demo clip" : "Play demo clip"}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-page transition hover:bg-accent-hover"
+        >
+          {isPlaying ? (
+            <Pause className="h-3.5 w-3.5 fill-current" />
+          ) : (
+            <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-page text-ink-secondary transition hover:border-accent/50 hover:text-ink"
+        >
+          {isMuted ? (
+            <VolumeX className="h-3.5 w-3.5" />
+          ) : (
+            <Volume2 className="h-3.5 w-3.5" />
+          )}
+        </button>
+
+        <div className="relative flex h-5 min-w-0 flex-1 items-center">
           <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
             <div
               className="h-full rounded-full bg-accent"
@@ -341,51 +368,21 @@ export function HomeHeroDemo() {
           />
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              data-testid="hero-play-btn"
-              onClick={() => void togglePlay()}
-              aria-label={isPlaying ? "Pause demo clip" : "Play demo clip"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-page transition hover:bg-accent-hover"
-            >
-              {isPlaying ? (
-                <Pause className="h-3.5 w-3.5 fill-current" />
-              ) : (
-                <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={toggleMute}
-              aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-accent/50 hover:text-ink"
-            >
-              {isMuted ? (
-                <VolumeX className="h-3.5 w-3.5" />
-              ) : (
-                <Volume2 className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
-
-          <span className="font-mono text-[11px] font-medium tabular-nums text-ink-secondary">
-            <span className="text-ink">{formatTime(currentTime)}</span>
-            <span className="mx-1 text-ink-muted">/</span>
-            <span>{formatTime(duration)}</span>
-          </span>
-        </div>
+        <span className="shrink-0 font-mono text-[10px] font-medium tabular-nums text-ink-secondary">
+          <span className="text-ink">{formatTime(currentTime)}</span>
+          <span className="mx-0.5 text-ink-muted">/</span>
+          <span>{formatTime(duration)}</span>
+        </span>
       </div>
 
-      {/* Live Style Preset Switcher (no sign-in required) */}
+      {/* Live Style Preset Switcher (always visible right under transport) */}
       <div
         role="group"
         aria-label="Demo caption style presets"
         data-testid="hero-preset-group"
-        className="mt-2 flex flex-wrap gap-1.5"
+        className="mt-1.5 flex items-center gap-1"
       >
-        {BUILTIN_STYLE_TEMPLATES.map((tpl) => {
+        {BUILTIN_STYLE_TEMPLATES.slice(0, 3).map((tpl, idx) => {
           const selected = templateId === tpl.id;
           return (
             <button
@@ -396,10 +393,12 @@ export function HomeHeroDemo() {
                 setTemplateId(tpl.id);
                 if (compareMode === "before") setCompareMode("after");
               }}
-              className={`flex-1 basis-[30%] rounded-xl border px-2 py-1.5 text-[11px] font-semibold transition ${
+              className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[10px] font-semibold transition sm:text-[11px] ${
+                idx === 0 ? "flex-[1.35]" : "flex-1"
+              } ${
                 selected
                   ? "border-accent bg-accent-soft text-accent-hover"
-                  : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
+                  : "border-ink/10 bg-panel text-ink-secondary hover:border-ink/25 hover:text-ink"
               }`}
             >
               {tpl.name}
