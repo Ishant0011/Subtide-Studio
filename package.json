@@ -11,6 +11,7 @@
     "security:scan": "node scripts/security-secret-scan.mjs"
   },
   "dependencies": {
+    "@google/genai": "^3.6.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
     "lucide-react": "^0.511.0",

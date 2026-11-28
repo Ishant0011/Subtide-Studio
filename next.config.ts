@@ -98,6 +98,13 @@ export default function nextConfig(phase: string): NextConfig {
   return {
     reactStrictMode: true,
     poweredByHeader: false,
+    serverExternalPackages: ["@google/genai"],
+    webpack(config) {
+      if (config.output) {
+        config.output.hashFunction = "sha256";
+      }
+      return config;
+    },
     async headers() {
       return [
         {

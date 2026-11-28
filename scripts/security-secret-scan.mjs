@@ -40,11 +40,16 @@ const SECRET_RULES = [
     id: "assigned-deepgram-key",
     re: /\bDEEPGRAM_API_KEY\s*[:=]\s*["']?[A-Za-z0-9._-]{20,}["']?/g,
   },
+  {
+    id: "assigned-gemini-key",
+    re: /\bGEMINI_API_KEY\s*[:=]\s*["']?[A-Za-z0-9._-]{20,}["']?/g,
+  },
 ];
 
 const BROWSER_BUNDLE_FORBIDDEN = [
   { id: "browser-bundle-service-role-ref", re: /\bSUPABASE_SERVICE_ROLE_KEY\b/g },
   { id: "browser-bundle-deepgram-ref", re: /\bDEEPGRAM_API_KEY\b/g },
+  { id: "browser-bundle-gemini-ref", re: /\bGEMINI_API_KEY\b/g },
   { id: "browser-bundle-owner-admin-ref", re: /\bOWNER_ADMIN_USER_ID\b/g },
   ...SECRET_RULES,
 ];
@@ -86,7 +91,7 @@ function loadLocalSecretValues() {
     const content = fs.readFileSync(envFile, "utf8");
     for (const line of content.split(/\r?\n/)) {
       const m = line.match(
-        /^\s*(SUPABASE_SERVICE_ROLE_KEY|DEEPGRAM_API_KEY|OWNER_ADMIN_USER_ID)\s*=\s*(.+)\s*$/
+        /^\s*(SUPABASE_SERVICE_ROLE_KEY|DEEPGRAM_API_KEY|GEMINI_API_KEY|OWNER_ADMIN_USER_ID)\s*=\s*(.+)\s*$/
       );
       if (m) {
         const val = m[2].trim().replace(/^['"]|['"]$/g, "");

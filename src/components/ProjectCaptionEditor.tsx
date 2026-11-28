@@ -29,6 +29,7 @@ import {
   Redo2,
   RefreshCw,
   Search,
+  Sparkles,
   Undo2,
   Upload,
   Volume2,
@@ -55,9 +56,11 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { ClipCaptionsMark } from "@/components/ClipCaptionsLogo";
 import { EditorCaptionOverlay } from "@/components/EditorCaptionOverlay";
 import { EditorTimeline } from "@/components/EditorTimeline";
+import { GeminiCaptionAssistantModal } from "@/components/GeminiCaptionAssistantModal";
 import { ProjectExportModal } from "@/components/ProjectExportModal";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
+import type { GeminiCueUpdate } from "@/lib/gemini";
 import {
   formatResolutionTierLabel,
   type ExportJobRow,
@@ -205,6 +208,7 @@ export function ProjectCaptionEditor({
     initialRevisionId
   );
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
   const [exportJobs, setExportJobs] = useState<ExportJobRow[]>([]);
   const [loadingExports, setLoadingExports] = useState(false);
 
@@ -1223,6 +1227,77 @@ export function ProjectCaptionEditor({
     scheduleAutosave();
   };
 
+  const applyAiCaptionUpdates = useCallback(
+    (
+      updates: GeminiCueUpdate[],
+      options: {
+        notice: string;
+        switchToDevanagariFont?: boolean;
+        baseCueTextById?: Record<string, string>;
+      }
+    ) => {
+      const updateMap = new Map(updates.map((u) => [u.id, u.text]));
+      const baseMap = options.baseCueTextById;
+      recordUndoSnapshot({
+        cues: latestCuesRef.current,
+        style: latestStyleRef.current,
+      });
+
+      let skippedNewerCount = 0;
+      setCues((prev) => {
+        const next = prev.map((cue) => {
+          const updatedText = updateMap.get(cue.id);
+          if (!updatedText || updatedText.trim() === cue.text.trim()) {
+            return cue;
+          }
+          // Preserve newer manual draft edits made while the AI request was pending
+          if (
+            baseMap &&
+            Object.prototype.hasOwnProperty.call(baseMap, cue.id) &&
+            baseMap[cue.id] !== cue.text
+          ) {
+            skippedNewerCount += 1;
+            return cue;
+          }
+          const reconciled = reconcileCueWords(
+            cue,
+            updatedText,
+            cue.start_ms,
+            cue.end_ms
+          );
+          return {
+            ...cue,
+            text: updatedText,
+            words: reconciled.words,
+            timing_mode: reconciled.timing_mode,
+          };
+        });
+        latestCuesRef.current = next;
+        return next;
+      });
+
+      if (options.switchToDevanagariFont) {
+        setStyle((prev) => {
+          const next = normalizeCaptionStyle({
+            ...prev,
+            fontFamily: "noto-devanagari",
+          });
+          latestStyleRef.current = next;
+          return next;
+        });
+      }
+
+      setEditingWord(null);
+      scheduleAutosave();
+      flashNotice(
+        skippedNewerCount > 0
+          ? `${options.notice} (kept ${skippedNewerCount} newer manual edit${skippedNewerCount === 1 ? "" : "s"})`
+          : options.notice
+      );
+    },
+    [flashNotice, recordUndoSnapshot, scheduleAutosave]
+  );
+
   const reloadLatestFromConflict = () => {
     if (!conflictRevision) return;
     const nextCues = hydrateEditorCues(conflictRevision.cues);
@@ -1366,6 +1441,17 @@ export function ProjectCaptionEditor({
                 <Redo2 className="h-3.5 w-3.5" />
               </button>
             </div>
+
+            <button
+              type="button"
+              data-testid="open-gemini-assist-btn"
+              onClick={() => setAiModalOpen(true)}
+              title="Gemini AI Assist — Polish, translate, or generate social copy"
+              className="inline-flex items-center gap-1 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page sm:gap-1.5 sm:px-3 sm:py-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>AI Assist</span>
+            </button>
 
             {isSampleMode ? (
               <>
@@ -2827,6 +2913,16 @@ export function ProjectCaptionEditor({
           )}
         </div>
       </main>
+
+      <GeminiCaptionAssistantModal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        projectId={projectId}
+        isSampleMode={isSampleMode}
+        projectTitle={projectTitle}
+        cues={cues}
+        onApplyCaptionUpdates={applyAiCaptionUpdates}
+      />
 
       {!isSampleMode && projectId && (
         <ProjectExportModal

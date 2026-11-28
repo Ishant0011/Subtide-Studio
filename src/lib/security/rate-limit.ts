@@ -26,6 +26,7 @@ export const RATE_LIMIT_POLICIES = {
   uploadComplete: { scope: "upload_complete", limit: 30, windowSeconds: 300 },
   processJob: { scope: "process_job", limit: 20, windowSeconds: 300 },
   exportCreate: { scope: "export_create", limit: 30, windowSeconds: 300 },
+  aiAssist: { scope: "ai_assist", limit: 20, windowSeconds: 300 },
   adminRead: { scope: "admin_read", limit: 30, windowSeconds: 60 },
   adminWrite: { scope: "admin_write", limit: 10, windowSeconds: 300 },
 } as const satisfies Record<string, RateLimitPolicy>;
