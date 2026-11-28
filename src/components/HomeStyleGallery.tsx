@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
+  Check,
   Pause,
   Play,
   RefreshCw,
@@ -37,19 +38,19 @@ const SHOWCASE_CONFIG = [
     id: "clean" as const,
     label: "Clean",
     templateId: "clean",
-    tagline: "Floating sans-serif with subtle stroke and gentle active-word lift.",
+    tagline: "Crisp floating type with gentle active-word lift.",
   },
   {
     id: "word-highlight" as const,
     label: "Word Highlight",
     templateId: "word-highlight",
-    tagline: "Kinetic muted-violet pill tracking every spoken word in real time.",
+    tagline: "Violet pill tracking each spoken word on beat.",
   },
   {
     id: "bold" as const,
     label: "Bold",
     templateId: "punch-display",
-    tagline: "Tall condensed Bebas Neue caps with high-contrast gold keyword punch.",
+    tagline: "Tall condensed caps with high-contrast gold punch.",
   },
 ];
 
@@ -67,7 +68,8 @@ export function HomeStyleGallery() {
     []
   );
 
-  const [selectedId, setSelectedId] = useState<ShowcaseStyle["id"]>("word-highlight");
+  const [selectedId, setSelectedId] =
+    useState<ShowcaseStyle["id"]>("word-highlight");
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(8.2);
@@ -152,14 +154,14 @@ export function HomeStyleGallery() {
   return (
     <div
       data-testid="home-style-gallery"
-      className="mt-6 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_272px] lg:gap-8"
+      className="mt-6 grid grid-cols-1 items-center gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.92fr)] lg:gap-10"
     >
-      {/* 3 Visually Distinct Working Caption Styles — aligned cleanly with the live demo */}
-      <div className="flex flex-col justify-between gap-4">
+      {/* Compact Style Swatches with Large Typography — stays paired with visible player on phones */}
+      <div className="flex flex-col gap-3.5">
         <div
           role="radiogroup"
           aria-label="Compare Clean, Word Highlight, and Bold caption styles"
-          className="grid flex-1 grid-cols-1 gap-3.5 sm:grid-cols-3"
+          className="grid grid-cols-3 gap-2.5 sm:gap-3 lg:grid-cols-1"
         >
           {showcaseStyles.map((item) => {
             const isSelected = item.id === activeStyle.id;
@@ -171,80 +173,73 @@ export function HomeStyleGallery() {
                 aria-checked={isSelected}
                 data-testid={`gallery-style-${item.id}`}
                 onClick={() => setSelectedId(item.id)}
-                className={`cc-card-interactive group flex h-full flex-col justify-between rounded-2xl border p-4 text-left ${
+                className={`cc-card-interactive group flex flex-col justify-between rounded-2xl border p-2.5 text-left transition sm:p-4 lg:flex-row lg:items-center lg:gap-4 ${
                   isSelected
-                    ? "border-accent bg-panel ring-2 ring-accent/70 shadow-[0_14px_34px_rgba(0,0,0,0.38)]"
-                    : "border-white/14 bg-panel/85 hover:border-white/30 hover:bg-panel"
+                    ? "border-accent bg-[#29283E] ring-2 ring-accent/70 shadow-[0_14px_34px_rgba(0,0,0,0.36)]"
+                    : "border-white/10 bg-[#1D1D27] hover:border-white/25 hover:bg-[#242336]"
                 }`}
               >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-ink">
-                      {item.label}
+                {/* Large Typographic Swatch */}
+                <div className="flex h-12 w-full shrink-0 items-center justify-center rounded-xl bg-[#101014] px-2 lg:h-14 lg:w-44">
+                  {item.id === "clean" && (
+                    <span
+                      style={{ fontFamily: '"Poppins", sans-serif' }}
+                      className="text-sm font-bold text-ink sm:text-base"
+                    >
+                      Every <span className="text-accent">word</span>
                     </span>
-                    {isSelected ? (
-                      <span className="rounded-full bg-accent px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[#14151e]">
-                        Active
+                  )}
+                  {item.id === "word-highlight" && (
+                    <span
+                      style={{ fontFamily: '"Poppins", sans-serif' }}
+                      className="inline-flex items-center gap-1 text-xs font-extrabold uppercase sm:text-sm"
+                    >
+                      <span className="rounded bg-accent px-1.5 py-0.5 text-[#101014]">
+                        EVERY
                       </span>
-                    ) : (
-                      <span className="h-2 w-2 rounded-full bg-white/30 transition group-hover:bg-white/55" />
-                    )}
-                  </div>
-
-                  {/* Authentic Visual Specimen */}
-                  <div className="mt-3.5 flex h-16 items-center justify-center rounded-xl border border-white/12 bg-inset px-2.5">
-                    {item.id === "clean" && (
-                      <span
-                        style={{ fontFamily: '"Poppins", sans-serif' }}
-                        className="text-xs font-semibold text-ink drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
-                      >
-                        Make{" "}
-                        <span className="text-accent-hover">every</span> word
+                      <span className="hidden text-ink sm:inline">WORD</span>
+                    </span>
+                  )}
+                  {item.id === "bold" && (
+                    <span
+                      style={{ fontFamily: '"Bebas Neue", sans-serif' }}
+                      className="inline-flex items-center gap-1 text-lg tracking-wider text-white sm:text-xl"
+                    >
+                      <span className="rounded bg-[#FACC15] px-1.5 text-black">
+                        BOLD
                       </span>
-                    )}
-                    {item.id === "word-highlight" && (
-                      <span
-                        style={{ fontFamily: '"Poppins", sans-serif' }}
-                        className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-tight"
-                      >
-                        <span className="text-ink">MAKE</span>
-                        <span className="rounded bg-accent px-1.5 py-0.5 text-[#14151e]">
-                          EVERY
-                        </span>
-                        <span className="text-ink">WORD</span>
-                      </span>
-                    )}
-                    {item.id === "bold" && (
-                      <span
-                        style={{ fontFamily: '"Bebas Neue", sans-serif' }}
-                        className="inline-flex items-center gap-1 rounded bg-black/85 px-2 py-1 text-base tracking-wider text-white"
-                      >
-                        <span>MAKE</span>
-                        <span className="rounded bg-[#FACC15] px-1 text-black">
-                          EVERY
-                        </span>
-                        <span>WORD</span>
-                      </span>
-                    )}
-                  </div>
+                      <span className="hidden sm:inline">HOOK</span>
+                    </span>
+                  )}
                 </div>
 
-                <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
-                  {item.tagline}
-                </p>
+                {/* Label + Tagline + Clear Selected State */}
+                <div className="mt-2 min-w-0 flex-1 lg:mt-0">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="truncate text-xs font-bold text-ink sm:text-sm">
+                      {item.label}
+                    </span>
+                    {isSelected && (
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-[#101014]">
+                        <Check className="h-2.5 w-2.5" />
+                        <span className="hidden sm:inline">Selected</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 hidden text-xs leading-relaxed text-ink-secondary sm:block">
+                    {item.tagline}
+                  </p>
+                </div>
               </button>
             );
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/12 bg-panel px-4 py-3 text-xs text-ink-secondary">
-          <span>
-            Switch presets while the video plays — playback stays locked on the
-            same clip.
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-secondary">
+          <span>Playback position stays locked while you compare styles.</span>
           <Link
             href="/studio"
-            className="inline-flex shrink-0 items-center gap-1 font-semibold text-ink transition hover:text-accent-hover"
+            className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent transition hover:text-accent-hover"
           >
             <span>Explore all 16 presets &amp; 10 fonts</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -252,23 +247,9 @@ export function HomeStyleGallery() {
         </div>
       </div>
 
-      {/* Live Synchronized Comparison Clip (Single Media Element) */}
-      <div className="cc-stage-frame mx-auto flex w-full max-w-[272px] flex-col justify-between rounded-2xl border border-white/15 p-2.5 shadow-[0_18px_48px_rgba(0,0,0,0.42)]">
-        <div className="mb-1.5 flex items-center justify-between px-1 text-[11px]">
-          <span
-            key={activeStyle.id}
-            data-testid="gallery-active-style-label"
-            className="cc-panel-enter inline-flex items-center gap-1.5 font-semibold text-ink"
-          >
-            <span className="h-2 w-2 rounded-full bg-accent" />
-            <span>{activeStyle.label}</span>
-          </span>
-          <span className="font-mono text-[10px] text-ink-secondary">
-            Live preview
-          </span>
-        </div>
-
-        <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-inset">
+      {/* Playable Single-Media Comparison Stage — 4:5 landscape-friendly crop so player stays in view on phones */}
+      <div className="mx-auto w-full max-w-[360px] lg:max-w-[420px]">
+        <div className="studio-stage-container relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[#101014] shadow-[0_24px_60px_rgba(0,0,0,0.52)] sm:aspect-[4/4.6]">
           <video
             ref={videoRef}
             src={SAMPLE_CLIP.src}
@@ -296,10 +277,17 @@ export function HomeStyleGallery() {
             onEnded={() => setIsPlaying(false)}
             onError={() => setMediaError("Could not load preview clip.")}
             onClick={() => void togglePlay()}
-            className="h-full w-full cursor-pointer object-cover"
+            className="h-full w-full cursor-pointer object-cover object-[50%_26%]"
           />
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+
+          {/* Floating Active Style Pill */}
+          <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-full bg-[#101014]/82 px-3 py-1 text-[11px] font-semibold text-ink backdrop-blur-md">
+            <span data-testid="gallery-active-style-label">
+              {activeStyle.label}
+            </span>
+          </div>
 
           <div
             data-testid="gallery-caption-overlay"
@@ -343,23 +331,24 @@ export function HomeStyleGallery() {
           </div>
         )}
 
-        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-[#0D0E12]/90 px-2.5 py-1.5">
+        {/* Clean Transport Controls */}
+        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-[#1D1D27] px-3 py-2">
           <button
             type="button"
             data-testid="gallery-play-btn"
             onClick={() => void togglePlay()}
             aria-label={isPlaying ? "Pause style preview" : "Play style preview"}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-page transition hover:bg-accent-hover"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-[#101014] transition hover:bg-accent-hover"
           >
             {isPlaying ? (
-              <Pause className="h-3 w-3 fill-current" />
+              <Pause className="h-3.5 w-3.5 fill-current" />
             ) : (
-              <Play className="ml-0.5 h-3 w-3 fill-current" />
+              <Play className="ml-0.5 h-3.5 w-3.5 fill-current" />
             )}
           </button>
 
           <div className="relative flex h-4 min-w-0 flex-1 items-center">
-            <div className="pointer-events-none absolute inset-x-0 h-1 overflow-hidden rounded-full bg-white/15">
+            <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-white/15">
               <div
                 className="h-full rounded-full bg-accent"
                 style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
@@ -389,12 +378,12 @@ export function HomeStyleGallery() {
             type="button"
             onClick={toggleMute}
             aria-label={isMuted ? "Unmute style preview" : "Mute style preview"}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:text-ink"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:text-ink"
           >
             {isMuted ? (
-              <VolumeX className="h-3 w-3" />
+              <VolumeX className="h-3.5 w-3.5" />
             ) : (
-              <Volume2 className="h-3 w-3" />
+              <Volume2 className="h-3.5 w-3.5" />
             )}
           </button>
         </div>

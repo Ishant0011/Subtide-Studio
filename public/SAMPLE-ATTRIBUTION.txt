@@ -17,9 +17,11 @@ Narration Audio:
   word-level timestamped against the exact audio waveform. Cleared for public commercial
   redistribution under Google Gemini API terms.
 
-Homepage Use-Case Photography (public/home/):
-- public/home/use-case-reels.jpg (Reels and Shorts creator outdoors at golden hour)
+Homepage Use-Case Photography & Example Export (public/home/):
+- public/home/use-case-reels.jpg (Street interview creator outdoors at golden hour)
 - public/home/use-case-podcast.jpg (Two podcast hosts in acoustic studio)
 - public/home/use-case-tutorial.jpg (Hands-on camera/laptop tutorial desk)
+- public/home/use-case-product.jpg (Creator demonstrating a wireless audio device at a sunlit desk)
+- public/home/clipcaptions-example-export.mp4 & clipcaptions-example-poster.jpg (Burned-in example MP4 rendered from public/sample-clip.mp4 with ClipCaptions Poppins word-highlight captions)
 - Original AI-generated editorial photographs created for ClipCaptions (Subtide Studio),
   cleared for public commercial redistribution with zero third-party watermarks.

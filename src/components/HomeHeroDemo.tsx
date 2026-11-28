@@ -126,7 +126,7 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="cc-stage-frame relative mx-auto w-full max-w-[276px] rounded-[1.4rem] border border-white/15 p-2 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.48)] sm:max-w-[298px] sm:rounded-[1.55rem] sm:p-2.5 lg:max-w-[308px] lg:p-3"
+      className="cc-stage-frame relative mx-auto w-full max-w-[278px] rounded-[1.5rem] p-2 text-ink shadow-[0_28px_72px_rgba(0,0,0,0.62)] sm:max-w-[300px] sm:p-2.5 lg:max-w-[316px] lg:p-3"
     >
       {/* Quiet Header Bar: Original / Captioned toggle on the same clip without resetting playback */}
       <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
@@ -138,7 +138,7 @@ export function HomeHeroDemo() {
           role="group"
           aria-label="Compare original and captioned video"
           data-testid="hero-compare-group"
-          className="inline-flex rounded-full border border-white/18 bg-[#181923]/80 p-0.5 text-[11px] font-semibold"
+          className="inline-flex rounded-full bg-[#101014]/85 p-0.5 text-[11px] font-semibold"
         >
           <button
             type="button"
@@ -147,7 +147,7 @@ export function HomeHeroDemo() {
             onClick={() => setComparison("original")}
             className={`rounded-full px-2.5 py-0.5 transition ${
               comparison === "original"
-                ? "bg-accent text-[#14151e] shadow-sm"
+                ? "bg-accent text-[#101014] shadow-sm"
                 : "text-ink-secondary hover:text-ink"
             }`}
           >
@@ -160,7 +160,7 @@ export function HomeHeroDemo() {
             onClick={() => setComparison("captioned")}
             className={`rounded-full px-2.5 py-0.5 transition ${
               comparison === "captioned"
-                ? "bg-accent text-[#14151e] shadow-sm"
+                ? "bg-accent text-[#101014] shadow-sm"
                 : "text-ink-secondary hover:text-ink"
             }`}
           >
@@ -169,8 +169,8 @@ export function HomeHeroDemo() {
         </div>
       </div>
 
-      {/* Large 9:16 Footage Stage — trimmed chrome, speaker & caption centered, controls visible at 1280x800 */}
-      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[252px] overflow-hidden rounded-[1.05rem] bg-[#14151e] shadow-[0_14px_34px_rgba(12,13,20,0.48)] sm:max-w-[268px] lg:max-w-[274px]">
+      {/* Large 9:16 Footage Stage — borderless media, soft violet light behind footage */}
+      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[254px] overflow-hidden rounded-[1.1rem] bg-[#101014] shadow-[0_16px_38px_rgba(0,0,0,0.55)] sm:max-w-[272px] lg:max-w-[280px]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
