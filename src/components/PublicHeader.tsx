@@ -5,9 +5,85 @@ import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
 
 interface PublicHeaderProps {
   userEmail: string | null;
+  variant?: "dark" | "ivory";
 }
 
-export function PublicHeader({ userEmail }: PublicHeaderProps) {
+export function PublicHeader({
+  userEmail,
+  variant = "dark",
+}: PublicHeaderProps) {
+  const isIvory = variant === "ivory";
+
+  if (isIvory) {
+    return (
+      <header className="sticky top-0 z-30 border-b border-[#181B25]/10 bg-[#FAF7F0]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6 sm:py-3 lg:px-8">
+          <div className="flex min-w-0 items-center gap-7">
+            <Link
+              href="/"
+              aria-label="ClipCaptions home"
+              className="shrink-0 rounded-lg text-base font-extrabold tracking-tight text-[#181B25] transition hover:opacity-85 sm:text-lg"
+            >
+              Clip<span className="text-[#2648DB]">Captions</span>
+            </Link>
+
+            <nav
+              aria-label="Primary navigation"
+              className="hidden items-center gap-1 md:flex"
+            >
+              <a
+                href="#examples"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#50566A] transition hover:bg-[#EEF2FF] hover:text-[#181B25]"
+              >
+                Examples
+              </a>
+              <a
+                href="#how-it-works"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#50566A] transition hover:bg-[#EEF2FF] hover:text-[#181B25]"
+              >
+                How it works
+              </a>
+              <a
+                href="#faq"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#50566A] transition hover:bg-[#EEF2FF] hover:text-[#181B25]"
+              >
+                FAQ
+              </a>
+            </nav>
+          </div>
+
+          {userEmail ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/projects"
+                prefetch={false}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#181B25]/15 bg-white px-3 py-1.5 text-xs font-semibold text-[#181B25] transition hover:border-[#2648DB]/40 hover:bg-[#EEF2FF] sm:px-3.5 sm:py-2"
+              >
+                <FolderKanban className="h-3.5 w-3.5 text-[#2648DB]" />
+                <span>Projects</span>
+              </Link>
+              <AccountMenu userEmail={userEmail} compactMobile />
+            </div>
+          ) : (
+            <nav
+              aria-label="Account navigation"
+              className="flex shrink-0 items-center gap-2"
+            >
+              <Link
+                href="/login?mode=signin"
+                prefetch={false}
+                data-testid="header-signin-link"
+                className="rounded-xl border border-[#181B25]/18 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-4 sm:py-2 sm:text-sm"
+              >
+                Sign in
+              </Link>
+            </nav>
+          )}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-page/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">
@@ -32,16 +108,16 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               <span>Sample Studio</span>
             </Link>
             <Link
-              href="/#showcase"
+              href="/#examples"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              Demo
+              Examples
             </Link>
             <Link
-              href="/#gallery"
+              href="/#how-it-works"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              Gallery
+              How it works
             </Link>
             <Link
               href="/#faq"

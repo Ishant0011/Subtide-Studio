@@ -61,18 +61,23 @@ export function HomeCreatorGallery() {
 
   const activeClip = CREATOR_CLIPS[activeIdx];
 
+  const pauseTour = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("clipcaptions:pause-tour"));
+    }
+  };
+
   const selectClip = useCallback((idx: number, autoPlay = false) => {
     const nextIdx = (idx + CREATOR_CLIPS.length) % CREATOR_CLIPS.length;
     setActiveIdx(nextIdx);
     setIsPlaying(false);
     if (autoPlay) {
+      pauseTour();
       window.setTimeout(() => {
         const v = videoRef.current;
         if (!v) return;
         v.currentTime = 0;
-        v.play().catch(() => {
-          // ignore autoplay restriction
-        });
+        v.play().catch(() => {});
       }, 60);
     }
   }, []);
@@ -81,6 +86,7 @@ export function HomeCreatorGallery() {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused || v.ended) {
+      pauseTour();
       if (v.ended) v.currentTime = 0;
       try {
         await v.play();
@@ -95,7 +101,7 @@ export function HomeCreatorGallery() {
   return (
     <div
       data-testid="home-creator-gallery"
-      className="mt-7"
+      className="mt-7 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:items-start"
       onTouchStart={(e) => {
         touchStartXRef.current = e.touches[0]?.clientX ?? null;
       }}
@@ -110,9 +116,9 @@ export function HomeCreatorGallery() {
         }
       }}
     >
-      {/* Single Active Creator Player */}
-      <div className="relative overflow-hidden rounded-[1.5rem] bg-[#14131E] shadow-[0_24px_60px_rgba(20,19,30,0.18)]">
-        <div className="relative aspect-[16/9] w-full overflow-hidden">
+      {/* Active Playable Example Stage (Charcoal frame) */}
+      <div className="relative overflow-hidden rounded-2xl bg-[#181B25] shadow-[0_20px_52px_rgba(24,27,37,0.16)]">
+        <div className="relative aspect-[16/10] w-full overflow-hidden">
           <video
             key={activeClip.id}
             ref={videoRef}
@@ -123,18 +129,18 @@ export function HomeCreatorGallery() {
             playsInline
             muted
             loop
-            preload="metadata"
+            preload="none"
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onClick={() => void togglePlay()}
-            className="cc-panel-enter h-full w-full cursor-pointer object-cover"
+            className="h-full w-full cursor-pointer object-cover"
           />
 
           {!isPlaying && (
             <>
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-              <div className="pointer-events-none absolute inset-x-6 bottom-6 text-center">
-                <span className="inline-block rounded-xl bg-[#0B0B0F]/82 px-3.5 py-1.5 text-sm font-extrabold tracking-tight text-[#F8F7FC] backdrop-blur-sm sm:text-lg">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181B25]/80 via-[#181B25]/12 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-5 bottom-5 text-center">
+                <span className="inline-block rounded-xl bg-[#181B25]/85 px-3.5 py-1.5 text-sm font-extrabold tracking-tight text-[#FAF7F0] backdrop-blur-sm sm:text-base">
                   {activeClip.captionLine}
                 </span>
               </div>
@@ -143,7 +149,7 @@ export function HomeCreatorGallery() {
                 data-testid="creator-gallery-play"
                 onClick={() => void togglePlay()}
                 aria-label={`Play ${activeClip.label} clip`}
-                className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#0B0B0F]/80 text-[#F8F7FC] shadow-xl backdrop-blur-md transition hover:scale-105 hover:bg-[#0B0B0F]"
+                className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#2648DB] text-white shadow-xl transition hover:scale-105 hover:bg-[#1E3BC0]"
               >
                 <Play className="ml-0.5 h-6 w-6 fill-current" />
               </button>
@@ -151,9 +157,9 @@ export function HomeCreatorGallery() {
           )}
 
           {/* Top-left Active Clip Label */}
-          <div className="pointer-events-none absolute left-3.5 top-3.5 flex items-center gap-2 rounded-full bg-[#0B0B0F]/78 px-3 py-1 text-xs font-semibold text-[#F8F7FC] backdrop-blur-md">
+          <div className="pointer-events-none absolute left-3.5 top-3.5 flex items-center gap-2 rounded-full bg-[#181B25]/85 px-3 py-1 text-xs font-semibold text-[#FAF7F0] backdrop-blur-md">
             <span>{activeClip.label}</span>
-            <span className="text-[#C4B5FF]">· {activeClip.styleName}</span>
+            <span className="text-[#93B4FF]">· {activeClip.styleName}</span>
           </div>
 
           {/* Top-right Play/Pause + Prev/Next Controls */}
@@ -161,8 +167,8 @@ export function HomeCreatorGallery() {
             <button
               type="button"
               onClick={() => void togglePlay()}
-              aria-label={isPlaying ? "Pause clip" : "Play clip"}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0B0B0F]/78 text-[#F8F7FC] backdrop-blur-md transition hover:bg-[#0B0B0F]"
+              aria-label={isPlaying ? "Pause example clip" : "Play example clip"}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#181B25]/85 text-[#FAF7F0] backdrop-blur-md transition hover:bg-[#2648DB]"
             >
               {isPlaying ? (
                 <Pause className="h-3.5 w-3.5 fill-current" />
@@ -174,8 +180,8 @@ export function HomeCreatorGallery() {
               type="button"
               data-testid="creator-gallery-prev"
               onClick={() => selectClip(activeIdx - 1)}
-              aria-label="Previous creator clip"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0B0B0F]/78 text-[#F8F7FC] backdrop-blur-md transition hover:bg-[#0B0B0F]"
+              aria-label="Previous example"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#181B25]/85 text-[#FAF7F0] backdrop-blur-md transition hover:bg-[#2648DB]"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -183,8 +189,8 @@ export function HomeCreatorGallery() {
               type="button"
               data-testid="creator-gallery-next"
               onClick={() => selectClip(activeIdx + 1)}
-              aria-label="Next creator clip"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#0B0B0F]/78 text-[#F8F7FC] backdrop-blur-md transition hover:bg-[#0B0B0F]"
+              aria-label="Next example"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#181B25]/85 text-[#FAF7F0] backdrop-blur-md transition hover:bg-[#2648DB]"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -192,8 +198,8 @@ export function HomeCreatorGallery() {
         </div>
       </div>
 
-      {/* 4 Large Poster Switchers */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      {/* 4 Selectable Poster Examples (2x2 grid on desktop & mobile, cobalt active ring) */}
+      <div className="grid grid-cols-2 gap-3">
         {CREATOR_CLIPS.map((clip, idx) => {
           const selected = idx === activeIdx;
           return (
@@ -205,11 +211,11 @@ export function HomeCreatorGallery() {
               onClick={() => selectClip(idx, true)}
               className={`group overflow-hidden rounded-2xl text-left transition ${
                 selected
-                  ? "bg-white ring-2 ring-[#6D54D8] shadow-[0_12px_28px_rgba(109,84,216,0.16)]"
-                  : "bg-white/75 hover:bg-white"
+                  ? "bg-[#EEF2FF] ring-2 ring-[#2648DB] shadow-md"
+                  : "border border-[#181B25]/10 bg-white hover:border-[#2648DB]/40"
               }`}
             >
-              <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#14131E]">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#181B25]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={clip.poster}
@@ -217,18 +223,18 @@ export function HomeCreatorGallery() {
                   loading="lazy"
                   className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                <span className="pointer-events-none absolute inset-x-2.5 bottom-2 truncate text-[11px] font-bold text-[#F8F7FC]">
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181B25]/80 via-[#181B25]/10 to-transparent" />
+                <span className="pointer-events-none absolute inset-x-2 bottom-2 truncate text-[10px] font-bold text-[#FAF7F0]">
                   {clip.captionLine}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-                <span className="text-xs font-bold text-[#14131E] sm:text-sm">
+              <div className="px-3 py-2">
+                <p className="text-xs font-bold text-[#181B25] sm:text-sm">
                   {clip.label}
-                </span>
-                <span className="font-mono text-[10px] font-semibold text-[#5B42C4]">
+                </p>
+                <p className="font-mono text-[10px] font-semibold text-[#2648DB]">
                   {clip.styleName}
-                </span>
+                </p>
               </div>
             </button>
           );
