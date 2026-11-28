@@ -278,6 +278,45 @@
     #181a24;
 }
 
+/* Homepage-only selective brightening & contrast tokens */
+.cc-home-theme {
+  --bg-page: #181923;
+  --bg-inset: #202230;
+  --bg-panel: #282b3a;
+  --bg-elevated: #32364a;
+  --bg-track: #3e435c;
+  --bg-demo-stage: #3a3554;
+  --text-primary: #f6f5fa;
+  --text-secondary: #d0d4e4;
+  --text-muted: #a9afc6;
+  --accent: #afa0f5;
+  --accent-hover: #cabffd;
+  --accent-soft: rgba(175, 160, 245, 0.18);
+  --accent-rgb: 175, 160, 245;
+}
+
+.cc-home-theme .cc-stage-frame {
+  background:
+    radial-gradient(
+      82% 62% at 50% 20%,
+      rgba(175, 160, 245, 0.22) 0%,
+      rgba(66, 60, 96, 0.42) 48%,
+      rgba(40, 43, 58, 0.98) 100%
+    ),
+    #282b3a;
+}
+
+.cc-home-final-cta {
+  background:
+    radial-gradient(
+      75% 85% at 50% 0%,
+      rgba(186, 173, 250, 0.28) 0%,
+      rgba(82, 74, 122, 0.46) 46%,
+      rgba(40, 43, 58, 0.98) 100%
+    ),
+    #282b3a;
+}
+
 .cc-reveal {
   transition:
     opacity var(--motion-section) var(--ease-cinema),

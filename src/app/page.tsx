@@ -123,7 +123,7 @@ export default async function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-page text-ink">
+    <div className="cc-home-theme relative min-h-screen overflow-x-clip bg-page text-ink">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -137,11 +137,11 @@ export default async function HomePage() {
         {/* 1. CINEMATIC FIRST SCREEN */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-6xl px-4 pb-8 pt-2.5 sm:px-6 sm:pb-14 sm:pt-7 lg:px-8 lg:pb-16 lg:pt-9"
+          className="mx-auto max-w-6xl px-4 pb-6 pt-2 sm:px-6 sm:pb-10 sm:pt-4 lg:px-8 lg:pb-12 lg:pt-5"
         >
-          <div className="grid grid-cols-1 items-center gap-3.5 sm:gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] lg:gap-12">
+          <div className="grid grid-cols-1 items-center gap-3 sm:gap-7 lg:grid-cols-[minmax(0,1.12fr)_minmax(310px,0.88fr)] lg:gap-10">
             <div className="max-w-xl">
-              <h1 className="text-[1.85rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[3.9rem] lg:leading-[1.0] xl:text-[4.3rem]">
+              <h1 className="text-[1.82rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[3.75rem] lg:leading-[1.0] xl:text-[4.15rem]">
                 <span className="cc-hero-line-1">Add captions</span>
                 <span className="cc-hero-line-2">that move with</span>
                 <span className="cc-hero-line-3 text-accent-hover">
@@ -151,18 +151,18 @@ export default async function HomePage() {
 
               <p
                 data-testid="home-hero-subcopy"
-                className="cc-hero-sub mt-2 max-w-lg text-[13px] leading-relaxed text-ink-secondary sm:mt-4 sm:text-base lg:text-[1.08rem] lg:leading-relaxed"
+                className="cc-hero-sub mt-2 max-w-lg text-[13px] leading-relaxed text-ink-secondary sm:mt-3.5 sm:text-base lg:text-[1.06rem] lg:leading-relaxed"
               >
                 {HOMEPAGE_SUBHEADLINE}
               </p>
 
-              <div className="cc-hero-actions mt-3 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
+              <div className="cc-hero-actions mt-3 flex flex-wrap items-center gap-2.5 sm:mt-6 sm:gap-3.5">
                 {user ? (
                   <Link
                     href="/upload"
                     prefetch={false}
                     data-testid="home-upload-cta"
-                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
+                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-[#14151e] hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
                     <span>Upload a clip</span>
@@ -172,7 +172,7 @@ export default async function HomePage() {
                   <a
                     href="/upload"
                     data-testid="home-upload-cta"
-                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
+                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-[#14151e] hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
                     <span>Upload a clip</span>
@@ -183,7 +183,7 @@ export default async function HomePage() {
                 <Link
                   href="/studio"
                   data-testid="home-sample-cta"
-                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-4 py-2.5 text-sm font-semibold text-ink hover:border-ink/30 hover:bg-elevated sm:px-5 sm:py-3.5 sm:text-base"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-white/22 bg-panel px-4 py-2.5 text-sm font-semibold text-ink hover:border-white/38 hover:bg-elevated sm:px-5 sm:py-3.5 sm:text-base"
                 >
                   <Play className="h-4 w-4 shrink-0 fill-current" />
                   <span>Try a sample</span>
@@ -197,13 +197,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 2. STANDOUT SCROLL SEQUENCE: Original Shot -> Timed Word Close-Up -> Full Editor & Timeline */}
+        {/* 2. STANDOUT SCROLL SEQUENCE: Original Shot -> Word Highlight -> Full Editor */}
         <HomeCinematicSequence />
 
         {/* 3. CAPTION STYLES: Clean, Word Highlight, Bold */}
         <section
           id="styles"
-          className="border-t border-ink/10 py-14 lg:py-24"
+          className="scroll-mt-20 border-t border-white/10 bg-page py-10 lg:py-16"
         >
           <MotionReveal
             variant="scale"
@@ -230,7 +230,7 @@ export default async function HomePage() {
         <section
           id="use-cases"
           data-testid="home-use-cases"
-          className="border-t border-ink/10 bg-inset/45 py-14 lg:py-24"
+          className="scroll-mt-20 border-t border-white/10 bg-inset py-10 lg:py-16"
         >
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <MotionReveal>
@@ -244,7 +244,7 @@ export default async function HomePage() {
               </div>
             </MotionReveal>
 
-            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
               {USE_CASES.map((item, idx) => (
                 <MotionReveal
                   key={item.id}
@@ -254,7 +254,7 @@ export default async function HomePage() {
                 >
                   <article
                     data-testid={`use-case-card-${item.id}`}
-                    className="cc-card-interactive flex h-full flex-col overflow-hidden rounded-2xl border border-ink/10 bg-panel"
+                    className="cc-card-interactive flex h-full flex-col overflow-hidden rounded-2xl border border-white/14 bg-panel"
                   >
                     <div className="cc-image-reveal relative aspect-[4/3] w-full overflow-hidden bg-inset">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -264,26 +264,26 @@ export default async function HomePage() {
                         loading="lazy"
                         className="h-full w-full object-cover"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
 
-                      {/* Distinct Real Caption Example Overlaid on Each Photo */}
+                      {/* Distinct Real Caption Example Overlaid with Generous Inset */}
                       {item.captionStyle === "pill" && (
-                        <div className="pointer-events-none absolute inset-x-3 bottom-3.5 flex flex-wrap justify-center gap-1 text-center text-xs font-extrabold uppercase tracking-tight">
-                          <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
+                        <div className="pointer-events-none absolute inset-x-5 bottom-5 flex flex-wrap justify-center gap-1 text-center text-xs font-extrabold uppercase tracking-tight sm:inset-x-6 sm:bottom-6">
+                          <span className="rounded bg-black/80 px-1.5 py-0.5 text-ink">
                             HOOK
                           </span>
-                          <span className="rounded bg-accent px-1.5 py-0.5 text-page">
+                          <span className="rounded bg-accent px-1.5 py-0.5 text-[#14151e]">
                             VIEWERS
                           </span>
-                          <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
+                          <span className="rounded bg-black/80 px-1.5 py-0.5 text-ink">
                             IN TWO SECONDS
                           </span>
                         </div>
                       )}
 
                       {item.captionStyle === "boxed" && (
-                        <div className="pointer-events-none absolute inset-x-4 bottom-3.5 flex justify-center">
-                          <span className="rounded-lg bg-[#101116]/90 px-3 py-1.5 text-center text-xs font-semibold text-ink shadow-lg">
+                        <div className="pointer-events-none absolute inset-x-5 bottom-5 flex justify-center sm:inset-x-6 sm:bottom-6">
+                          <span className="rounded-lg bg-[#14151e]/92 px-3.5 py-1.5 text-center text-xs font-semibold text-ink shadow-lg">
                             &ldquo;That single{" "}
                             <span className="text-accent-hover underline decoration-accent decoration-2 underline-offset-2">
                               story
@@ -294,7 +294,7 @@ export default async function HomePage() {
                       )}
 
                       {item.captionStyle === "clean" && (
-                        <div className="pointer-events-none absolute inset-x-4 bottom-3.5 text-center">
+                        <div className="pointer-events-none absolute inset-x-5 bottom-5 text-center sm:inset-x-6 sm:bottom-6">
                           <span className="text-xs font-bold text-ink drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
                             Step 2: lock focus before{" "}
                             <span className="text-accent-hover">rolling</span>.
@@ -303,11 +303,11 @@ export default async function HomePage() {
                       )}
                     </div>
 
-                    <div className="flex flex-1 flex-col p-5">
+                    <div className="flex flex-1 flex-col p-4 sm:p-5">
                       <h3 className="text-base font-bold tracking-tight text-ink">
                         {item.title}
                       </h3>
-                      <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
+                      <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
                         {item.description}
                       </p>
                     </div>
@@ -318,11 +318,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 5. HOW IT WORKS: Three Actual Product Views */}
+        {/* 5. HOW IT WORKS: Three Actual Product Views Cropped Around the Action */}
         <section
           id="how-it-works"
           data-testid="home-how-it-works"
-          className="border-t border-ink/10 py-14 lg:py-24"
+          className="scroll-mt-20 border-t border-white/10 bg-page py-10 lg:py-16"
         >
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <MotionReveal>
@@ -335,23 +335,23 @@ export default async function HomePage() {
                     Three steps from raw clip to captioned MP4
                   </h2>
                 </div>
-                <span className="rounded-full border border-ink/12 bg-panel px-3 py-1 font-mono text-[11px] text-ink-secondary">
+                <span className="rounded-full border border-white/16 bg-panel px-3 py-1 font-mono text-[11px] text-ink-secondary">
                   MP4 · MOV · MP3 · WAV · up to 150 MB / 3 min
                 </span>
               </div>
             </MotionReveal>
 
-            <ol className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <ol className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
               {/* Step 1: Upload your clip */}
               <MotionReveal delayMs={0} className="h-full">
-                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-white/14 bg-panel p-5">
                   <div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono font-semibold text-accent">
                         01
                       </span>
                       <span className="rounded bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                        Resumable TUS
+                        Auto-resume upload
                       </span>
                     </div>
                     <h3 className="mt-2 text-base font-bold text-ink">
@@ -364,22 +364,22 @@ export default async function HomePage() {
                     </p>
                   </div>
 
-                  {/* Product UI View 1: Upload Dropzone & Stage Strip */}
-                  <div className="mt-4 rounded-xl border border-ink/10 bg-inset p-3 text-[11px]">
+                  {/* Cropped UI View 1: Active File Upload & Auto-Caption Status */}
+                  <div className="mt-4 overflow-hidden rounded-xl border border-white/12 bg-inset p-3 text-[11px]">
                     <div className="flex items-center justify-between text-ink">
-                      <span className="inline-flex items-center gap-1.5 font-medium">
+                      <span className="inline-flex items-center gap-1.5 font-semibold">
                         <Upload className="h-3.5 w-3.5 text-accent" />
                         <span>hook-take-02.mp4</span>
                       </span>
-                      <span className="font-mono text-[10px] text-accent-hover">
+                      <span className="font-mono text-[10px] font-semibold text-accent-hover">
                         100%
                       </span>
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-track">
                       <div className="h-full w-full rounded-full bg-accent" />
                     </div>
-                    <div className="mt-2.5 flex items-center justify-between text-[10px] text-ink-secondary">
-                      <span className="inline-flex items-center gap-1 text-ink">
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-ink-secondary">
+                      <span className="inline-flex items-center gap-1 font-medium text-ink">
                         <CheckCircle2 className="h-3 w-3 text-accent" />
                         <span>Uploaded</span>
                       </span>
@@ -392,7 +392,7 @@ export default async function HomePage() {
 
               {/* Step 2: Edit and style */}
               <MotionReveal delayMs={80} className="h-full">
-                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-white/14 bg-panel p-5">
                   <div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono font-semibold text-accent">
@@ -412,20 +412,20 @@ export default async function HomePage() {
                     </p>
                   </div>
 
-                  {/* Product UI View 2: Inline Cue + Style Controls */}
-                  <div className="mt-4 space-y-2 rounded-xl border border-ink/10 bg-inset p-3 text-[11px]">
-                    <div className="rounded-lg border border-accent/60 bg-panel px-2.5 py-1.5 text-ink">
-                      <span className="block font-mono text-[9px] text-accent-hover">
+                  {/* Cropped UI View 2: Focused Inline Word Edit & Style Pill */}
+                  <div className="mt-4 space-y-2 overflow-hidden rounded-xl border border-white/12 bg-inset p-3 text-[11px]">
+                    <div className="rounded-lg border border-accent bg-panel px-2.5 py-1.5 text-ink">
+                      <span className="block font-mono text-[9px] font-semibold text-accent-hover">
                         0:00.6 – 0:04.2
                       </span>
                       <span>Great short-form clips hook viewers.</span>
                     </div>
                     <div className="flex items-center justify-between gap-1.5 text-[10px]">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-ink/12 bg-panel px-2 py-1 text-ink-secondary">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-white/16 bg-panel px-2 py-1 text-ink">
                         <SlidersHorizontal className="h-3 w-3 text-accent" />
-                        <span>Poppins · Pill</span>
+                        <span>Poppins · Word Highlight</span>
                       </span>
-                      <span className="rounded-md bg-accent-soft px-2 py-1 font-mono text-accent-hover">
+                      <span className="rounded-md bg-accent-soft px-2 py-1 font-mono font-semibold text-accent-hover">
                         Saved
                       </span>
                     </div>
@@ -435,7 +435,7 @@ export default async function HomePage() {
 
               {/* Step 3: Download your MP4 */}
               <MotionReveal delayMs={160} className="h-full">
-                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-white/14 bg-panel p-5">
                   <div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono font-semibold text-accent">
@@ -449,26 +449,25 @@ export default async function HomePage() {
                       Download your MP4
                     </h3>
                     <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
-                      Pick your resolution tier up to 4K and download a
-                      burned-in H.264/AAC MP4 rendered from your original
-                      uploaded media.
+                      Pick your resolution up to 4K and download a ready-to-post
+                      captioned MP4 rendered directly from your original video.
                     </p>
                   </div>
 
-                  {/* Product UI View 3: Export Video Resolution Picker */}
-                  <div className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-inset p-3 font-mono text-[10px]">
+                  {/* Cropped UI View 3: Export Resolution Picker & Download Action */}
+                  <div className="mt-4 space-y-1.5 overflow-hidden rounded-xl border border-white/12 bg-inset p-3 font-mono text-[10px]">
                     <div className="flex items-center justify-between rounded-lg border border-accent bg-accent-soft px-2.5 py-1.5 text-ink">
                       <span className="inline-flex items-center gap-1.5 font-semibold text-accent-hover">
                         <Film className="h-3 w-3" />
                         <span>1080p MP4</span>
                       </span>
-                      <span>1080×1920</span>
+                      <span className="text-ink">1080×1920</span>
                     </div>
-                    <div className="flex items-center justify-between px-2.5 py-1 text-ink-secondary">
+                    <div className="flex items-center justify-between px-2 py-1 text-ink-secondary">
                       <span>2160p (4K) · 1440p · 720p</span>
                       <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-accent-hover">
                         <Download className="h-3 w-3" />
-                        <span>Ready</span>
+                        <span>Download</span>
                       </span>
                     </div>
                   </div>
@@ -482,7 +481,7 @@ export default async function HomePage() {
         <section
           id="faq"
           data-testid="home-faq"
-          className="border-t border-ink/10 bg-inset/45 py-14 lg:py-24"
+          className="scroll-mt-20 border-t border-white/10 bg-inset py-10 lg:py-16"
         >
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
@@ -494,24 +493,24 @@ export default async function HomePage() {
               </h2>
             </div>
 
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
               {/* Group 1: Getting started */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                   Getting started
                 </h3>
-                <div className="divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-panel">
+                <div className="divide-y divide-white/10 rounded-2xl border border-white/14 bg-panel">
                   {FAQ_GETTING_STARTED.map((item, idx) => (
                     <details
                       key={item.q}
                       open={idx === 0}
-                      className="group px-5 py-4"
+                      className="group px-5 py-3.5"
                     >
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink transition hover:text-accent-hover [&::-webkit-details-marker]:hidden">
                         <span>{item.q}</span>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                        <ChevronDown className="h-4 w-4 shrink-0 text-ink-secondary transition-transform group-hover:text-ink group-open:rotate-180 motion-reduce:transition-none" />
                       </summary>
-                      <p className="cc-details-body mt-2.5 text-xs leading-relaxed text-ink-secondary">
+                      <p className="cc-details-body mt-2 text-xs leading-relaxed text-ink-secondary">
                         {item.a}
                       </p>
                     </details>
@@ -521,17 +520,17 @@ export default async function HomePage() {
 
               {/* Group 2: Editing & export */}
               <div>
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-ink-secondary">
                   Editing &amp; export
                 </h3>
-                <div className="divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-panel">
+                <div className="divide-y divide-white/10 rounded-2xl border border-white/14 bg-panel">
                   {FAQ_EDITING_EXPORT.map((item) => (
-                    <details key={item.q} className="group px-5 py-4">
+                    <details key={item.q} className="group px-5 py-3.5">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink transition hover:text-accent-hover [&::-webkit-details-marker]:hidden">
                         <span>{item.q}</span>
-                        <ChevronDown className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                        <ChevronDown className="h-4 w-4 shrink-0 text-ink-secondary transition-transform group-hover:text-ink group-open:rotate-180 motion-reduce:transition-none" />
                       </summary>
-                      <p className="cc-details-body mt-2.5 text-xs leading-relaxed text-ink-secondary">
+                      <p className="cc-details-body mt-2 text-xs leading-relaxed text-ink-secondary">
                         {item.a}
                       </p>
                     </details>
@@ -545,13 +544,13 @@ export default async function HomePage() {
         {/* 7. CLEAR ENDING CTA */}
         <section
           data-testid="home-final-cta"
-          className="border-t border-ink/10 py-14 lg:py-20"
+          className="border-t border-white/10 bg-page py-10 lg:py-16"
         >
           <MotionReveal
             variant="scale"
             className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
           >
-            <div className="cc-stage-frame rounded-3xl border border-white/10 px-6 py-10 shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:px-10 sm:py-14">
+            <div className="cc-home-final-cta rounded-3xl border border-white/18 px-6 py-10 shadow-[0_24px_60px_rgba(0,0,0,0.42)] sm:px-10 sm:py-12">
               <h2 className="text-2xl font-extrabold tracking-tight text-ink sm:text-4xl">
                 Ready to caption your first clip?
               </h2>
@@ -563,7 +562,7 @@ export default async function HomePage() {
                 <a
                   href="/upload"
                   data-testid="home-bottom-upload-cta"
-                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-page hover:bg-accent-hover sm:px-6 sm:py-3.5 sm:text-base"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-[#14151e] hover:bg-accent-hover sm:px-6 sm:py-3.5 sm:text-base"
                 >
                   <Upload className="h-4 w-4 shrink-0" />
                   <span>Upload a clip</span>
@@ -572,7 +571,7 @@ export default async function HomePage() {
                 <Link
                   href="/studio"
                   data-testid="home-bottom-sample-cta"
-                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-5 py-3 text-sm font-semibold text-ink hover:border-ink/30 hover:bg-elevated sm:px-6 sm:py-3.5 sm:text-base"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-white/25 bg-panel px-5 py-3 text-sm font-semibold text-ink hover:border-white/40 hover:bg-elevated sm:px-6 sm:py-3.5 sm:text-base"
                 >
                   <Play className="h-4 w-4 shrink-0 fill-current" />
                   <span>Try a sample</span>
@@ -583,8 +582,8 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t border-ink/10 bg-page py-6">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-ink-muted sm:px-6 lg:px-8">
+      <footer className="border-t border-white/10 bg-inset py-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-ink-secondary sm:px-6 lg:px-8">
           <ClipCaptionsLockup markSize={24} compact />
           <nav
             aria-label="Footer navigation"

@@ -126,11 +126,11 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="cc-stage-frame relative mx-auto w-full max-w-[316px] rounded-[1.75rem] border border-white/10 p-3 text-ink shadow-[0_28px_72px_rgba(0,0,0,0.56)] sm:max-w-[356px] sm:rounded-[2rem] sm:p-4 lg:max-w-[380px] lg:p-5"
+      className="cc-stage-frame relative mx-auto w-full max-w-[276px] rounded-[1.4rem] border border-white/15 p-2 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.48)] sm:max-w-[298px] sm:rounded-[1.55rem] sm:p-2.5 lg:max-w-[308px] lg:p-3"
     >
       {/* Quiet Header Bar: Original / Captioned toggle on the same clip without resetting playback */}
-      <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
-        <span className="text-[11px] font-semibold tracking-tight text-ink/90">
+      <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+        <span className="text-[11px] font-semibold tracking-tight text-ink">
           {comparison === "captioned" ? "Captioned preview" : "Original clip"}
         </span>
 
@@ -138,16 +138,16 @@ export function HomeHeroDemo() {
           role="group"
           aria-label="Compare original and captioned video"
           data-testid="hero-compare-group"
-          className="inline-flex rounded-full border border-white/12 bg-[#101116]/65 p-0.5 text-[11px] font-semibold"
+          className="inline-flex rounded-full border border-white/18 bg-[#181923]/80 p-0.5 text-[11px] font-semibold"
         >
           <button
             type="button"
             data-testid="hero-compare-original"
             aria-pressed={comparison === "original"}
             onClick={() => setComparison("original")}
-            className={`rounded-full px-2.5 py-1 transition ${
+            className={`rounded-full px-2.5 py-0.5 transition ${
               comparison === "original"
-                ? "bg-accent text-page shadow-sm"
+                ? "bg-accent text-[#14151e] shadow-sm"
                 : "text-ink-secondary hover:text-ink"
             }`}
           >
@@ -158,9 +158,9 @@ export function HomeHeroDemo() {
             data-testid="hero-compare-captioned"
             aria-pressed={comparison === "captioned"}
             onClick={() => setComparison("captioned")}
-            className={`rounded-full px-2.5 py-1 transition ${
+            className={`rounded-full px-2.5 py-0.5 transition ${
               comparison === "captioned"
-                ? "bg-accent text-page shadow-sm"
+                ? "bg-accent text-[#14151e] shadow-sm"
                 : "text-ink-secondary hover:text-ink"
             }`}
           >
@@ -169,8 +169,8 @@ export function HomeHeroDemo() {
         </div>
       </div>
 
-      {/* Large 9:16 Footage Stage — footage and captions dominate the visual hierarchy */}
-      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[244px] overflow-hidden rounded-[1.25rem] bg-[#101116] shadow-[0_18px_42px_rgba(16,17,22,0.5)] sm:max-w-[288px] lg:max-w-[308px]">
+      {/* Large 9:16 Footage Stage — trimmed chrome, speaker & caption centered, controls visible at 1280x800 */}
+      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[252px] overflow-hidden rounded-[1.05rem] bg-[#14151e] shadow-[0_14px_34px_rgba(12,13,20,0.48)] sm:max-w-[268px] lg:max-w-[274px]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
@@ -198,7 +198,7 @@ export function HomeHeroDemo() {
           onEnded={() => setIsPlaying(false)}
           onError={() => setMediaError("Could not load demo video.")}
           onClick={() => void togglePlay()}
-          className="h-full w-full cursor-pointer object-cover"
+          className="h-full w-full cursor-pointer object-cover object-[50%_38%]"
         />
 
         {/* Bottom legibility scrim */}
@@ -259,7 +259,10 @@ export function HomeHeroDemo() {
       )}
 
       {/* Whisper-quiet Transport Bar */}
-      <div className="mx-auto mt-2.5 flex w-full max-w-[244px] items-center gap-2 rounded-xl bg-[#0D0E12]/90 px-2.5 py-1.5 text-ink sm:max-w-[288px] lg:max-w-[308px]">
+      <div
+        data-testid="hero-transport-bar"
+        className="mx-auto mt-2 flex w-full max-w-[252px] items-center gap-2 rounded-xl border border-white/10 bg-[#181923]/92 px-2.5 py-1.5 text-ink sm:max-w-[268px] lg:max-w-[274px]"
+      >
         <button
           type="button"
           data-testid="hero-play-btn"

@@ -152,14 +152,14 @@ export function HomeStyleGallery() {
   return (
     <div
       data-testid="home-style-gallery"
-      className="mt-7 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_288px] lg:gap-10"
+      className="mt-6 grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_272px] lg:gap-8"
     >
-      {/* 3 Visually Distinct Working Caption Styles */}
-      <div className="space-y-3">
+      {/* 3 Visually Distinct Working Caption Styles — aligned cleanly with the live demo */}
+      <div className="flex flex-col justify-between gap-4">
         <div
           role="radiogroup"
           aria-label="Compare Clean, Word Highlight, and Bold caption styles"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+          className="grid flex-1 grid-cols-1 gap-3.5 sm:grid-cols-3"
         >
           {showcaseStyles.map((item) => {
             const isSelected = item.id === activeStyle.id;
@@ -171,10 +171,10 @@ export function HomeStyleGallery() {
                 aria-checked={isSelected}
                 data-testid={`gallery-style-${item.id}`}
                 onClick={() => setSelectedId(item.id)}
-                className={`cc-card-interactive group flex flex-col justify-between rounded-2xl border p-4 text-left ${
+                className={`cc-card-interactive group flex h-full flex-col justify-between rounded-2xl border p-4 text-left ${
                   isSelected
-                    ? "border-accent bg-panel shadow-[0_14px_36px_rgba(0,0,0,0.42)]"
-                    : "border-ink/10 bg-panel/70 hover:border-ink/25 hover:bg-panel"
+                    ? "border-accent bg-panel ring-2 ring-accent/70 shadow-[0_14px_34px_rgba(0,0,0,0.38)]"
+                    : "border-white/14 bg-panel/85 hover:border-white/30 hover:bg-panel"
                 }`}
               >
                 <div>
@@ -182,15 +182,17 @@ export function HomeStyleGallery() {
                     <span className="text-sm font-bold text-ink">
                       {item.label}
                     </span>
-                    <span
-                      className={`h-2 w-2 rounded-full transition ${
-                        isSelected ? "bg-accent" : "bg-ink/20"
-                      }`}
-                    />
+                    {isSelected ? (
+                      <span className="rounded-full bg-accent px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[#14151e]">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-white/30 transition group-hover:bg-white/55" />
+                    )}
                   </div>
 
                   {/* Authentic Visual Specimen */}
-                  <div className="mt-3 flex h-16 items-center justify-center rounded-xl border border-ink/10 bg-inset px-2.5">
+                  <div className="mt-3.5 flex h-16 items-center justify-center rounded-xl border border-white/12 bg-inset px-2.5">
                     {item.id === "clean" && (
                       <span
                         style={{ fontFamily: '"Poppins", sans-serif' }}
@@ -206,7 +208,7 @@ export function HomeStyleGallery() {
                         className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-tight"
                       >
                         <span className="text-ink">MAKE</span>
-                        <span className="rounded bg-accent px-1.5 py-0.5 text-page">
+                        <span className="rounded bg-accent px-1.5 py-0.5 text-[#14151e]">
                           EVERY
                         </span>
                         <span className="text-ink">WORD</span>
@@ -215,7 +217,7 @@ export function HomeStyleGallery() {
                     {item.id === "bold" && (
                       <span
                         style={{ fontFamily: '"Bebas Neue", sans-serif' }}
-                        className="inline-flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-base tracking-wider text-white"
+                        className="inline-flex items-center gap-1 rounded bg-black/85 px-2 py-1 text-base tracking-wider text-white"
                       >
                         <span>MAKE</span>
                         <span className="rounded bg-[#FACC15] px-1 text-black">
@@ -227,7 +229,7 @@ export function HomeStyleGallery() {
                   </div>
                 </div>
 
-                <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+                <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
                   {item.tagline}
                 </p>
               </button>
@@ -235,10 +237,10 @@ export function HomeStyleGallery() {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-ink-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/12 bg-panel px-4 py-3 text-xs text-ink-secondary">
           <span>
-            Switch styles while the video plays — your playback position stays
-            locked on the same clip.
+            Switch presets while the video plays — playback stays locked on the
+            same clip.
           </span>
           <Link
             href="/studio"
@@ -251,16 +253,17 @@ export function HomeStyleGallery() {
       </div>
 
       {/* Live Synchronized Comparison Clip (Single Media Element) */}
-      <div className="cc-stage-frame mx-auto w-full max-w-[288px] rounded-2xl border border-white/10 p-3 shadow-[0_20px_54px_rgba(0,0,0,0.45)]">
-        <div className="mb-2 flex items-center justify-between px-1 text-[11px]">
+      <div className="cc-stage-frame mx-auto flex w-full max-w-[272px] flex-col justify-between rounded-2xl border border-white/15 p-2.5 shadow-[0_18px_48px_rgba(0,0,0,0.42)]">
+        <div className="mb-1.5 flex items-center justify-between px-1 text-[11px]">
           <span
             key={activeStyle.id}
             data-testid="gallery-active-style-label"
-            className="cc-panel-enter font-semibold text-ink"
+            className="cc-panel-enter inline-flex items-center gap-1.5 font-semibold text-ink"
           >
-            {activeStyle.label}
+            <span className="h-2 w-2 rounded-full bg-accent" />
+            <span>{activeStyle.label}</span>
           </span>
-          <span className="font-mono text-[10px] text-ink-muted">
+          <span className="font-mono text-[10px] text-ink-secondary">
             Live preview
           </span>
         </div>

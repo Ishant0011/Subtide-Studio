@@ -38,16 +38,16 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               Styles
             </Link>
             <Link
-              href="/#workflow"
+              href="/#how-it-works"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
               How it works
             </Link>
             <Link
-              href="/#exports"
+              href="/#faq"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              Exports
+              FAQ
             </Link>
           </nav>
         </div>
