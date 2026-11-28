@@ -224,16 +224,47 @@
   animation: cc-hero-mask 620ms var(--ease-cinema) 0ms both;
 }
 
+.cc-hero-line-1 {
+  display: block;
+  animation: cc-hero-mask 560ms var(--ease-cinema) 0ms both;
+}
+
+.cc-hero-line-2 {
+  display: block;
+  animation: cc-hero-mask 560ms var(--ease-cinema) 85ms both;
+}
+
+.cc-hero-line-3 {
+  display: block;
+  animation: cc-hero-mask 560ms var(--ease-cinema) 165ms both;
+}
+
 .cc-hero-sub {
-  animation: cc-hero-rise 540ms var(--ease-cinema) 110ms both;
+  animation: cc-hero-rise 540ms var(--ease-cinema) 170ms both;
 }
 
 .cc-hero-actions {
-  animation: cc-hero-rise 540ms var(--ease-cinema) 190ms both;
+  animation: cc-hero-rise 540ms var(--ease-cinema) 230ms both;
 }
 
 .cc-hero-stage {
-  animation: cc-hero-scale 720ms var(--ease-cinema) 120ms both;
+  animation: cc-hero-scale 740ms var(--ease-cinema) 140ms both;
+}
+
+.cc-image-reveal img {
+  transition:
+    transform 640ms var(--ease-cinema),
+    filter 640ms var(--ease-cinema);
+}
+
+.cc-reveal-pending .cc-image-reveal img {
+  transform: scale(1.08);
+  filter: brightness(0.85);
+}
+
+.cc-reveal-visible .cc-image-reveal img {
+  transform: scale(1);
+  filter: brightness(1);
 }
 
 .cc-stage-frame {
@@ -317,11 +348,15 @@ details[open] > .cc-details-body {
   .cc-reveal-pending,
   .cc-reveal-visible,
   .cc-hero-line,
+  .cc-hero-line-1,
+  .cc-hero-line-2,
+  .cc-hero-line-3,
   .cc-hero-sub,
   .cc-hero-actions,
   .cc-hero-stage {
     opacity: 1 !important;
     transform: none !important;
+    clip-path: none !important;
     transition: none !important;
     animation: none !important;
   }

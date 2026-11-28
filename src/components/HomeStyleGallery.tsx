@@ -24,38 +24,61 @@ import {
 } from "@/lib/caption-editor";
 import { CaptionOverlay } from "@/components/CaptionOverlay";
 
-const GALLERY_PRESET_IDS = [
-  "word-highlight",
-  "broadcast",
-  "high-contrast",
-  "lower-third",
-] as const;
+interface ShowcaseStyle {
+  id: "clean" | "word-highlight" | "bold";
+  label: string;
+  templateId: string;
+  tagline: string;
+  template: BuiltInStyleTemplate;
+}
+
+const SHOWCASE_CONFIG = [
+  {
+    id: "clean" as const,
+    label: "Clean",
+    templateId: "clean",
+    tagline: "Floating sans-serif with subtle stroke and gentle active-word lift.",
+  },
+  {
+    id: "word-highlight" as const,
+    label: "Word Highlight",
+    templateId: "word-highlight",
+    tagline: "Kinetic muted-violet pill tracking every spoken word in real time.",
+  },
+  {
+    id: "bold" as const,
+    label: "Bold",
+    templateId: "punch-display",
+    tagline: "Tall condensed Bebas Neue caps with high-contrast gold keyword punch.",
+  },
+];
 
 export function HomeStyleGallery() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const galleryPresets: BuiltInStyleTemplate[] = useMemo(
+  const showcaseStyles: ShowcaseStyle[] = useMemo(
     () =>
-      GALLERY_PRESET_IDS.map(
-        (id) =>
-          BUILTIN_STYLE_TEMPLATES.find((t) => t.id === id) ??
-          BUILTIN_STYLE_TEMPLATES[0]
-      ),
+      SHOWCASE_CONFIG.map((cfg) => ({
+        ...cfg,
+        template:
+          BUILTIN_STYLE_TEMPLATES.find((t) => t.id === cfg.templateId) ??
+          BUILTIN_STYLE_TEMPLATES[0],
+      })),
     []
   );
 
-  const [selectedId, setSelectedId] = useState<string>(galleryPresets[0].id);
+  const [selectedId, setSelectedId] = useState<ShowcaseStyle["id"]>("word-highlight");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(8.2);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
-  const activeTemplate = useMemo(
+  const activeStyle = useMemo(
     () =>
-      galleryPresets.find((t) => t.id === selectedId) ?? galleryPresets[0],
-    [galleryPresets, selectedId]
+      showcaseStyles.find((s) => s.id === selectedId) ?? showcaseStyles[1],
+    [showcaseStyles, selectedId]
   );
 
   const activeCue = useMemo(
@@ -129,124 +152,116 @@ export function HomeStyleGallery() {
   return (
     <div
       data-testid="home-style-gallery"
-      className="mt-7 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_272px] lg:gap-10"
+      className="mt-7 grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,1fr)_288px] lg:gap-10"
     >
-      {/* 4 Visually Distinct Working Style Cards */}
-      <div
-        role="radiogroup"
-        aria-label="Compare caption styles on the sample clip"
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-      >
-        {galleryPresets.map((tpl) => {
-          const isSelected = tpl.id === activeTemplate.id;
-          return (
-            <button
-              key={tpl.id}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              data-testid={`gallery-style-${tpl.id}`}
-              onClick={() => setSelectedId(tpl.id)}
-              className={`cc-card-interactive group flex flex-col justify-between rounded-2xl border p-4 text-left ${
-                isSelected
-                  ? "border-accent bg-panel shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
-                  : "border-ink/10 bg-panel/75 hover:border-ink/25 hover:bg-panel"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-ink">{tpl.name}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      isSelected
-                        ? "bg-accent text-page"
-                        : "bg-elevated text-ink-secondary"
-                    }`}
-                  >
-                    {tpl.category}
-                  </span>
-                </div>
+      {/* 3 Visually Distinct Working Caption Styles */}
+      <div className="space-y-3">
+        <div
+          role="radiogroup"
+          aria-label="Compare Clean, Word Highlight, and Bold caption styles"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+        >
+          {showcaseStyles.map((item) => {
+            const isSelected = item.id === activeStyle.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                data-testid={`gallery-style-${item.id}`}
+                onClick={() => setSelectedId(item.id)}
+                className={`cc-card-interactive group flex flex-col justify-between rounded-2xl border p-4 text-left ${
+                  isSelected
+                    ? "border-accent bg-panel shadow-[0_14px_36px_rgba(0,0,0,0.42)]"
+                    : "border-ink/10 bg-panel/70 hover:border-ink/25 hover:bg-panel"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-ink">
+                      {item.label}
+                    </span>
+                    <span
+                      className={`h-2 w-2 rounded-full transition ${
+                        isSelected ? "bg-accent" : "bg-ink/20"
+                      }`}
+                    />
+                  </div>
 
-                {/* Authentic Visual Specimen */}
-                <div className="mt-3 flex h-16 items-center justify-center rounded-xl border border-ink/10 bg-inset px-3">
-                  {tpl.id === "word-highlight" && (
-                    <span
-                      style={{ fontFamily: '"Poppins", sans-serif' }}
-                      className="inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-tight"
-                    >
-                      <span className="text-ink">MAKE</span>
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-page">
-                        EVERY
-                      </span>
-                      <span className="text-ink">WORD</span>
-                    </span>
-                  )}
-                  {tpl.id === "broadcast" && (
-                    <span
-                      style={{ fontFamily: '"Poppins", sans-serif' }}
-                      className="rounded-md bg-[#0D0E12] px-2.5 py-1 text-xs font-semibold text-ink shadow-sm"
-                    >
-                      Make every word land.
-                    </span>
-                  )}
-                  {tpl.id === "high-contrast" && (
-                    <span
-                      style={{ fontFamily: '"Bebas Neue", sans-serif' }}
-                      className="inline-flex items-center gap-1 rounded bg-black px-2.5 py-1 text-sm tracking-wider text-white"
-                    >
-                      <span>MAKE</span>
-                      <span className="rounded bg-[#FACC15] px-1 text-black">
-                        EVERY
-                      </span>
-                      <span>WORD</span>
-                    </span>
-                  )}
-                  {tpl.id === "lower-third" && (
-                    <div className="w-full text-left">
+                  {/* Authentic Visual Specimen */}
+                  <div className="mt-3 flex h-16 items-center justify-center rounded-xl border border-ink/10 bg-inset px-2.5">
+                    {item.id === "clean" && (
                       <span
-                        style={{ fontFamily: '"Space Mono", monospace' }}
-                        className="inline-block rounded-r border-l-2 border-accent bg-[#0D0E12]/95 px-2.5 py-1 text-[11px] font-bold tracking-wide text-ink"
+                        style={{ fontFamily: '"Poppins", sans-serif' }}
+                        className="text-xs font-semibold text-ink drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
                       >
-                        Make <span className="text-accent">every</span> word
+                        Make{" "}
+                        <span className="text-accent-hover">every</span> word
                       </span>
-                    </div>
-                  )}
+                    )}
+                    {item.id === "word-highlight" && (
+                      <span
+                        style={{ fontFamily: '"Poppins", sans-serif' }}
+                        className="inline-flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-tight"
+                      >
+                        <span className="text-ink">MAKE</span>
+                        <span className="rounded bg-accent px-1.5 py-0.5 text-page">
+                          EVERY
+                        </span>
+                        <span className="text-ink">WORD</span>
+                      </span>
+                    )}
+                    {item.id === "bold" && (
+                      <span
+                        style={{ fontFamily: '"Bebas Neue", sans-serif' }}
+                        className="inline-flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-base tracking-wider text-white"
+                      >
+                        <span>MAKE</span>
+                        <span className="rounded bg-[#FACC15] px-1 text-black">
+                          EVERY
+                        </span>
+                        <span>WORD</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                {tpl.description}
-              </p>
-            </button>
-          );
-        })}
+                <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+                  {item.tagline}
+                </p>
+              </button>
+            );
+          })}
+        </div>
 
-        <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-ink-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-ink-secondary">
           <span>
-            Built-in styles across Creator, Clean, Bold, and Editorial — all
-            rendered identically in browser preview and exported MP4 video.
+            Switch styles while the video plays — your playback position stays
+            locked on the same clip.
           </span>
           <Link
             href="/studio"
             className="inline-flex shrink-0 items-center gap-1 font-semibold text-ink transition hover:text-accent-hover"
           >
-            <span>Try all 16 in Sample Studio</span>
+            <span>Explore all 16 presets &amp; 10 fonts</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
 
-      {/* Live Synchronized Comparison Clip */}
-      <div className="mx-auto w-full max-w-[272px] rounded-2xl border border-ink/10 bg-panel p-2.5">
+      {/* Live Synchronized Comparison Clip (Single Media Element) */}
+      <div className="cc-stage-frame mx-auto w-full max-w-[288px] rounded-2xl border border-white/10 p-3 shadow-[0_20px_54px_rgba(0,0,0,0.45)]">
         <div className="mb-2 flex items-center justify-between px-1 text-[11px]">
           <span
+            key={activeStyle.id}
             data-testid="gallery-active-style-label"
-            className="font-semibold text-ink"
+            className="cc-panel-enter font-semibold text-ink"
           >
-            {activeTemplate.name}
+            {activeStyle.label}
           </span>
           <span className="font-mono text-[10px] text-ink-muted">
-            {activeTemplate.category}
+            Live preview
           </span>
         </div>
 
@@ -285,17 +300,17 @@ export function HomeStyleGallery() {
 
           <div
             data-testid="gallery-caption-overlay"
-            data-active-preset={activeTemplate.id}
+            data-active-preset={activeStyle.id}
             className="pointer-events-none absolute inset-0 z-20"
           >
             <CaptionOverlay
               activeCue={activeCue}
               activeWord={activeWord}
-              preset={activeTemplate.style.preset}
-              fontSize={activeTemplate.style.fontSize}
-              verticalPosition={activeTemplate.style.verticalPosition}
-              accent={activeTemplate.style.accent}
-              styleConfig={activeTemplate.style}
+              preset={activeStyle.template.style.preset}
+              fontSize={activeStyle.template.style.fontSize}
+              verticalPosition={activeStyle.template.style.verticalPosition}
+              accent={activeStyle.template.style.accent}
+              styleConfig={activeStyle.template.style}
               currentTime={currentTime}
             />
           </div>
@@ -325,7 +340,7 @@ export function HomeStyleGallery() {
           </div>
         )}
 
-        <div className="mt-2 flex items-center gap-2 rounded-xl bg-inset px-2 py-1.5">
+        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-[#0D0E12]/90 px-2.5 py-1.5">
           <button
             type="button"
             data-testid="gallery-play-btn"
@@ -341,7 +356,7 @@ export function HomeStyleGallery() {
           </button>
 
           <div className="relative flex h-4 min-w-0 flex-1 items-center">
-            <div className="pointer-events-none absolute inset-x-0 h-1 overflow-hidden rounded-full bg-track">
+            <div className="pointer-events-none absolute inset-x-0 h-1 overflow-hidden rounded-full bg-white/15">
               <div
                 className="h-full rounded-full bg-accent"
                 style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}

@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
+  CheckCircle2,
   ChevronDown,
-  FileText,
+  Download,
   Film,
-  Layers,
-  LocateFixed,
   Play,
   SlidersHorizontal,
-  Sparkles,
   Upload,
 } from "lucide-react";
 import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
@@ -19,7 +17,6 @@ import { HomeStyleGallery } from "@/components/HomeStyleGallery";
 import { MotionReveal } from "@/components/MotionReveal";
 import { PublicHeader } from "@/components/PublicHeader";
 import {
-  HOMEPAGE_HEADLINE,
   HOMEPAGE_SUBHEADLINE,
   HOMEPAGE_TITLE,
   SITE_DESCRIPTION,
@@ -40,22 +37,76 @@ export const metadata: Metadata = {
   },
 };
 
-const FAQ_ITEMS = [
+const USE_CASES = [
   {
-    q: "Can I try ClipCaptions without creating an account?",
-    a: "Yes. You can play the demo right on this page or open Sample Studio to edit transcript lines and test caption styles with no account required. Sign in when you're ready to upload your own clip and export MP4 video.",
+    id: "reels",
+    title: "Reels and Shorts",
+    description: "Emphasize the words you want people to notice.",
+    image: "/home/use-case-reels.jpg",
+    alt: "Creator filming a vertical short-form video outdoors at golden hour",
+    captionStyle: "pill" as const,
   },
   {
-    q: "What file formats and limits are supported?",
-    a: "Private uploads accept MP4, MOV, MP3, and WAV files up to 150 MB and 3 minutes per clip. Transfers use resumable TUS uploads so flaky connections can pause and resume cleanly.",
+    id: "podcasts",
+    title: "Podcasts and interviews",
+    description: "Turn a conversation excerpt into a captioned clip.",
+    image: "/home/use-case-podcast.jpg",
+    alt: "Two podcast hosts talking into broadcast microphones in a warm studio",
+    captionStyle: "boxed" as const,
   },
   {
-    q: "Which export resolutions are available?",
-    a: "Signed-in projects export revision-pinned burned-in MP4 (H.264/AAC) across 240p, 360p, 480p, 720p, 1080p, 1440p, and 2160p (4K) up to your clip's source resolution, preserving aspect ratio, rotation, and audio.",
+    id: "tutorials",
+    title: "Tutorials and explainers",
+    description: "Make instructions easy to follow with the sound off.",
+    image: "/home/use-case-tutorial.jpg",
+    alt: "Instructor at a studio desk demonstrating a camera lens next to a laptop",
+    captionStyle: "clean" as const,
+  },
+] as const;
+
+const FAQ_GETTING_STARTED = [
+  {
+    q: "What does ClipCaptions do?",
+    a: "ClipCaptions transcribes your uploaded video or audio clip into word-timed captions, lets you edit the transcript and visual style in your browser, and renders a burned-in MP4 video ready to post.",
   },
   {
-    q: "Can I save my own brand caption style?",
-    a: "Yes. Signed-in accounts can customize font, size, colors, alignment, emphasis, and vertical position, then save reusable personal presets for future clips.",
+    q: "Can I try the sample without an account?",
+    a: "Yes. You can play the demo right on this page or open Sample Studio to edit lines, try presets, and test all 10 bundled fonts without creating an account.",
+  },
+  {
+    q: "What video and audio files can I upload?",
+    a: "Private uploads accept MP4, MOV, MP3, and WAV files. Audio-only uploads are automatically placed on a clean 9:16 portrait stage for MP4 export.",
+  },
+  {
+    q: "What are the upload limits?",
+    a: "Each clip can be up to 150 MB and up to 3 minutes long. Uploads use resumable chunked transfers so flaky connections can pause and resume cleanly.",
+  },
+  {
+    q: "What happens to my uploaded clip?",
+    a: "Your clip is stored in private per-account storage accessible only to you via short-lived signed links, processed by the media worker for transcription, and used directly from your original file when rendering MP4 exports.",
+  },
+] as const;
+
+const FAQ_EDITING_EXPORT = [
+  {
+    q: "Can I correct words and adjust their timing?",
+    a: "Yes. Click any cue in the transcript to fix names or phrasing inline, open Edit words or Timing for exact timestamps, or switch to the full-width waveform timeline to drag boundaries, split, and merge cues.",
+  },
+  {
+    q: "Can I change fonts, colors, and caption styles?",
+    a: "Yes. Choose from 16 built-in presets, 10 bundled fonts (including Poppins, Montserrat, Bebas Neue, Inter, Oswald, Archivo Black, Playfair Display, Space Mono, DM Serif, and Noto Sans Devanagari), and custom colors for text, highlight box, background, outline, and shadow.",
+  },
+  {
+    q: "Can I caption or translate footage in Hindi?",
+    a: "Yes. Signed-in projects can translate captions to Hindi (Devanagari) or Hinglish, switch to the bundled Noto Sans Devanagari font, and export burned-in MP4s with full HarfBuzz Devanagari shaping.",
+  },
+  {
+    q: "Which MP4 resolutions can I download?",
+    a: "You can export H.264/AAC MP4 at 240p, 360p, 480p, 720p, 1080p, 1440p, or 2160p (4K) up to your clip's source resolution without upscaling, preserving aspect ratio, rotation, and audio.",
+  },
+  {
+    q: "What does AI Assist send to Google when I use it?",
+    a: "AI Assist is optional and only available on signed-in projects. When you run Polish, Translate, or Social Kit, ClipCaptions sends only your project's caption text, cue timestamps, and project title to Google's Gemini API — never your video or audio file.",
   },
 ] as const;
 
@@ -83,25 +134,29 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} />
 
       <main className="relative z-10">
-        {/* CINEMATIC HERO COMPOSITION: Film Title Card + Soft Graphite/Violet Demo Stage */}
+        {/* 1. CINEMATIC FIRST SCREEN */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 sm:pb-16 sm:pt-8 lg:px-8 lg:pb-20 lg:pt-10"
+          className="mx-auto max-w-6xl px-4 pb-8 pt-2.5 sm:px-6 sm:pb-14 sm:pt-7 lg:px-8 lg:pb-16 lg:pt-9"
         >
-          <div className="grid grid-cols-1 items-center gap-4 sm:gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] lg:gap-12">
+          <div className="grid grid-cols-1 items-center gap-3.5 sm:gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] lg:gap-12">
             <div className="max-w-xl">
-              <h1 className="cc-hero-line text-[2rem] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[4.15rem] lg:leading-[0.98] xl:text-[4.65rem]">
-                {HOMEPAGE_HEADLINE}
+              <h1 className="text-[1.85rem] font-extrabold leading-[1.04] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[3.9rem] lg:leading-[1.0] xl:text-[4.3rem]">
+                <span className="cc-hero-line-1">Add captions</span>
+                <span className="cc-hero-line-2">that move with</span>
+                <span className="cc-hero-line-3 text-accent-hover">
+                  every word.
+                </span>
               </h1>
 
               <p
                 data-testid="home-hero-subcopy"
-                className="cc-hero-sub mt-2 max-w-lg text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg lg:text-[1.2rem] lg:leading-relaxed"
+                className="cc-hero-sub mt-2 max-w-lg text-[13px] leading-relaxed text-ink-secondary sm:mt-4 sm:text-base lg:text-[1.08rem] lg:leading-relaxed"
               >
                 {HOMEPAGE_SUBHEADLINE}
               </p>
 
-              <div className="cc-hero-actions mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
+              <div className="cc-hero-actions mt-3 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
                 {user ? (
                   <Link
                     href="/upload"
@@ -142,23 +197,28 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* STANDOUT SCROLL SEQUENCE: Footage -> Caption Close-Up -> Full Editor */}
+        {/* 2. STANDOUT SCROLL SEQUENCE: Original Shot -> Timed Word Close-Up -> Full Editor & Timeline */}
         <HomeCinematicSequence />
 
-        {/* SECTION 1: Compact Interactive Style Gallery on the Same Clip */}
+        {/* 3. CAPTION STYLES: Clean, Word Highlight, Bold */}
         <section
           id="styles"
-          className="border-t border-ink/10 bg-inset/50 py-14 lg:py-24"
+          className="border-t border-ink/10 py-14 lg:py-24"
         >
-          <MotionReveal variant="scale" className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal
+            variant="scale"
+            className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"
+          >
             <div className="max-w-2xl">
-              <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-                Compare caption styles on the same clip
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                Caption styles
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                Give the same clip a different feel.
               </h2>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                Switch between four distinct looks right here — from punchy
-                word highlights to steady broadcast bars and left-aligned lower
-                thirds.
+                Compare Clean, Word Highlight, and Bold directly on the clip
+                without losing your place.
               </p>
             </div>
 
@@ -166,427 +226,282 @@ export default async function HomePage() {
           </MotionReveal>
         </section>
 
-        {/* SECTION 2: Large Real Editor Preview + Plain-Language Upload -> Edit -> Export */}
-        <section id="workflow" className="border-t border-ink/10 py-14 lg:py-24">
-          <MotionReveal variant="slide-left" className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-end justify-between gap-3">
+        {/* 4. WHO IT'S FOR: Three Distinct Original Photos with Real Captions */}
+        <section
+          id="use-cases"
+          data-testid="home-use-cases"
+          className="border-t border-ink/10 bg-inset/45 py-14 lg:py-24"
+        >
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <MotionReveal>
               <div className="max-w-2xl">
-                <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-                  One calm workspace for transcript, video, and style
-                </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Fix words on the left, judge timing on the video in the
-                  center, and pick your look on the right — with a dedicated
-                  waveform timeline one click away when you want fine trims.
+                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                  Who it&apos;s for
                 </p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                  Built for every talking video you publish
+                </h2>
               </div>
-              <Link
-                href="/studio"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink transition hover:text-accent-hover"
-              >
-                <span>Open live sample editor</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+            </MotionReveal>
+
+            <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+              {USE_CASES.map((item, idx) => (
+                <MotionReveal
+                  key={item.id}
+                  delayMs={idx * 85}
+                  variant="rise"
+                  className="h-full"
+                >
+                  <article
+                    data-testid={`use-case-card-${item.id}`}
+                    className="cc-card-interactive flex h-full flex-col overflow-hidden rounded-2xl border border-ink/10 bg-panel"
+                  >
+                    <div className="cc-image-reveal relative aspect-[4/3] w-full overflow-hidden bg-inset">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.image}
+                        alt={item.alt}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+                      {/* Distinct Real Caption Example Overlaid on Each Photo */}
+                      {item.captionStyle === "pill" && (
+                        <div className="pointer-events-none absolute inset-x-3 bottom-3.5 flex flex-wrap justify-center gap-1 text-center text-xs font-extrabold uppercase tracking-tight">
+                          <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
+                            HOOK
+                          </span>
+                          <span className="rounded bg-accent px-1.5 py-0.5 text-page">
+                            VIEWERS
+                          </span>
+                          <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
+                            IN TWO SECONDS
+                          </span>
+                        </div>
+                      )}
+
+                      {item.captionStyle === "boxed" && (
+                        <div className="pointer-events-none absolute inset-x-4 bottom-3.5 flex justify-center">
+                          <span className="rounded-lg bg-[#101116]/90 px-3 py-1.5 text-center text-xs font-semibold text-ink shadow-lg">
+                            &ldquo;That single{" "}
+                            <span className="text-accent-hover underline decoration-accent decoration-2 underline-offset-2">
+                              story
+                            </span>{" "}
+                            changed everything.&rdquo;
+                          </span>
+                        </div>
+                      )}
+
+                      {item.captionStyle === "clean" && (
+                        <div className="pointer-events-none absolute inset-x-4 bottom-3.5 text-center">
+                          <span className="text-xs font-bold text-ink drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+                            Step 2: lock focus before{" "}
+                            <span className="text-accent-hover">rolling</span>.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-1 flex-col p-5">
+                      <h3 className="text-base font-bold tracking-tight text-ink">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
+                        {item.description}
+                      </p>
+                    </div>
+                  </article>
+                </MotionReveal>
+              ))}
             </div>
-
-            {/* Large Real Editor Preview */}
-            <div
-              data-testid="home-editor-preview"
-              aria-label="Preview of the ClipCaptions three-column editor"
-              className="mt-7 overflow-hidden rounded-2xl border border-ink/12 bg-panel shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
-            >
-              {/* Editor Top Bar */}
-              <div className="flex items-center justify-between gap-3 border-b border-ink/10 bg-inset px-4 py-2.5 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="rounded-lg border border-ink/12 bg-panel px-2.5 py-1 text-[11px] text-ink-secondary">
-                    Projects
-                  </span>
-                  <span className="font-semibold text-ink">
-                    creator-hook-take-02.mp4
-                  </span>
-                  <span className="hidden rounded-md bg-elevated px-1.5 py-0.5 font-mono text-[10px] text-ink-muted sm:inline">
-                    Rev #2 · 9:16
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="hidden text-[11px] text-ink-secondary sm:inline">
-                    Saved
-                  </span>
-                  <span className="rounded-lg bg-accent px-3 py-1 text-[11px] font-semibold text-page">
-                    Export
-                  </span>
-                </div>
-              </div>
-
-              {/* 3-Column Editor Interior: Transcript | Video | Appearance */}
-              <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_224px_minmax(0,1fr)] lg:p-5">
-                {/* Left: Transcript Pane */}
-                <div className="flex flex-col rounded-xl border border-ink/10 bg-inset p-3.5">
-                  <div className="flex items-center justify-between gap-2 pb-2.5">
-                    <span className="text-xs font-semibold text-ink">
-                      Transcript
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-accent/45 bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent-hover">
-                        <LocateFixed className="h-3 w-3" />
-                        <span>Follow playback</span>
-                      </span>
-                      <span className="rounded-md border border-ink/12 bg-panel px-2 py-0.5 text-[10px] font-medium text-ink-secondary">
-                        Timeline
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-xs">
-                    <div className="rounded-lg border border-accent bg-panel p-2.5">
-                      <div className="flex items-center justify-between font-mono text-[10px] text-ink-secondary">
-                        <span>#1 · 0:00.3 – 0:02.8</span>
-                        <span className="text-accent-hover">Playing</span>
-                      </div>
-                      <p className="mt-1.5 rounded-md border border-ink/10 bg-inset px-2 py-1.5 text-xs text-ink">
-                        Great short-form clips hook viewers in two seconds.
-                      </p>
-                      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-ink-secondary">
-                        <span className="rounded border border-ink/12 bg-elevated px-2 py-0.5">
-                          Edit words
-                        </span>
-                        <span className="rounded border border-ink/12 bg-elevated px-2 py-0.5">
-                          Timing
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-ink/10 bg-panel/70 px-2.5 py-2">
-                      <span className="font-mono text-[10px] text-ink-muted">
-                        0:02.9
-                      </span>
-                      <p className="mt-0.5 text-xs text-ink-secondary">
-                        Most people watch with the sound turned off.
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-ink/10 bg-panel/70 px-2.5 py-2">
-                      <span className="font-mono text-[10px] text-ink-muted">
-                        0:05.7
-                      </span>
-                      <p className="mt-0.5 text-xs text-ink-secondary">
-                        Crisp timing turns every sentence into momentum.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Center: Video Stage */}
-                <div className="mx-auto flex w-full max-w-[224px] flex-col items-center justify-center rounded-xl border border-ink/10 bg-inset p-3">
-                  <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-page">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/sample-editor-frame.jpg"
-                      alt="Talking-head preview inside the ClipCaptions editor"
-                      className="h-full w-full object-cover object-[50%_18%]"
-                    />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                    <div className="pointer-events-none absolute inset-x-2 bottom-4 flex flex-wrap justify-center gap-1 text-center text-[10px] font-extrabold uppercase">
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-page">
-                        GREAT
-                      </span>
-                      <span className="rounded bg-black/70 px-1.5 py-0.5 text-ink">
-                        SHORT-FORM
-                      </span>
-                      <span className="rounded bg-black/70 px-1.5 py-0.5 text-ink">
-                        CLIPS
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5 flex w-full items-center gap-2 rounded-lg bg-panel px-2 py-1 text-[10px] font-mono text-ink-secondary">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-accent text-page">
-                      <Play className="ml-0.5 h-2.5 w-2.5 fill-current" />
-                    </span>
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-track">
-                      <div className="h-full w-1/3 rounded-full bg-accent" />
-                    </div>
-                    <span>0:00.5</span>
-                  </div>
-                </div>
-
-                {/* Right: Appearance / Style Panel */}
-                <div className="flex flex-col rounded-xl border border-ink/10 bg-inset p-3.5">
-                  <div className="flex items-center justify-between gap-2 pb-2.5">
-                    <span className="text-xs font-semibold text-ink">
-                      Appearance
-                    </span>
-                    <div className="inline-flex rounded-lg border border-ink/10 bg-panel p-0.5 text-[10px] font-semibold">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-page">
-                        <Sparkles className="h-2.5 w-2.5" />
-                        <span>Presets 16</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-ink-secondary">
-                        <SlidersHorizontal className="h-2.5 w-2.5" />
-                        <span>Style</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div className="rounded-lg border border-accent bg-accent-soft p-2">
-                      <div className="flex h-8 items-center justify-center rounded bg-page text-[10px] font-extrabold uppercase">
-                        <span className="text-ink">KEEP</span>
-                        <span className="mx-1 rounded bg-accent px-1 text-page">
-                          YOUR
-                        </span>
-                      </div>
-                      <p className="mt-1.5 font-semibold text-accent-hover">
-                        Keyword Highlight
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-ink/10 bg-panel p-2">
-                      <div className="flex h-8 items-center justify-center rounded bg-page text-[10px] font-semibold text-ink">
-                        Keep{" "}
-                        <span className="mx-1 underline decoration-accent decoration-2">
-                          your
-                        </span>{" "}
-                        style
-                      </div>
-                      <p className="mt-1.5 font-medium text-ink">Underline</p>
-                    </div>
-                    <div className="rounded-lg border border-ink/10 bg-panel p-2">
-                      <div className="flex h-8 items-center justify-center rounded bg-page text-[10px] font-semibold text-ink">
-                        <span className="rounded bg-inset px-1.5 py-0.5">
-                          Keep your style
-                        </span>
-                      </div>
-                      <p className="mt-1.5 font-medium text-ink">Broadcast</p>
-                    </div>
-                    <div className="rounded-lg border border-ink/10 bg-panel p-2">
-                      <div className="flex h-8 items-center justify-start rounded bg-page px-2 font-mono text-[9px] text-ink">
-                        <span className="border-l-2 border-accent pl-1.5">
-                          KEEP YOUR
-                        </span>
-                      </div>
-                      <p className="mt-1.5 font-medium text-ink">Lower Third</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Plain-Language Upload -> Edit -> Export Steps */}
-            <ol
-              data-testid="workflow-steps"
-              className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3"
-            >
-              <MotionReveal delayMs={0} className="h-full">
-                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
-                  <p className="font-mono text-xs font-semibold text-ink-muted">
-                    01 · Upload
-                  </p>
-                  <h3 className="mt-1.5 text-base font-bold text-ink">
-                    Drop your video or audio clip
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                    Upload MP4, MOV, MP3, or WAV files up to 150 MB and 3 minutes.
-                    ClipCaptions generates word-synced captions and opens the
-                    editor as soon as processing finishes.
-                  </p>
-                </li>
-              </MotionReveal>
-
-              <MotionReveal delayMs={70} className="h-full">
-                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
-                  <p className="font-mono text-xs font-semibold text-ink-muted">
-                    02 · Edit
-                  </p>
-                  <h3 className="mt-1.5 text-base font-bold text-ink">
-                    Fix words and pick your style
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                    Follow playback as the video runs, correct any line inline,
-                    fine-tune boundaries on the audio waveform when needed, and
-                    switch between built-in presets or your own saved style.
-                  </p>
-                </li>
-              </MotionReveal>
-
-              <MotionReveal delayMs={140} className="h-full">
-                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
-                  <p className="font-mono text-xs font-semibold text-ink-muted">
-                    03 · Export
-                  </p>
-                  <h3 className="mt-1.5 text-base font-bold text-ink">
-                    Download ready-to-post files
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                    Export a burned-in H.264 MP4 in the exact resolution you need,
-                    from 240p up to 4K. Every export stays pinned to the saved
-                    revision and resolution tier you chose.
-                  </p>
-                </li>
-              </MotionReveal>
-            </ol>
-          </MotionReveal>
+          </div>
         </section>
 
-        {/* SECTION 3: MP4 Output Examples & Resolution Tiers + Short Verified FAQ */}
+        {/* 5. HOW IT WORKS: Three Actual Product Views */}
         <section
-          id="exports"
-          className="border-t border-ink/10 bg-inset/50 py-14 lg:py-24"
+          id="how-it-works"
+          data-testid="home-how-it-works"
+          className="border-t border-ink/10 py-14 lg:py-24"
         >
-          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-                  Ready-to-post MP4 exports up to 4K
-                </h2>
-                <p className="mt-1.5 text-sm text-ink-secondary">
-                  Export burned-in H.264/AAC MP4 directly from your original
-                  uploaded media — preserving portrait, landscape, or audio-only
-                  framing without upscaling.
-                </p>
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <MotionReveal>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="max-w-2xl">
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                    How it works
+                  </p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                    Three steps from raw clip to captioned MP4
+                  </h2>
+                </div>
+                <span className="rounded-full border border-ink/12 bg-panel px-3 py-1 font-mono text-[11px] text-ink-secondary">
+                  MP4 · MOV · MP3 · WAV · up to 150 MB / 3 min
+                </span>
               </div>
-              <a
-                href="/upload"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink transition hover:text-accent-hover"
-              >
-                <span>Upload a clip</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </a>
-            </div>
+            </MotionReveal>
 
-            <div
-              data-testid="home-output-examples"
-              className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3"
-            >
-              {/* Output 1: Portrait Social MP4 */}
-              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <Film className="h-4 w-4 text-ink-secondary" />
-                      <span>Portrait Social MP4</span>
-                    </span>
-                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      1080×1920 · 4K
-                    </span>
-                  </div>
-
-                  <div className="relative mt-3.5 h-32 overflow-hidden rounded-xl border border-ink/10 bg-inset">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/sample-gallery-frame.jpg"
-                      alt="Example portrait burned-in MP4 caption output"
-                      className="h-full w-full object-cover object-[50%_26%] opacity-90"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-                    <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-center gap-1 text-center text-xs font-extrabold uppercase">
-                      <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
-                        READY
+            <ol className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+              {/* Step 1: Upload your clip */}
+              <MotionReveal delayMs={0} className="h-full">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                  <div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-semibold text-accent">
+                        01
                       </span>
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-page">
-                        TO
-                      </span>
-                      <span className="rounded bg-black/75 px-1.5 py-0.5 text-ink">
-                        POST
+                      <span className="rounded bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
+                        Resumable TUS
                       </span>
                     </div>
-                  </div>
-
-                  <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Preserves upright vertical framing and source audio for
-                    Reels, Shorts, and TikTok with captions scaled cleanly to
-                    the chosen resolution.
-                  </p>
-                </div>
-              </article>
-
-              {/* Output 2: Landscape Widescreen MP4 */}
-              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <FileText className="h-4 w-4 text-ink-secondary" />
-                      <span>Landscape &amp; 4K MP4</span>
-                    </span>
-                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      240p – 2160p
-                    </span>
-                  </div>
-
-                  <div className="mt-3.5 flex h-32 flex-col justify-between rounded-xl border border-ink/10 bg-inset p-3 font-mono text-[11px] text-ink-secondary">
-                    <div className="flex items-center justify-between">
-                      <span>2160p (4K)</span>
-                      <span className="text-ink">3840 × 2160</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>1440p</span>
-                      <span className="text-ink">2560 × 1440</span>
-                    </div>
-                    <div className="flex items-center justify-between text-accent-hover">
-                      <span>1080p (Default)</span>
-                      <span>1920 × 1080</span>
-                    </div>
-                    <div className="flex items-center justify-between text-ink-muted">
-                      <span>720p · 480p · 360p · 240p</span>
-                      <span>Even px</span>
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Pick the exact tier you need without upscaling above your
-                    source clip. Multiple tiers on the same revision render
-                    independently.
-                  </p>
-                </div>
-              </article>
-
-              {/* Output 3: Audio-Only Portrait Stage MP4 */}
-              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <Layers className="h-4 w-4 text-ink-secondary" />
-                      <span>Audio-to-Video MP4</span>
-                    </span>
-                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      9:16 Stage
-                    </span>
-                  </div>
-
-                  <div className="mt-3.5 flex h-32 flex-col items-center justify-center rounded-xl border border-ink/10 bg-inset px-3 text-center">
-                    <span className="rounded-full border border-ink/12 bg-panel px-2.5 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      MP3 / WAV → 1080×1920 MP4
-                    </span>
-                    <p
-                      style={{ fontFamily: '"DM Serif Display", serif' }}
-                      className="mt-2.5 text-sm text-ink"
-                    >
-                      Make <span className="text-accent underline">every</span>{" "}
-                      word land.
+                    <h3 className="mt-2 text-base font-bold text-ink">
+                      Upload your clip
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
+                      Drop an MP4, MOV, MP3, or WAV file (up to 150 MB and 3
+                      minutes) and ClipCaptions generates word-synced captions
+                      automatically.
                     </p>
                   </div>
 
-                  <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Turns voice memos, podcasts, and WAV clips into clean 9:16
-                    captioned MP4 video up to 1080p with AAC audio preserved.
-                  </p>
-                </div>
-              </article>
+                  {/* Product UI View 1: Upload Dropzone & Stage Strip */}
+                  <div className="mt-4 rounded-xl border border-ink/10 bg-inset p-3 text-[11px]">
+                    <div className="flex items-center justify-between text-ink">
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        <Upload className="h-3.5 w-3.5 text-accent" />
+                        <span>hook-take-02.mp4</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-accent-hover">
+                        100%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-track">
+                      <div className="h-full w-full rounded-full bg-accent" />
+                    </div>
+                    <div className="mt-2.5 flex items-center justify-between text-[10px] text-ink-secondary">
+                      <span className="inline-flex items-center gap-1 text-ink">
+                        <CheckCircle2 className="h-3 w-3 text-accent" />
+                        <span>Uploaded</span>
+                      </span>
+                      <span>→ Transcribing</span>
+                      <span>→ Ready</span>
+                    </div>
+                  </div>
+                </li>
+              </MotionReveal>
+
+              {/* Step 2: Edit and style */}
+              <MotionReveal delayMs={80} className="h-full">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                  <div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-semibold text-accent">
+                        02
+                      </span>
+                      <span className="rounded bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
+                        16 presets · 10 fonts
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-base font-bold text-ink">
+                      Edit and style
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
+                      Fix any word inline, fine-tune timing on the waveform, and
+                      customize fonts, colors, or Hindi translation with live
+                      autosave.
+                    </p>
+                  </div>
+
+                  {/* Product UI View 2: Inline Cue + Style Controls */}
+                  <div className="mt-4 space-y-2 rounded-xl border border-ink/10 bg-inset p-3 text-[11px]">
+                    <div className="rounded-lg border border-accent/60 bg-panel px-2.5 py-1.5 text-ink">
+                      <span className="block font-mono text-[9px] text-accent-hover">
+                        0:00.6 – 0:04.2
+                      </span>
+                      <span>Great short-form clips hook viewers.</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5 text-[10px]">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-ink/12 bg-panel px-2 py-1 text-ink-secondary">
+                        <SlidersHorizontal className="h-3 w-3 text-accent" />
+                        <span>Poppins · Pill</span>
+                      </span>
+                      <span className="rounded-md bg-accent-soft px-2 py-1 font-mono text-accent-hover">
+                        Saved
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              </MotionReveal>
+
+              {/* Step 3: Download your MP4 */}
+              <MotionReveal delayMs={160} className="h-full">
+                <li className="flex h-full flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                  <div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-semibold text-accent">
+                        03
+                      </span>
+                      <span className="rounded bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
+                        240p – 2160p (4K)
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-base font-bold text-ink">
+                      Download your MP4
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-ink-secondary">
+                      Pick your resolution tier up to 4K and download a
+                      burned-in H.264/AAC MP4 rendered from your original
+                      uploaded media.
+                    </p>
+                  </div>
+
+                  {/* Product UI View 3: Export Video Resolution Picker */}
+                  <div className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-inset p-3 font-mono text-[10px]">
+                    <div className="flex items-center justify-between rounded-lg border border-accent bg-accent-soft px-2.5 py-1.5 text-ink">
+                      <span className="inline-flex items-center gap-1.5 font-semibold text-accent-hover">
+                        <Film className="h-3 w-3" />
+                        <span>1080p MP4</span>
+                      </span>
+                      <span>1080×1920</span>
+                    </div>
+                    <div className="flex items-center justify-between px-2.5 py-1 text-ink-secondary">
+                      <span>2160p (4K) · 1440p · 720p</span>
+                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-accent-hover">
+                        <Download className="h-3 w-3" />
+                        <span>Ready</span>
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              </MotionReveal>
+            </ol>
+          </div>
+        </section>
+
+        {/* 6. SUBSTANTIAL GROUPED FAQ */}
+        <section
+          id="faq"
+          data-testid="home-faq"
+          className="border-t border-ink/10 bg-inset/45 py-14 lg:py-24"
+        >
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                FAQ
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                Questions before you upload
+              </h2>
             </div>
 
-            {/* Short Verified FAQ */}
-            <div id="faq" data-testid="home-faq" className="mt-12 border-t border-ink/10 pt-10">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-12">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-ink sm:text-xl">
-                    Common questions
-                  </h2>
-                  <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
-                    Straight answers on file limits, guest access, and exports.
-                  </p>
-                </div>
-
+            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+              {/* Group 1: Getting started */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                  Getting started
+                </h3>
                 <div className="divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-panel">
-                  {FAQ_ITEMS.map((item, idx) => (
+                  {FAQ_GETTING_STARTED.map((item, idx) => (
                     <details
                       key={item.q}
                       open={idx === 0}
@@ -602,6 +517,66 @@ export default async function HomePage() {
                     </details>
                   ))}
                 </div>
+              </div>
+
+              {/* Group 2: Editing & export */}
+              <div>
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                  Editing &amp; export
+                </h3>
+                <div className="divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-panel">
+                  {FAQ_EDITING_EXPORT.map((item) => (
+                    <details key={item.q} className="group px-5 py-4">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink transition hover:text-accent-hover [&::-webkit-details-marker]:hidden">
+                        <span>{item.q}</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                      </summary>
+                      <p className="cc-details-body mt-2.5 text-xs leading-relaxed text-ink-secondary">
+                        {item.a}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </MotionReveal>
+        </section>
+
+        {/* 7. CLEAR ENDING CTA */}
+        <section
+          data-testid="home-final-cta"
+          className="border-t border-ink/10 py-14 lg:py-20"
+        >
+          <MotionReveal
+            variant="scale"
+            className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8"
+          >
+            <div className="cc-stage-frame rounded-3xl border border-white/10 px-6 py-10 shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:px-10 sm:py-14">
+              <h2 className="text-2xl font-extrabold tracking-tight text-ink sm:text-4xl">
+                Ready to caption your first clip?
+              </h2>
+              <p className="mx-auto mt-2.5 max-w-lg text-sm text-ink-secondary">
+                Upload a video for automatic timed captions and MP4 export, or
+                test the editor right away with our sample clip.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <a
+                  href="/upload"
+                  data-testid="home-bottom-upload-cta"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-page hover:bg-accent-hover sm:px-6 sm:py-3.5 sm:text-base"
+                >
+                  <Upload className="h-4 w-4 shrink-0" />
+                  <span>Upload a clip</span>
+                  <ArrowRight className="h-4 w-4 shrink-0" />
+                </a>
+                <Link
+                  href="/studio"
+                  data-testid="home-bottom-sample-cta"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-5 py-3 text-sm font-semibold text-ink hover:border-ink/30 hover:bg-elevated sm:px-6 sm:py-3.5 sm:text-base"
+                >
+                  <Play className="h-4 w-4 shrink-0 fill-current" />
+                  <span>Try a sample</span>
+                </Link>
               </div>
             </div>
           </MotionReveal>
