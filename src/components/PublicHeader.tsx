@@ -32,16 +32,16 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               <span>Sample Studio</span>
             </Link>
             <Link
-              href="/#styles"
+              href="/#showcase"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              Styles
+              Demo
             </Link>
             <Link
-              href="/#how-it-works"
+              href="/#gallery"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              How it works
+              Gallery
             </Link>
             <Link
               href="/#faq"

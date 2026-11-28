@@ -278,53 +278,53 @@
     #181a24;
 }
 
-/* Homepage-only bright-black visual system (#101014 / #1D1D27 / #29283E / #F7F5FF / #CDD0DE / #C0B0FF) */
+/* Homepage-only video-first theme (#0B0B0F near-black, #F8F7FC ink, #C4B5FF violet, #F4F1FA pearl gallery) */
 .cc-home-theme {
-  --bg-page: #101014;
-  --bg-inset: #16161d;
-  --bg-panel: #1d1d27;
-  --bg-elevated: #29283e;
-  --bg-track: #35344d;
-  --bg-demo-stage: #29283e;
-  --text-primary: #f7f5ff;
-  --text-secondary: #cdd0de;
-  --text-muted: #9da1b8;
-  --accent: #c0b0ff;
-  --accent-hover: #d7ccff;
-  --accent-soft: rgba(192, 176, 255, 0.16);
-  --accent-rgb: 192, 176, 255;
+  --bg-page: #0b0b0f;
+  --bg-inset: #13131b;
+  --bg-panel: #15151e;
+  --bg-elevated: #222230;
+  --bg-track: #323246;
+  --bg-demo-stage: #222036;
+  --text-primary: #f8f7fc;
+  --text-secondary: #b8b7c7;
+  --text-muted: #8f8ea3;
+  --accent: #c4b5ff;
+  --accent-hover: #d8ceff;
+  --accent-soft: rgba(196, 181, 255, 0.16);
+  --accent-rgb: 196, 181, 255;
 }
 
-.cc-home-theme .cc-stage-frame {
+.cc-video-stage {
   background:
     radial-gradient(
-      84% 64% at 50% 24%,
-      rgba(192, 176, 255, 0.24) 0%,
-      rgba(41, 40, 62, 0.52) 52%,
-      rgba(16, 16, 20, 0.96) 100%
+      76% 62% at 50% 18%,
+      rgba(196, 181, 255, 0.2) 0%,
+      rgba(44, 40, 70, 0.36) 46%,
+      rgba(15, 15, 22, 0.98) 100%
     ),
-    #1d1d27;
+    #12121a;
 }
 
 .cc-home-hero-glow {
   background:
     radial-gradient(
-      62% 58% at 72% 46%,
-      rgba(192, 176, 255, 0.2) 0%,
-      rgba(41, 40, 62, 0.34) 44%,
-      rgba(16, 16, 20, 0) 78%
+      68% 54% at 50% 62%,
+      rgba(196, 181, 255, 0.16) 0%,
+      rgba(44, 40, 70, 0.24) 44%,
+      rgba(11, 11, 15, 0) 78%
     );
 }
 
 .cc-home-final-cta {
   background:
     radial-gradient(
-      80% 90% at 50% 0%,
-      rgba(192, 176, 255, 0.3) 0%,
-      rgba(41, 40, 62, 0.92) 56%,
-      rgba(29, 29, 39, 0.98) 100%
+      75% 85% at 50% 0%,
+      rgba(196, 181, 255, 0.22) 0%,
+      rgba(34, 32, 54, 0.72) 56%,
+      rgba(17, 17, 25, 0.98) 100%
     ),
-    #29283e;
+    #15151e;
 }
 
 .cc-reveal {

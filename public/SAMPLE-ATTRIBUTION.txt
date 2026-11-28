@@ -23,5 +23,6 @@ Homepage Use-Case Photography & Example Export (public/home/):
 - public/home/use-case-tutorial.jpg (Hands-on camera/laptop tutorial desk)
 - public/home/use-case-product.jpg (Creator demonstrating a wireless audio device at a sunlit desk)
 - public/home/clipcaptions-example-export.mp4 & clipcaptions-example-poster.jpg (Burned-in example MP4 rendered from public/sample-clip.mp4 with ClipCaptions Poppins word-highlight captions)
+- public/home/clip-street.mp4, clip-podcast.mp4, clip-tutorial.mp4, clip-product.mp4 (Playable 6-second creator gallery clips rendered from the original photographs above with burned-in ClipCaptions styles)
 - Original AI-generated editorial photographs created for ClipCaptions (Subtide Studio),
   cleared for public commercial redistribution with zero third-party watermarks.
