@@ -47,7 +47,7 @@ export function HomeStyleGallery() {
   const [selectedId, setSelectedId] = useState<string>(galleryPresets[0].id);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [currentTime, setCurrentTime] = useState(5.8);
+  const [currentTime, setCurrentTime] = useState(8.2);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -118,8 +118,8 @@ export function HomeStyleGallery() {
       setDuration(video.duration);
     }
     if (!initialized) {
-      video.currentTime = 5.8;
-      setCurrentTime(5.8);
+      video.currentTime = 8.2;
+      setCurrentTime(8.2);
       setInitialized(true);
     }
   }, [initialized]);
@@ -147,7 +147,7 @@ export function HomeStyleGallery() {
               aria-checked={isSelected}
               data-testid={`gallery-style-${tpl.id}`}
               onClick={() => setSelectedId(tpl.id)}
-              className={`group flex flex-col justify-between rounded-2xl border p-4 text-left transition ${
+              className={`cc-card-interactive group flex flex-col justify-between rounded-2xl border p-4 text-left ${
                 isSelected
                   ? "border-accent bg-panel shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
                   : "border-ink/10 bg-panel/75 hover:border-ink/25 hover:bg-panel"
@@ -230,7 +230,7 @@ export function HomeStyleGallery() {
             href="/studio"
             className="inline-flex shrink-0 items-center gap-1 font-semibold text-ink transition hover:text-accent-hover"
           >
-            <span>Try all 12 in Sample Studio</span>
+            <span>Try all 16 in Sample Studio</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>

@@ -381,9 +381,9 @@ export function UploadWorkspace() {
             const dropped = e.dataTransfer.files?.[0] ?? null;
             handleFilePicked(dropped);
           }}
-          className={`rounded-2xl border border-dashed p-6 text-center transition ${
+          className={`rounded-2xl border border-dashed p-6 text-center transition-all duration-150 ${
             isDragging
-              ? "border-accent bg-accent-soft/35"
+              ? "scale-[1.01] border-accent bg-accent-soft/35 shadow-[0_0_0_3px_rgba(169,154,242,0.18)]"
               : "border-ink/20 bg-inset hover:border-ink/35"
           }`}
         >
@@ -664,7 +664,7 @@ export function UploadWorkspace() {
         {error && (
           <div
             role="alert"
-            className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3.5 text-xs text-rose-200"
+            className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3.5 text-xs text-rose-200"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>

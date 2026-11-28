@@ -539,7 +539,11 @@ export function StudioStylePanel({
         role="tabpanel"
         aria-labelledby="style-tab-presets"
         data-testid="style-panel-presets"
-        className={activeSubtab === "presets" ? "mt-3 space-y-3.5" : "hidden"}
+        className={
+          activeSubtab === "presets"
+            ? "cc-panel-enter mt-3 space-y-3.5"
+            : "hidden"
+        }
       >
         {/* Category Filter Bar */}
         <div
@@ -747,7 +751,9 @@ export function StudioStylePanel({
         role="tabpanel"
         aria-labelledby="style-tab-style"
         data-testid="style-panel-controls"
-        className={activeSubtab === "style" ? "mt-3.5 space-y-4" : "hidden"}
+        className={
+          activeSubtab === "style" ? "cc-panel-enter mt-3.5 space-y-4" : "hidden"
+        }
       >
         {/* 1. Font Family */}
         <div>
@@ -1007,7 +1013,7 @@ export function StudioStylePanel({
           {advancedOpen && (
             <div
               data-testid="style-advanced-panel"
-              className="mt-2.5 space-y-3.5 rounded-xl border border-ink/10 bg-inset p-3"
+              className="cc-panel-enter mt-2.5 space-y-3.5 rounded-xl border border-ink/10 bg-inset p-3"
             >
               {/* Word Emphasis Mode */}
               <div>

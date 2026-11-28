@@ -1668,7 +1668,7 @@ export function ProjectCaptionEditor({
             }`}
           >
             <div
-              className={`relative flex items-center justify-center rounded-2xl border border-ink/10 bg-panel px-3 ${
+              className={`cc-stage-frame relative flex items-center justify-center rounded-2xl border border-white/10 px-3 transition-[padding] duration-200 ${
                 viewMode === "timeline"
                   ? "py-2"
                   : "py-2.5 sm:px-5 sm:py-3.5 lg:py-4"
@@ -1696,7 +1696,7 @@ export function ProjectCaptionEditor({
                 data-orientation={isLandscapeVideo ? "landscape" : "portrait"}
                 data-mobile-expanded={previewExpanded ? "true" : "false"}
                 data-captions-visible={showCaptionsOverlay ? "true" : "false"}
-                className={`studio-stage-container relative overflow-hidden rounded-[1.15rem] border border-ink/12 bg-page shadow-[0_18px_48px_rgba(0,0,0,0.5)] transition-[width,max-width] duration-200 ${stageSizeClasses}`}
+                className={`studio-stage-container relative overflow-hidden rounded-[1.15rem] border border-white/12 bg-page shadow-[0_22px_56px_rgba(0,0,0,0.55)] transition-[width,max-width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${stageSizeClasses}`}
               >
                 {mediaKind === "video" ? (
                   <video
@@ -2065,7 +2065,7 @@ export function ProjectCaptionEditor({
               role="tabpanel"
               aria-labelledby="editor-tab-captions"
               data-testid="panel-captions"
-              className={`order-3 min-w-0 flex-col lg:order-1 ${
+              className={`cc-panel-enter order-3 min-w-0 flex-col lg:order-1 ${
                 mobileTab === "captions" ? "flex" : "hidden lg:flex"
               }`}
             >
@@ -2702,7 +2702,7 @@ export function ProjectCaptionEditor({
               role="tabpanel"
               aria-labelledby="editor-tab-style"
               data-testid="panel-style"
-              className={`studio-scroll order-4 min-w-0 flex-col lg:order-3 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1 ${
+              className={`cc-panel-enter studio-scroll order-4 min-w-0 flex-col lg:order-3 lg:max-h-[680px] lg:overflow-y-auto lg:pr-1 ${
                 mobileTab === "style" ? "flex" : "hidden lg:flex"
               }`}
             >
@@ -2726,7 +2726,7 @@ export function ProjectCaptionEditor({
             <section
               aria-label="Focused caption timeline"
               data-testid="focused-timeline-view"
-              className="order-2 flex min-w-0 flex-col gap-2.5"
+              className="cc-panel-enter order-2 flex min-w-0 flex-col gap-2.5"
             >
               <EditorTimeline
                 cues={cues}

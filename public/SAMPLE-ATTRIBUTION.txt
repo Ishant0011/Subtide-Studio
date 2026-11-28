@@ -1,0 +1,18 @@
+ClipCaptions Public Sample Clip Attribution
+===========================================
+
+Files:
+- public/sample-clip.mp4
+- public/sample-poster.jpg
+- public/sample-gallery-frame.jpg
+- public/sample-editor-frame.jpg
+
+Visual Footage:
+- Original AI-generated studio creator portrait created for ClipCaptions (Subtide Studio)
+  with subtle motion framing and cleared for public commercial redistribution.
+
+Narration Audio:
+- Synthetic studio narration generated via Google Gemini TTS (voice: Aoede) specifically
+  for ClipCaptions, normalized to -16 LUFS with no third-party copyrighted music, and
+  word-level timestamped against the exact audio waveform. Cleared for public commercial
+  redistribution under Google Gemini API terms.

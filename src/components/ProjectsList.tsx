@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -241,7 +241,31 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
   const [loadingAssetId, setLoadingAssetId] = useState<string | null>(null);
   const [openingEditorId, setOpeningEditorId] = useState<string | null>(null);
   const [failedThumbIds, setFailedThumbIds] = useState<Record<string, boolean>>({});
+  const [newlyReadyIds, setNewlyReadyIds] = useState<Record<string, boolean>>({});
+  const prevBucketsRef = useRef<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+
+  // Highlight Processing -> Ready transitions once so status completion is immediately noticeable
+  useEffect(() => {
+    const prev = prevBucketsRef.current;
+    const nextBuckets: Record<string, string> = {};
+    const transitioned: string[] = [];
+    for (const project of projects) {
+      const bucket = getRealFilterBucket(project);
+      nextBuckets[project.id] = bucket;
+      if (prev[project.id] === "processing" && bucket === "ready") {
+        transitioned.push(project.id);
+      }
+    }
+    prevBucketsRef.current = nextBuckets;
+    if (transitioned.length > 0) {
+      setNewlyReadyIds((curr) => {
+        const updated = { ...curr };
+        for (const id of transitioned) updated[id] = true;
+        return updated;
+      });
+    }
+  }, [projects]);
 
   const hasActiveJobs = useMemo(
     () =>
@@ -628,7 +652,9 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                 data-testid={`project-card-${project.id}`}
                 data-project-title={project.title}
                 data-project-stage={stage.kind}
-                className="cc-panel-enter flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition-colors duration-150 hover:border-ink/22"
+                className={`cc-panel-enter cc-card-interactive flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel hover:border-ink/22 ${
+                  newlyReadyIds[project.id] ? "cc-status-ready-flash" : ""
+                }`}
               >
                 {/* Project Visual Poster / Intentional Placeholder */}
                 <div className="relative h-40 w-full overflow-hidden border-b border-ink/8 bg-inset">
@@ -867,7 +893,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                         <ChevronDown className="h-3.5 w-3.5 text-ink-muted transition-transform group-open:rotate-180" />
                       </summary>
 
-                      <dl className="mt-2.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-inset p-3 text-xs">
+                      <dl className="cc-details-body mt-2.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-inset p-3 text-xs">
                         <div>
                           <dt className="text-ink-muted">File</dt>
                           <dd className="mt-0.5 truncate font-medium text-ink">

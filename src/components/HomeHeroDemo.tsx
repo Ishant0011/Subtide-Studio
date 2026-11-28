@@ -31,7 +31,7 @@ export function HomeHeroDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [comparison, setComparison] = useState<ComparisonView>("captioned");
-  const [currentTime, setCurrentTime] = useState(0.5);
+  const [currentTime, setCurrentTime] = useState(0.72);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -115,8 +115,8 @@ export function HomeHeroDemo() {
       setDuration(video.duration);
     }
     if (!initialized) {
-      video.currentTime = 0.5;
-      setCurrentTime(0.5);
+      video.currentTime = 0.72;
+      setCurrentTime(0.72);
       setInitialized(true);
     }
   }, [initialized]);
@@ -126,7 +126,7 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[312px] rounded-[1.75rem] border border-white/10 bg-[#34304A] p-3 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.48)] sm:max-w-[352px] sm:rounded-[2rem] sm:p-4 lg:max-w-[372px] lg:p-5"
+      className="cc-stage-frame relative mx-auto w-full max-w-[316px] rounded-[1.75rem] border border-white/10 p-3 text-ink shadow-[0_28px_72px_rgba(0,0,0,0.56)] sm:max-w-[356px] sm:rounded-[2rem] sm:p-4 lg:max-w-[380px] lg:p-5"
     >
       {/* Quiet Header Bar: Original / Captioned toggle on the same clip without resetting playback */}
       <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">

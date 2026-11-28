@@ -20,9 +20,11 @@ export function MotionReveal({
   className = "",
 }: MotionRevealProps) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const revealedOnceRef = useRef(false);
   const [state, setState] = useState<"ssr" | "pending" | "visible">("ssr");
 
   useEffect(() => {
+    if (revealedOnceRef.current) return;
     const el = ref.current;
     if (!el || typeof window === "undefined") return;
 
@@ -30,12 +32,14 @@ export function MotionReveal({
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (reduced || typeof IntersectionObserver === "undefined") {
+      revealedOnceRef.current = true;
       setState("visible");
       return;
     }
 
     const rect = el.getBoundingClientRect();
     if (rect.top < window.innerHeight * 0.92) {
+      revealedOnceRef.current = true;
       setState("visible");
       return;
     }
@@ -45,6 +49,7 @@ export function MotionReveal({
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
+            revealedOnceRef.current = true;
             setState("visible");
             observer.disconnect();
             break;
@@ -67,6 +72,7 @@ export function MotionReveal({
   return (
     <div
       ref={ref}
+      data-motion-reveal="true"
       data-reveal-state={state}
       style={
         delayMs > 0 && state !== "ssr"

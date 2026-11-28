@@ -82,31 +82,31 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} />
 
       <main className="relative z-10">
-        {/* OPEN HERO COMPOSITION: Copy + CTAs + Soft Lavender Playable Demo Stage */}
+        {/* CINEMATIC HERO COMPOSITION: Film Title Card + Soft Graphite/Violet Demo Stage */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-6xl px-4 pb-8 pt-3 sm:px-6 sm:pb-12 sm:pt-7 lg:px-8 lg:pb-14 lg:pt-8"
+          className="mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 sm:pb-16 sm:pt-8 lg:px-8 lg:pb-20 lg:pt-10"
         >
           <div className="grid grid-cols-1 items-center gap-4 sm:gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] lg:gap-12">
             <div className="max-w-xl">
-              <h1 className="text-[2rem] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[4.15rem] lg:leading-[0.98] xl:text-[4.65rem]">
+              <h1 className="cc-hero-line text-[2rem] font-extrabold leading-[1.03] tracking-[-0.04em] text-ink sm:text-5xl lg:text-[4.15rem] lg:leading-[0.98] xl:text-[4.65rem]">
                 {HOMEPAGE_HEADLINE}
               </h1>
 
               <p
                 data-testid="home-hero-subcopy"
-                className="mt-2 max-w-lg text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg lg:text-[1.2rem] lg:leading-relaxed"
+                className="cc-hero-sub mt-2 max-w-lg text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg lg:text-[1.2rem] lg:leading-relaxed"
               >
                 {HOMEPAGE_SUBHEADLINE}
               </p>
 
-              <div className="mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
+              <div className="cc-hero-actions mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
                 {user ? (
                   <Link
                     href="/upload"
                     prefetch={false}
                     data-testid="home-upload-cta"
-                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
+                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
                     <span>Upload a clip</span>
@@ -116,7 +116,7 @@ export default async function HomePage() {
                   <a
                     href="/upload"
                     data-testid="home-upload-cta"
-                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
+                    className="cc-card-interactive inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
                     <span>Upload a clip</span>
@@ -127,7 +127,7 @@ export default async function HomePage() {
                 <Link
                   href="/studio"
                   data-testid="home-sample-cta"
-                  className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink/30 hover:bg-elevated sm:px-5 sm:py-3.5 sm:text-base"
+                  className="cc-card-interactive inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-4 py-2.5 text-sm font-semibold text-ink hover:border-ink/30 hover:bg-elevated sm:px-5 sm:py-3.5 sm:text-base"
                 >
                   <Play className="h-4 w-4 shrink-0 fill-current" />
                   <span>Try a sample</span>
@@ -135,7 +135,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="flex justify-center lg:justify-end">
+            <div className="cc-hero-stage flex justify-center lg:justify-end">
               <HomeHeroDemo />
             </div>
           </div>
@@ -144,7 +144,7 @@ export default async function HomePage() {
         {/* SECTION 1: Compact Interactive Style Gallery on the Same Clip */}
         <section
           id="styles"
-          className="border-t border-ink/10 bg-inset/50 py-12 lg:py-16"
+          className="border-t border-ink/10 bg-inset/50 py-14 lg:py-24"
         >
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
@@ -163,7 +163,7 @@ export default async function HomePage() {
         </section>
 
         {/* SECTION 2: Large Real Editor Preview + Plain-Language Upload -> Edit -> Export */}
-        <section id="workflow" className="border-t border-ink/10 py-12 lg:py-16">
+        <section id="workflow" className="border-t border-ink/10 py-14 lg:py-24">
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="max-w-2xl">
@@ -315,7 +315,7 @@ export default async function HomePage() {
                     <div className="inline-flex rounded-lg border border-ink/10 bg-panel p-0.5 text-[10px] font-semibold">
                       <span className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-page">
                         <Sparkles className="h-2.5 w-2.5" />
-                        <span>Presets 12</span>
+                        <span>Presets 16</span>
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-ink-secondary">
                         <SlidersHorizontal className="h-2.5 w-2.5" />
@@ -426,7 +426,7 @@ export default async function HomePage() {
         {/* SECTION 3: MP4 Output Examples & Resolution Tiers + Short Verified FAQ */}
         <section
           id="exports"
-          className="border-t border-ink/10 bg-inset/50 py-12 lg:py-16"
+          className="border-t border-ink/10 bg-inset/50 py-14 lg:py-24"
         >
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -592,7 +592,7 @@ export default async function HomePage() {
                         <span>{item.q}</span>
                         <ChevronDown className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
                       </summary>
-                      <p className="mt-2.5 text-xs leading-relaxed text-ink-secondary">
+                      <p className="cc-details-body mt-2.5 text-xs leading-relaxed text-ink-secondary">
                         {item.a}
                       </p>
                     </details>
