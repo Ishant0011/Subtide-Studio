@@ -37,9 +37,12 @@ function buildTextShadow(
     );
   }
   if (shadowStrength === "strong") {
-    shadows.push("0 3px 12px rgba(7,11,16,0.95)", "0 1px 3px rgba(7,11,16,0.95)");
+    shadows.push(
+      "0 3px 12px rgba(13,14,18,0.95)",
+      "0 1px 3px rgba(13,14,18,0.95)"
+    );
   } else if (shadowStrength === "soft") {
-    shadows.push("0 2px 8px rgba(7,11,16,0.85)");
+    shadows.push("0 2px 8px rgba(13,14,18,0.85)");
   }
   return shadows.length > 0 ? shadows.join(", ") : undefined;
 }
@@ -66,15 +69,18 @@ export function CaptionOverlay({
     ...styleConfig,
   });
 
+  const useWordTiming =
+    activeCue.words.length > 0 && layout.emphasisMode !== "cue";
+
   const containerStyle = {
     bottom: `${layout.bottomPercent}%`,
   };
   const responsiveFontSize =
     layout.fontSize === "sm"
-      ? "clamp(0.62rem, 4.4cqw, 0.96rem)"
+      ? "clamp(0.6rem, 4.4cqw, 0.96rem)"
       : layout.fontSize === "lg"
-        ? "clamp(0.8rem, 6.1cqw, 1.32rem)"
-        : "clamp(0.7rem, 5.2cqw, 1.12rem)";
+        ? "clamp(0.78rem, 6.1cqw, 1.32rem)"
+        : "clamp(0.68rem, 5.2cqw, 1.12rem)";
   const textShadow = buildTextShadow(
     layout.outlineWidth,
     layout.outlineColor,
@@ -84,52 +90,87 @@ export function CaptionOverlay({
     ? hexToRgba(layout.backgroundColor, layout.backgroundOpacity / 100)
     : "transparent";
   const bgDimRgba = layout.backgroundEnabled
-    ? hexToRgba(layout.backgroundColor, (layout.backgroundOpacity * 0.72) / 100)
+    ? hexToRgba(
+        layout.backgroundColor,
+        (layout.backgroundOpacity * 0.72) / 100
+      )
     : "transparent";
 
-  if (layout.preset === "clean") {
+  const isLeft = layout.alignment === "left";
+  const wrapperJustify = isLeft ? "justify-start" : "justify-center";
+  const textAlignClass = isLeft ? "text-left" : "text-center";
+  const baseTypographyStyle = {
+    fontFamily: layout.cssFontFamily,
+    fontSize: responsiveFontSize,
+    letterSpacing: layout.cssLetterSpacing,
+    fontStyle: layout.italic ? ("italic" as const) : ("normal" as const),
+  };
+
+  if (layout.preset === "word-highlight" || layout.emphasisMode === "pill") {
     return (
       <div
         data-testid="caption-overlay"
-        data-preset="clean"
+        data-preset={layout.preset}
+        data-emphasis={layout.emphasisMode}
+        data-alignment={layout.alignment}
         data-accent={layout.accent}
         data-font-family={layout.fontFamily}
         data-font-size={layout.fontSize}
         data-vertical-position={String(layout.bottomPercent)}
         style={containerStyle}
-        className="pointer-events-none absolute inset-x-3 z-20 flex justify-center"
+        className={`pointer-events-none absolute inset-x-3 z-20 flex ${wrapperJustify}`}
       >
         <p
           style={{
-            fontFamily: layout.cssFontFamily,
-            fontSize: responsiveFontSize,
+            ...baseTypographyStyle,
             maxWidth: `${layout.maxWidthPercent}%`,
-            textShadow,
-            backgroundColor: layout.backgroundEnabled ? bgRgba : undefined,
           }}
-          className={`text-center font-bold leading-snug tracking-[-0.01em] ${
-            layout.backgroundEnabled ? "rounded-xl px-3 py-1.5" : ""
+          className={`flex flex-wrap items-center gap-x-1 gap-y-1 font-extrabold leading-tight ${
+            isLeft ? "justify-start text-left" : "justify-center text-center"
           }`}
         >
-          {activeCue.words.map((word, index) => {
-            const isActive = activeWord?.id === word.id;
-            const isPast = currentTime >= word.end;
-            return (
-              <span
-                key={word.id}
-                data-active-word={isActive ? "true" : "false"}
-                style={{
-                  color: isActive ? layout.activeWordColor : layout.textColor,
-                  opacity: isActive || isPast ? 1 : 0.8,
-                }}
-                className={`inline-block transition-all duration-100 ${
-                  index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
-                } ${isActive ? "scale-[1.04]" : ""}`}
-              >
-                {applyCaptionCasing(word.text, layout.casing)}
-              </span>
-            );
-          })}
+          {useWordTiming ? (
+            activeCue.words.map((word) => {
+              const isActive = activeWord?.id === word.id;
+              const isPast = currentTime >= word.end;
+              return (
+                <span
+                  key={word.id}
+                  data-active-word={isActive ? "true" : "false"}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: layout.activeWordColor,
+                          color: layout.activeWordContrastText,
+                          boxShadow: `0 4px 16px ${layout.accentShadowRgba}`,
+                        }
+                      : {
+                          backgroundColor: isPast ? bgRgba : bgDimRgba,
+                          color: layout.textColor,
+                          opacity: isPast ? 1 : 0.78,
+                          textShadow,
+                        }
+                  }
+                  className={`inline-block rounded-lg px-1.5 py-0.5 transition-all duration-100 ${
+                    isActive ? "scale-[1.04]" : ""
+                  }`}
+                >
+                  {applyCaptionCasing(word.text, layout.casing)}
+                </span>
+              );
+            })
+          ) : (
+            <span
+              style={{
+                backgroundColor: bgRgba,
+                color: layout.textColor,
+                textShadow,
+              }}
+              className="inline-block rounded-lg px-2.5 py-1"
+            >
+              {applyCaptionCasing(activeCue.text, layout.casing)}
+            </span>
+          )}
         </p>
       </div>
     );
@@ -140,107 +181,141 @@ export function CaptionOverlay({
       <div
         data-testid="caption-overlay"
         data-preset="boxed"
+        data-emphasis={layout.emphasisMode}
+        data-alignment={layout.alignment}
         data-accent={layout.accent}
         data-font-family={layout.fontFamily}
         data-font-size={layout.fontSize}
         data-vertical-position={String(layout.bottomPercent)}
         style={containerStyle}
-        className="pointer-events-none absolute inset-x-3 z-20 flex justify-center"
+        className={`pointer-events-none absolute inset-x-3 z-20 flex ${wrapperJustify}`}
       >
         <div
           style={{
             maxWidth: `${layout.maxWidthPercent}%`,
             backgroundColor: bgRgba,
           }}
-          className={`rounded-2xl px-3.5 py-2 text-center ${
+          className={`rounded-xl px-3.5 py-2 ${textAlignClass} ${
             layout.backgroundEnabled
-              ? "border border-ink/15 shadow-[0_12px_32px_rgba(0,0,0,0.55)] backdrop-blur-md"
+              ? "border border-ink/12 shadow-[0_10px_28px_rgba(0,0,0,0.55)]"
               : ""
-          }`}
+          } ${isLeft ? "border-l-2 border-l-accent" : ""}`}
         >
           <p
             style={{
-              fontFamily: layout.cssFontFamily,
-              fontSize: responsiveFontSize,
+              ...baseTypographyStyle,
               textShadow,
             }}
-            className="font-bold leading-snug tracking-[-0.01em]"
+            className="font-bold leading-snug"
           >
-            {activeCue.words.map((word, index) => {
-              const isActive = activeWord?.id === word.id;
-              const isPast = currentTime >= word.end;
-              return (
-                <span
-                  key={word.id}
-                  data-active-word={isActive ? "true" : "false"}
-                  style={{
-                    color: isActive ? layout.activeWordColor : layout.textColor,
-                    textDecorationColor: isActive ? layout.activeWordColor : undefined,
-                    opacity: isActive || isPast ? 1 : 0.72,
-                  }}
-                  className={`inline-block transition-colors duration-100 ${
-                    index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
-                  } ${isActive ? "underline decoration-2 underline-offset-4" : ""}`}
-                >
-                  {applyCaptionCasing(word.text, layout.casing)}
-                </span>
-              );
-            })}
+            {useWordTiming ? (
+              activeCue.words.map((word, index) => {
+                const isActive = activeWord?.id === word.id;
+                const isPast = currentTime >= word.end;
+                const isUnderline = layout.emphasisMode === "underline";
+                const isScale = layout.emphasisMode === "scale";
+                return (
+                  <span
+                    key={word.id}
+                    data-active-word={isActive ? "true" : "false"}
+                    style={{
+                      color: isActive
+                        ? layout.activeWordColor
+                        : layout.textColor,
+                      textDecorationColor:
+                        isActive && isUnderline
+                          ? layout.activeWordColor
+                          : undefined,
+                      opacity: isActive || isPast ? 1 : 0.75,
+                    }}
+                    className={`inline-block transition-all duration-100 ${
+                      index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
+                    } ${
+                      isActive && isUnderline
+                        ? "underline decoration-2 underline-offset-4"
+                        : ""
+                    } ${isActive && isScale ? "scale-[1.08]" : ""}`}
+                  >
+                    {applyCaptionCasing(word.text, layout.casing)}
+                  </span>
+                );
+              })
+            ) : (
+              <span style={{ color: layout.textColor }}>
+                {applyCaptionCasing(activeCue.text, layout.casing)}
+              </span>
+            )}
           </p>
         </div>
       </div>
     );
   }
 
-  // preset === "word-highlight"
   return (
     <div
       data-testid="caption-overlay"
-      data-preset="word-highlight"
+      data-preset="clean"
+      data-emphasis={layout.emphasisMode}
+      data-alignment={layout.alignment}
       data-accent={layout.accent}
       data-font-family={layout.fontFamily}
       data-font-size={layout.fontSize}
       data-vertical-position={String(layout.bottomPercent)}
       style={containerStyle}
-      className="pointer-events-none absolute inset-x-3 z-20 flex justify-center"
+      className={`pointer-events-none absolute inset-x-3 z-20 flex ${wrapperJustify}`}
     >
       <p
         style={{
-          fontFamily: layout.cssFontFamily,
-          fontSize: responsiveFontSize,
+          ...baseTypographyStyle,
           maxWidth: `${layout.maxWidthPercent}%`,
+          textShadow,
+          backgroundColor: layout.backgroundEnabled ? bgRgba : undefined,
         }}
-        className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 text-center font-extrabold leading-tight tracking-[0.01em]"
+        className={`font-bold leading-snug ${textAlignClass} ${
+          layout.backgroundEnabled ? "rounded-xl px-3 py-1.5" : ""
+        }`}
       >
-        {activeCue.words.map((word) => {
-          const isActive = activeWord?.id === word.id;
-          const isPast = currentTime >= word.end;
-          return (
-            <span
-              key={word.id}
-              data-active-word={isActive ? "true" : "false"}
-              style={
-                isActive
-                  ? {
-                      backgroundColor: layout.activeWordColor,
-                      color: layout.activeWordContrastText,
-                      boxShadow: `0 4px 18px ${layout.accentShadowRgba}`,
-                    }
-                  : {
-                      backgroundColor: isPast ? bgRgba : bgDimRgba,
-                      color: layout.textColor,
-                      opacity: isPast ? 1 : 0.78,
-                      textShadow,
-                    }
-              }
-              className={`inline-block rounded-lg px-1.5 py-0.5 transition-all duration-100 ${
-                isActive ? "scale-[1.05]" : ""
-              }`}
-            >
-              {applyCaptionCasing(word.text, layout.casing)}
-            </span>
-          );
-        })}
+        {useWordTiming ? (
+          activeCue.words.map((word, index) => {
+            const isActive = activeWord?.id === word.id;
+            const isPast = currentTime >= word.end;
+            const isUnderline = layout.emphasisMode === "underline";
+            const isScale = layout.emphasisMode === "scale";
+            return (
+              <span
+                key={word.id}
+                data-active-word={isActive ? "true" : "false"}
+                style={{
+                  color: isActive ? layout.activeWordColor : layout.textColor,
+                  textDecorationColor:
+                    isActive && isUnderline
+                      ? layout.activeWordColor
+                      : undefined,
+                  opacity: isActive || isPast ? 1 : 0.82,
+                }}
+                className={`inline-block transition-all duration-100 ${
+                  index < activeCue.words.length - 1 ? "mr-[0.28em]" : ""
+                } ${
+                  isActive && isUnderline
+                    ? "underline decoration-2 underline-offset-4"
+                    : ""
+                } ${
+                  isActive && isScale
+                    ? "scale-[1.1]"
+                    : isActive
+                      ? "scale-[1.03]"
+                      : ""
+                }`}
+              >
+                {applyCaptionCasing(word.text, layout.casing)}
+              </span>
+            );
+          })
+        ) : (
+          <span style={{ color: layout.textColor }}>
+            {applyCaptionCasing(activeCue.text, layout.casing)}
+          </span>
+        )}
       </p>
     </div>
   );

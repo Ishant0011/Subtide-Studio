@@ -34,17 +34,17 @@
 }
 
 :root {
-  --bg-page: #070b10;
-  --bg-inset: #0b0d14;
-  --bg-panel: #10121a;
-  --bg-elevated: #171a26;
-  --bg-track: #1f2233;
+  --bg-page: #0d0e12;
+  --bg-inset: #13151b;
+  --bg-panel: #191c24;
+  --bg-elevated: #222631;
+  --bg-track: #2c3140;
   --text-primary: #f5f1e8;
-  --text-secondary: #a7a5b3;
-  --text-muted: #858296;
+  --text-secondary: #b9b6c4;
+  --text-muted: #8e8b9c;
   --accent: #a78bfa;
   --accent-hover: #c4b5fd;
-  --accent-soft: #201a36;
+  --accent-soft: rgba(167, 139, 250, 0.14);
   --accent-rgb: 167, 139, 250;
 }
 

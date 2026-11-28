@@ -88,22 +88,30 @@ function getStageDisplay(
   job: IngestJobRow | null,
   revision: CaptionRevisionRow | null
 ): { label: string; tone: "accent" | "amber" | "rose" | "neutral"; spinning: boolean } {
+  const primaryAsset = project.media_assets?.[0] ?? null;
+  if (primaryAsset && primaryAsset.status !== "uploaded" && !job) {
+    return { label: "Uploading", tone: "amber", spinning: true };
+  }
+
   if (job) {
     if (job.status === "queued") {
       return {
-        label: job.attempt_count > 0 ? `Retrying (${job.attempt_count}/${job.max_attempts})` : "Queued",
+        label:
+          job.attempt_count > 0
+            ? `Processing · Retry ${job.attempt_count}/${job.max_attempts}`
+            : "Processing · Queued",
         tone: "amber",
         spinning: true,
       };
     }
     if (job.status === "probing") {
-      return { label: "Probing media", tone: "amber", spinning: true };
+      return { label: "Processing · Probing", tone: "amber", spinning: true };
     }
     if (job.status === "transcoding") {
-      return { label: "Generating preview", tone: "amber", spinning: true };
+      return { label: "Processing · Preview", tone: "amber", spinning: true };
     }
     if (job.status === "transcribing") {
-      return { label: "Transcribing", tone: "amber", spinning: true };
+      return { label: "Processing · Captions", tone: "amber", spinning: true };
     }
     if (job.status === "failed") {
       return {
@@ -114,9 +122,9 @@ function getStageDisplay(
     }
     if (job.status === "completed") {
       if (revision?.speech_status === "no_speech") {
-        return { label: "Ready to edit · No speech", tone: "accent", spinning: false };
+        return { label: "Ready · No speech", tone: "accent", spinning: false };
       }
-      return { label: "Ready to edit", tone: "accent", spinning: false };
+      return { label: "Ready", tone: "accent", spinning: false };
     }
   }
 
@@ -129,12 +137,15 @@ function getStageDisplay(
   }
   if (project.status === "ready") {
     return {
-      label: project.active_revision_id ? "Ready to edit" : "Uploaded · Ready to process",
+      label: project.active_revision_id ? "Ready" : "Uploaded",
       tone: project.active_revision_id ? "accent" : "neutral",
       spinning: false,
     };
   }
-  return { label: project.status, tone: "neutral", spinning: false };
+  if (project.status === "queued" || project.status === "processing") {
+    return { label: "Processing", tone: "amber", spinning: true };
+  }
+  return { label: "Uploading", tone: "neutral", spinning: false };
 }
 
 function findActiveCueMs(
@@ -390,15 +401,15 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
             </div>
 
             {/* Sort dropdown */}
-            <label className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-ink/12 bg-page px-3 py-2 text-xs text-ink-secondary">
-              <ArrowUpDown className="h-3.5 w-3.5 text-accent" />
+            <label className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-ink/12 bg-inset px-3 py-2 text-xs text-ink-secondary">
+              <ArrowUpDown className="h-3.5 w-3.5 text-ink-muted" />
               <span className="sr-only">Sort projects</span>
               <select
                 data-testid="projects-sort-select"
                 aria-label="Sort projects"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as ProjectSortOrder)}
-                className="bg-page text-xs font-medium text-ink focus:outline-none"
+                className="bg-inset text-xs font-medium text-ink focus:outline-none"
               >
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -435,7 +446,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   onClick={() => setStatusFilter(chip.id)}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
                     active
-                      ? "border-accent bg-accent-soft text-accent-hover"
+                      ? "border-accent bg-accent text-page"
                       : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
                   }`}
                 >
@@ -511,9 +522,15 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               isAssetUploaded && (!job || job.status === "failed");
             const isEditing = editingId === project.id;
 
+            const isReadyForEditor =
+              Boolean(primaryAsset) &&
+              isAssetUploaded &&
+              project.status === "ready" &&
+              !canStartProcessing;
+
             const badgeClass =
               stage.tone === "accent"
-                ? "border border-accent/40 bg-accent-soft text-accent-hover"
+                ? "border border-ink/20 bg-page/85 text-ink"
                 : stage.tone === "amber"
                   ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
                   : stage.tone === "rose"
@@ -534,14 +551,14 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                 key={project.id}
                 data-testid={`project-card-${project.id}`}
                 data-project-title={project.title}
-                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition hover:border-accent/30"
+                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition hover:border-ink/25"
               >
                 {/* Project Visual Thumbnail / Audio Artwork */}
-                <div className="relative h-40 w-full overflow-hidden border-b border-ink/8 bg-page">
+                <div className="relative h-40 w-full overflow-hidden border-b border-ink/8 bg-inset">
                   {isAudio ? (
                     <div
                       data-testid={`project-audio-artwork-${project.id}`}
-                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#1A1530] via-[#11121F] to-page px-4"
+                      className="flex h-full w-full flex-col items-center justify-center bg-inset px-4"
                     >
                       <div className="flex items-end gap-1.5">
                         {[14, 28, 42, 22, 48, 34, 20, 38, 26, 16].map((h, i) => (
@@ -549,20 +566,20 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                             key={i}
                             style={{ height: `${h}px` }}
                             className={`w-1.5 rounded-full ${
-                              i % 3 === 1 ? "bg-accent" : "bg-accent/35"
+                              i % 3 === 1 ? "bg-accent" : "bg-ink/25"
                             }`}
                           />
                         ))}
                       </div>
-                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/35 bg-accent-soft/90 px-2.5 py-0.5 text-[11px] font-medium text-accent-hover">
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-panel px-2.5 py-0.5 text-[11px] font-medium text-ink-secondary">
                         <AudioLines className="h-3 w-3" />
-                        <span>Audio · 9:16 Portrait Stage</span>
+                        <span>Audio · 9:16 Stage</span>
                       </span>
                     </div>
                   ) : project.thumbnail_url ? (
                     <div
                       data-testid={`project-video-thumbnail-${project.id}`}
-                      className="relative flex h-full w-full items-center justify-center bg-page"
+                      className="relative flex h-full w-full items-center justify-center bg-inset"
                     >
                       <video
                         src={`${project.thumbnail_url}#t=0.5`}
@@ -572,11 +589,11 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                         aria-hidden="true"
                         className="h-full w-full object-contain"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-page/70 via-transparent to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-page/65 via-transparent to-transparent" />
                     </div>
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-elevated to-page text-ink-muted">
-                      <Film className="h-7 w-7 text-accent/70" />
+                    <div className="flex h-full w-full flex-col items-center justify-center bg-inset text-ink-muted">
+                      <Film className="h-7 w-7 text-ink-secondary" />
                       <span className="mt-1.5 text-[11px]">
                         {stage.spinning ? "Generating preview..." : "Video clip"}
                       </span>
@@ -590,7 +607,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                     {stage.spinning ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : stage.tone === "accent" ? (
-                      <CheckCircle2 className="h-3 w-3" />
+                      <CheckCircle2 className="h-3 w-3 text-accent" />
                     ) : stage.tone === "rose" ? (
                       <AlertCircle className="h-3 w-3" />
                     ) : (
@@ -617,7 +634,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                             onChange={(e) => setDraftTitle(e.target.value)}
                             maxLength={120}
                             aria-label="Project title"
-                            className="w-full rounded-lg border border-accent/60 bg-page px-2.5 py-1.5 text-sm text-ink focus:outline-none"
+                            className="w-full rounded-lg border border-accent bg-inset px-2.5 py-1.5 text-sm text-ink focus:outline-none"
                           />
                           <button
                             type="button"
@@ -663,70 +680,62 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       )}
                   </div>
 
-                  {/* Primary Card Action Row */}
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {primaryAsset && isAssetUploaded && project.status === "ready" && (
-                        <Link
-                          href={`/projects/${project.id}/editor`}
-                          prefetch={false}
-                          onClick={() => setOpeningEditorId(project.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
-                        >
-                          {openingEditorId === project.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Pencil className="h-3.5 w-3.5" />
-                          )}
-                          <span>
-                            {openingEditorId === project.id
-                              ? "Opening..."
-                              : "Open editor"}
-                          </span>
-                        </Link>
-                      )}
-
-                      {canStartProcessing && (
-                        <button
-                          type="button"
-                          disabled={startingId === project.id}
-                          onClick={() => void startProcessing(project.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-60"
-                        >
-                          {startingId === project.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : job?.status === "failed" ? (
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          ) : (
-                            <Play className="h-3.5 w-3.5 fill-current" />
-                          )}
-                          <span>
-                            {job?.status === "failed"
-                              ? "Retry processing"
-                              : "Start processing"}
-                          </span>
-                        </button>
-                      )}
-
-                      {primaryAsset && isAssetUploaded && (
-                        <button
-                          type="button"
-                          disabled={loadingAssetId === primaryAsset.id}
-                          onClick={() => void openPreview(primaryAsset.id, project, revision)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-ink/12 bg-elevated px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:border-accent/45 hover:text-ink disabled:opacity-60"
-                        >
-                          {loadingAssetId === primaryAsset.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          )}
-                          <span>Preview clip</span>
-                        </button>
-                      )}
-                    </div>
+                  {/* Strictly ONE Primary Action per Project Card */}
+                  <div
+                    data-testid={`project-primary-actions-${project.id}`}
+                    className="mt-4 flex items-center justify-between gap-2"
+                  >
+                    {isReadyForEditor ? (
+                      <Link
+                        href={`/projects/${project.id}/editor`}
+                        prefetch={false}
+                        onClick={() => setOpeningEditorId(project.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover"
+                      >
+                        {openingEditorId === project.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Pencil className="h-3.5 w-3.5" />
+                        )}
+                        <span>
+                          {openingEditorId === project.id
+                            ? "Opening..."
+                            : "Open editor"}
+                        </span>
+                      </Link>
+                    ) : canStartProcessing ? (
+                      <button
+                        type="button"
+                        disabled={startingId === project.id}
+                        onClick={() => void startProcessing(project.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover disabled:opacity-60"
+                      >
+                        {startingId === project.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : job?.status === "failed" ? (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5 fill-current" />
+                        )}
+                        <span>
+                          {job?.status === "failed"
+                            ? "Retry processing"
+                            : "Start processing"}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-ink/12 bg-inset px-3.5 py-2 text-xs font-medium text-ink-secondary">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                        <span>
+                          {primaryAsset?.status !== "uploaded"
+                            ? "Uploading clip..."
+                            : "Generating captions..."}
+                        </span>
+                      </span>
+                    )}
                   </div>
 
-                  {/* Collapsible Diagnostics Disclosure */}
+                  {/* Collapsible Technical & Media Details */}
                   {primaryAsset && (
                     <details
                       data-testid={`project-details-${project.id}`}
@@ -737,7 +746,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                         <ChevronDown className="h-3.5 w-3.5 text-ink-muted transition-transform group-open:rotate-180" />
                       </summary>
 
-                      <dl className="mt-2.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-page/75 p-3 text-xs">
+                      <dl className="mt-2.5 grid grid-cols-2 gap-2.5 rounded-xl border border-ink/8 bg-inset p-3 text-xs">
                         <div>
                           <dt className="text-ink-muted">File</dt>
                           <dd className="mt-0.5 truncate font-medium text-ink">
@@ -773,15 +782,35 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                               : job?.stage_message || "Waiting for worker"}
                           </dd>
                         </div>
-                        <div className="col-span-2 border-t border-ink/8 pt-2">
-                          <dt className="text-ink-muted">Revision</dt>
-                          <dd className="mt-0.5 font-mono text-[11px] text-ink-secondary">
-                            {revision
-                              ? `Rev #${revision.revision_number} · ${revision.source}`
-                              : stage.spinning
-                                ? "Processing in worker"
-                                : "Ready for processing"}
-                          </dd>
+                        <div className="col-span-2 flex items-center justify-between gap-2 border-t border-ink/8 pt-2">
+                          <div className="min-w-0">
+                            <dt className="text-ink-muted">Revision &amp; source</dt>
+                            <dd className="mt-0.5 truncate font-mono text-[11px] text-ink-secondary">
+                              {revision
+                                ? `Rev #${revision.revision_number} · ${revision.source}`
+                                : stage.spinning
+                                  ? "Processing in worker"
+                                  : "Ready for processing"}
+                            </dd>
+                          </div>
+
+                          {isAssetUploaded && (
+                            <button
+                              type="button"
+                              disabled={loadingAssetId === primaryAsset.id}
+                              onClick={() =>
+                                void openPreview(primaryAsset.id, project, revision)
+                              }
+                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/12 bg-panel px-2.5 py-1 text-[11px] font-medium text-ink-secondary transition hover:border-ink/25 hover:text-ink disabled:opacity-60"
+                            >
+                              {loadingAssetId === primaryAsset.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <ExternalLink className="h-3 w-3" />
+                              )}
+                              <span>Preview clip</span>
+                            </button>
+                          )}
                         </div>
                       </dl>
                     </details>

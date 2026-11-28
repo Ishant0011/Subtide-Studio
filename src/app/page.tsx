@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  Download,
+  CheckCircle2,
   FileText,
   Film,
   Layers,
   Play,
-  SlidersHorizontal,
   Upload,
 } from "lucide-react";
 import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
@@ -55,205 +54,260 @@ export default async function HomePage() {
         }}
       />
 
-      {/* Ambient studio glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full bg-accent/10 blur-[150px]"
-      />
-
       <PublicHeader userEmail={user?.email ?? null} />
 
       <main className="relative z-10">
-        {/* Unified Hero Stage: Headline + Primary Action + Captioned Result as One Composition */}
-        <section className="mx-auto max-w-7xl px-3 pb-8 pt-3 sm:px-6 sm:pb-12 sm:pt-5 lg:px-8 lg:pb-12 lg:pt-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-ink/10 bg-gradient-to-br from-panel via-inset to-page px-4 py-4 shadow-[0_28px_90px_rgba(0,0,0,0.65)] sm:rounded-[2.25rem] sm:px-8 sm:py-7 lg:px-12 lg:py-8">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -right-16 top-1/2 hidden h-[420px] w-[420px] -translate-y-1/2 rounded-full bg-accent/12 blur-[110px] lg:block"
-            />
+        {/* Open Hero Composition directly on deep charcoal canvas */}
+        <section
+          data-testid="home-open-hero"
+          className="mx-auto max-w-6xl px-4 pb-8 pt-3 sm:px-6 sm:pb-14 sm:pt-8 lg:px-8 lg:pb-16 lg:pt-10"
+        >
+          <div className="grid grid-cols-1 items-center gap-4 sm:gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] lg:gap-14">
+            <div className="max-w-xl">
+              <h1 className="text-[1.68rem] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink sm:text-5xl lg:text-[3.75rem] lg:leading-[1.03] xl:text-[4.15rem]">
+                {HOMEPAGE_HEADLINE}
+              </h1>
 
-            <div className="relative grid grid-cols-1 items-center gap-4 sm:gap-7 lg:grid-cols-[minmax(0,1.18fr)_minmax(276px,0.82fr)] lg:gap-12">
-              <div className="max-w-2xl">
-                <h1 className="text-[1.72rem] font-extrabold leading-[1.05] tracking-[-0.035em] text-ink sm:text-5xl lg:text-[3.85rem] lg:leading-[1.02] xl:text-[4.25rem]">
-                  {HOMEPAGE_HEADLINE}
-                </h1>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg lg:text-xl">
+                Upload a clip, style your captions, and export.
+              </p>
 
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-secondary sm:mt-4 sm:text-lg lg:text-xl">
-                  Upload a clip, style your captions, and export.
-                </p>
-
-                <div className="mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-6 sm:gap-3.5">
-                  {user ? (
-                    <Link
-                      href="/upload"
-                      prefetch={false}
-                      data-testid="home-upload-cta"
-                      className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_10px_32px_rgba(167,139,250,0.32)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
-                    >
-                      <Upload className="h-4 w-4 shrink-0" />
-                      <span>Upload a clip</span>
-                      <ArrowRight className="h-4 w-4 shrink-0" />
-                    </Link>
-                  ) : (
-                    <a
-                      href="/upload"
-                      data-testid="home-upload-cta"
-                      className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_10px_32px_rgba(167,139,250,0.32)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
-                    >
-                      <Upload className="h-4 w-4 shrink-0" />
-                      <span>Upload a clip</span>
-                      <ArrowRight className="h-4 w-4 shrink-0" />
-                    </a>
-                  )}
+              <div className="mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-7 sm:gap-3.5">
+                {user ? (
                   <Link
-                    href="/studio"
-                    data-testid="home-sample-cta"
-                    className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-page/80 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover sm:px-5 sm:py-3.5 sm:text-base"
+                    href="/upload"
+                    prefetch={false}
+                    data-testid="home-upload-cta"
+                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_12px_28px_rgba(0,0,0,0.4)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
                   >
-                    <Play className="h-4 w-4 shrink-0 fill-current" />
-                    <span>Try a sample</span>
+                    <Upload className="h-4 w-4 shrink-0" />
+                    <span>Upload a clip</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
                   </Link>
-                </div>
+                ) : (
+                  <a
+                    href="/upload"
+                    data-testid="home-upload-cta"
+                    className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_12px_28px_rgba(0,0,0,0.4)] transition hover:bg-accent-hover sm:gap-2.5 sm:px-6 sm:py-3.5 sm:text-base"
+                  >
+                    <Upload className="h-4 w-4 shrink-0" />
+                    <span>Upload a clip</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
 
-                {/* Desktop quick proof points integrated into the hero composition */}
-                <dl className="mt-8 hidden grid-cols-3 gap-4 border-t border-ink/10 pt-6 lg:grid">
-                  <div>
-                    <dt className="text-xs font-semibold text-ink">
-                      Word-accurate sync
-                    </dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-ink-secondary">
-                      Edit cues, split at the playhead, or tweak single words.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-ink">
-                      Reusable presets
-                    </dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-ink-secondary">
-                      Save fonts, colors, outlines, and safe-area placement.
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-ink">
-                      Three studio outputs
-                    </dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-ink-secondary">
-                      Burned-in video, subtitle files, or transparent overlays.
-                    </dd>
-                  </div>
-                </dl>
+                <Link
+                  href="/studio"
+                  data-testid="home-sample-cta"
+                  className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-panel px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink/30 hover:bg-elevated sm:px-5 sm:py-3.5 sm:text-base"
+                >
+                  <Play className="h-4 w-4 shrink-0 fill-current" />
+                  <span>Try a sample</span>
+                </Link>
               </div>
+            </div>
 
-              <div className="flex justify-center lg:justify-end">
-                <HomeHeroDemo />
-              </div>
+            <div className="flex justify-center lg:justify-end">
+              <HomeHeroDemo />
             </div>
           </div>
         </section>
 
-        {/* Upload -> Edit -> Export Workflow (with practical file limits) */}
+        {/* Real Product Views: Upload -> Edit -> Export */}
         <section
           id="workflow"
-          className="border-t border-ink/8 bg-inset/60 py-11 lg:py-14"
+          className="border-t border-ink/10 bg-inset/55 py-12 lg:py-16"
         >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-                  From raw clip to finished export in three steps
+                  Upload, edit, and export in one calm workspace
                 </h2>
                 <p className="mt-1 text-sm text-ink-secondary">
                   Supports MP4, MOV, MP3, and WAV files up to 150 MB and 3
                   minutes per clip.
                 </p>
               </div>
-              <Link
+              <a
                 href="/upload"
-                prefetch={false}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition hover:text-accent-hover"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink transition hover:text-accent-hover"
               >
                 <span>Start with your clip</span>
                 <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              </a>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <article className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <div className="flex items-center gap-2.5 text-sm font-bold text-ink">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
-                    <Upload className="h-3.5 w-3.5" />
-                  </span>
-                  <span>1. Upload video or audio</span>
+            <div
+              data-testid="workflow-product-views"
+              className="mt-7 grid grid-cols-1 gap-5 lg:grid-cols-3"
+            >
+              {/* Step 1: Real Upload Status View */}
+              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-semibold text-ink-secondary">
+                    <span>Step 1 · Upload</span>
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      ≤ 150 MB · ≤ 3 min
+                    </span>
+                  </div>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Private transfer and automatic transcription
+                  </h3>
+
+                  {/* Real Product UI Snapshot: Upload -> Ready */}
+                  <div className="mt-4 rounded-xl border border-ink/10 bg-inset p-3.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="truncate font-semibold text-ink">
+                        founder-take-04.mp4
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-ink/15 bg-panel px-2 py-0.5 font-medium text-ink">
+                        <CheckCircle2 className="h-3 w-3 text-accent" />
+                        <span>Ready</span>
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-medium text-ink-muted">
+                      <span className="text-ink-secondary">Uploading</span>
+                      <span>→</span>
+                      <span className="text-ink-secondary">Processing</span>
+                      <span>→</span>
+                      <span className="font-semibold text-ink">Ready</span>
+                    </div>
+
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-track">
+                      <div className="h-full w-full rounded-full bg-accent" />
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="font-mono text-[10px] text-ink-muted">
+                        24.8 MB · Word timestamps ready
+                      </span>
+                      <span className="rounded-lg bg-accent px-2.5 py-1 text-[10px] font-semibold text-page">
+                        Open editor
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-xs leading-relaxed text-ink-secondary">
-                  Private resumable TUS uploads handle connection drops cleanly
-                  while the worker normalizes upright H.264/MP3 previews and
-                  aligns word timestamps.
+
+                <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
+                  Resumable TUS transfers verify file size before queuing worker
+                  transcription, then surface Open editor as soon as captions
+                  finish.
                 </p>
-                <div className="mt-3.5 flex flex-wrap gap-1.5 font-mono text-[11px] text-ink-secondary">
-                  <span className="rounded-md bg-elevated px-2 py-0.5">MP4</span>
-                  <span className="rounded-md bg-elevated px-2 py-0.5">MOV</span>
-                  <span className="rounded-md bg-elevated px-2 py-0.5">MP3</span>
-                  <span className="rounded-md bg-elevated px-2 py-0.5">WAV</span>
-                  <span className="rounded-md border border-ink/10 px-2 py-0.5 text-ink-muted">
-                    ≤ 150 MB · ≤ 3 min
-                  </span>
-                </div>
               </article>
 
-              <article className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <div className="flex items-center gap-2.5 text-sm font-bold text-ink">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
-                    <SlidersHorizontal className="h-3.5 w-3.5" />
-                  </span>
-                  <span>2. Refine transcript &amp; style</span>
+              {/* Step 2: Real Transcript + Preset Gallery View */}
+              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-semibold text-ink-secondary">
+                    <span>Step 2 · Edit &amp; Style</span>
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      12 presets · Timeline
+                    </span>
+                  </div>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Follow playback, fix words, and switch styles
+                  </h3>
+
+                  {/* Real Product UI Snapshot: Editor Transcript + Presets */}
+                  <div className="mt-4 space-y-2 rounded-xl border border-ink/10 bg-inset p-3">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-semibold text-ink">Transcript</span>
+                      <span className="rounded-md border border-ink/15 bg-panel px-1.5 py-0.5 font-medium text-ink">
+                        Follow playback · On
+                      </span>
+                    </div>
+
+                    <div className="rounded-lg border border-ink/10 bg-panel px-2.5 py-1.5 text-[11px]">
+                      <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
+                        <span>0:00.3</span>
+                        <span className="text-ink-secondary">Playing</span>
+                      </div>
+                      <p className="mt-0.5 truncate text-ink">
+                        Great short-form clips hook viewers in two seconds.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-center text-[10px] font-semibold">
+                      <span className="rounded-md border border-accent bg-accent/15 py-1 text-ink">
+                        Highlight
+                      </span>
+                      <span className="rounded-md border border-ink/10 bg-panel py-1 text-ink-secondary">
+                        Broadcast
+                      </span>
+                      <span className="rounded-md border border-ink/10 bg-panel py-1 text-ink-secondary">
+                        Lower Third
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-xs leading-relaxed text-ink-secondary">
-                  Edit cue text directly, reveal individual timed words when
-                  needed, drag cue edges against the real audio waveform, and
-                  check Reels/Shorts safe areas.
+
+                <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
+                  Correct lines inline, inspect individual word timings or the
+                  real audio waveform when needed, and preview Clean, Creator,
+                  Bold, and Editorial styles live.
                 </p>
-                <div className="mt-3.5 flex flex-wrap gap-1.5 font-mono text-[11px] text-ink-secondary">
-                  <span className="rounded-md bg-elevated px-2 py-0.5">
-                    Split &amp; Merge
-                  </span>
-                  <span className="rounded-md bg-elevated px-2 py-0.5">
-                    Audio Waveform
-                  </span>
-                  <span className="rounded-md bg-accent-soft px-2 py-0.5 text-accent-hover">
-                    Brand Presets
-                  </span>
-                </div>
               </article>
 
-              <article className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <div className="flex items-center gap-2.5 text-sm font-bold text-ink">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft text-accent">
-                    <Download className="h-3.5 w-3.5" />
-                  </span>
-                  <span>3. Export pinned revisions</span>
+              {/* Step 3: Real Pinned Export View */}
+              <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-semibold text-ink-secondary">
+                    <span>Step 3 · Export</span>
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      Pinned revisions
+                    </span>
+                  </div>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Download burned-in video, SRT, or alpha MOV
+                  </h3>
+
+                  {/* Real Product UI Snapshot: Export Drawer */}
+                  <div className="mt-4 space-y-1.5 rounded-xl border border-ink/10 bg-inset p-3 text-[11px]">
+                    <div className="flex items-center justify-between text-[10px] text-ink-muted">
+                      <span>Revision #3</span>
+                      <span className="font-mono">Style copied by value</span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-ink/10 bg-panel px-2.5 py-1.5">
+                      <span className="font-medium text-ink">Burned-in MP4</span>
+                      <span className="font-mono text-[10px] text-ink-secondary">
+                        H.264 / AAC
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-ink/10 bg-panel px-2.5 py-1.5">
+                      <span className="font-medium text-ink">Subtitles</span>
+                      <span className="font-mono text-[10px] text-ink-secondary">
+                        UTF-8 .SRT
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border border-ink/10 bg-panel px-2.5 py-1.5">
+                      <span className="font-medium text-ink">
+                        Transparent MOV
+                      </span>
+                      <span className="font-mono text-[10px] text-ink-secondary">
+                        ProRes 4444
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-2.5 text-xs leading-relaxed text-ink-secondary">
-                  Every export binds to a specific saved caption revision with
-                  the applied style copied by value, so later tweaks never alter
-                  earlier renders.
+
+                <p className="mt-3.5 text-xs leading-relaxed text-ink-secondary">
+                  Every render locks onto the exact saved revision and caption
+                  style, keeping earlier downloads untouched while you continue
+                  editing.
                 </p>
-                <div className="mt-3.5 flex flex-wrap gap-1.5 font-mono text-[11px] text-ink-secondary">
-                  <span className="rounded-md bg-elevated px-2 py-0.5">
-                    Immutable Revs
-                  </span>
-                  <span className="rounded-md bg-elevated px-2 py-0.5">
-                    Matched Fonts
-                  </span>
-                </div>
               </article>
             </div>
           </div>
         </section>
 
-        {/* Export Formats Section (with codec details where they belong) */}
-        <section id="exports" className="border-t border-ink/8 py-11 lg:py-14">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Export Formats Section */}
+        <section id="exports" className="border-t border-ink/10 py-12 lg:py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
@@ -266,7 +320,7 @@ export default async function HomePage() {
               </div>
               <Link
                 href="/studio"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition hover:text-accent-hover"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink transition hover:text-accent-hover"
               >
                 <span>Open Sample Studio</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -278,26 +332,26 @@ export default async function HomePage() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <Film className="h-4 w-4 text-accent" />
+                      <Film className="h-4 w-4 text-ink-secondary" />
                       <span>Burned-in MP4</span>
                     </span>
-                    <span className="rounded-md border border-ink/10 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
+                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
                       H.264 / AAC
                     </span>
                   </div>
 
-                  <div className="mt-3.5 flex h-24 items-center justify-center rounded-xl border border-ink/10 bg-gradient-to-b from-[#1A1530] via-[#11121F] to-page px-3">
+                  <div className="mt-3.5 flex h-24 items-center justify-center rounded-xl border border-ink/10 bg-inset px-3">
                     <p
                       style={{ fontFamily: '"Poppins", sans-serif' }}
                       className="flex flex-wrap items-center justify-center gap-1 text-center text-xs font-extrabold uppercase"
                     >
-                      <span className="rounded bg-page/70 px-1.5 py-0.5 text-ink">
+                      <span className="rounded bg-panel px-1.5 py-0.5 text-ink">
                         READY
                       </span>
                       <span className="rounded bg-accent px-1.5 py-0.5 text-page">
                         TO
                       </span>
-                      <span className="rounded bg-page/70 px-1.5 py-0.5 text-ink">
+                      <span className="rounded bg-panel px-1.5 py-0.5 text-ink">
                         POST
                       </span>
                     </p>
@@ -315,15 +369,15 @@ export default async function HomePage() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <FileText className="h-4 w-4 text-accent" />
+                      <FileText className="h-4 w-4 text-ink-secondary" />
                       <span>UTF-8 SRT Subtitles</span>
                     </span>
-                    <span className="rounded-md border border-ink/10 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
+                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
                       .srt
                     </span>
                   </div>
 
-                  <pre className="mt-3.5 h-24 overflow-hidden rounded-xl border border-ink/10 bg-page p-2.5 font-mono text-[11px] leading-relaxed text-ink-secondary">
+                  <pre className="mt-3.5 h-24 overflow-hidden rounded-xl border border-ink/10 bg-inset p-2.5 font-mono text-[11px] leading-relaxed text-ink-secondary">
 {`1
 00:00:00,350 --> 00:00:02,830
 Great short-form clips hook
@@ -342,10 +396,10 @@ viewers in two seconds.`}
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                      <Layers className="h-4 w-4 text-accent" />
+                      <Layers className="h-4 w-4 text-ink-secondary" />
                       <span>Transparent MOV</span>
                     </span>
-                    <span className="rounded-md border border-accent/35 bg-accent-soft px-2 py-0.5 font-mono text-[10px] text-accent-hover">
+                    <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
                       ProRes 4444 Alpha
                     </span>
                   </div>
@@ -373,8 +427,8 @@ viewers in two seconds.`}
         </section>
       </main>
 
-      <footer className="border-t border-ink/8 bg-page py-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-ink-muted sm:px-6 lg:px-8">
+      <footer className="border-t border-ink/10 bg-page py-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 text-xs text-ink-muted sm:px-6 lg:px-8">
           <ClipCaptionsLockup markSize={24} compact />
           <nav
             aria-label="Footer navigation"

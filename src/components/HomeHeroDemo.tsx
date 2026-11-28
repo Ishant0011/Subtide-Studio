@@ -17,6 +17,13 @@ import { CaptionOverlay } from "@/components/CaptionOverlay";
 
 type CompareMode = "split" | "after" | "before";
 
+const HERO_FEATURED_PRESETS: Array<{ id: string; shortLabel: string }> = [
+  { id: "word-highlight", shortLabel: "Highlight" },
+  { id: "minimal", shortLabel: "Minimal" },
+  { id: "broadcast", shortLabel: "Broadcast" },
+  { id: "editorial-serif", shortLabel: "Editorial" },
+];
+
 export function HomeHeroDemo() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -25,12 +32,26 @@ export function HomeHeroDemo() {
   const [compareMode, setCompareMode] = useState<CompareMode>("after");
   const [splitPercent, setSplitPercent] = useState(38);
   const [templateId, setTemplateId] = useState<string>(
-    BUILTIN_STYLE_TEMPLATES[0].id
+    HERO_FEATURED_PRESETS[0].id
   );
   const [currentTime, setCurrentTime] = useState(0.5);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+
+  const featuredTemplates: Array<{
+    tpl: BuiltInStyleTemplate;
+    shortLabel: string;
+  }> = useMemo(
+    () =>
+      HERO_FEATURED_PRESETS.map((entry) => ({
+        tpl:
+          BUILTIN_STYLE_TEMPLATES.find((t) => t.id === entry.id) ??
+          BUILTIN_STYLE_TEMPLATES[0],
+        shortLabel: entry.shortLabel,
+      })),
+    []
+  );
 
   const selectedTemplate: BuiltInStyleTemplate = useMemo(
     () =>
@@ -134,23 +155,23 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[238px] rounded-[1.5rem] border border-accent/30 bg-page/95 p-2.5 shadow-[0_28px_80px_rgba(0,0,0,0.75),0_0_50px_rgba(167,139,250,0.14)] sm:max-w-[268px] sm:rounded-[1.65rem] sm:p-3 lg:max-w-[276px]"
+      className="relative mx-auto w-full max-w-[262px] rounded-[1.45rem] border border-ink/12 bg-panel p-2.5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:max-w-[284px] sm:rounded-[1.6rem] sm:p-3 lg:max-w-[300px] xl:max-w-[314px]"
     >
       {/* Top Synchronized Before / After Switcher */}
       <div className="mb-2 flex items-center justify-between gap-1.5 px-0.5">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
           <span
             className={`h-2 w-2 rounded-full ${
-              isPlaying ? "animate-pulse bg-accent" : "bg-accent/70"
+              isPlaying ? "animate-pulse bg-accent" : "bg-ink-muted"
             }`}
           />
-          <span>Result</span>
+          <span>{selectedTemplate.name}</span>
         </span>
 
         <div
           role="group"
           aria-label="Before and after caption comparison mode"
-          className="inline-flex rounded-full border border-ink/12 bg-panel p-0.5 text-[10px] font-semibold"
+          className="inline-flex rounded-full border border-ink/12 bg-inset p-0.5 text-[10px] font-semibold"
         >
           {(
             [
@@ -180,8 +201,8 @@ export function HomeHeroDemo() {
         </div>
       </div>
 
-      {/* Synchronized Single-Video 9:16 Stage (sized so transport & presets stay in view) */}
-      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.2rem] border border-ink/12 bg-panel sm:rounded-[1.3rem]">
+      {/* Synchronized Single-Video 9:16 Stage */}
+      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.15rem] border border-ink/12 bg-inset sm:rounded-[1.25rem]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
@@ -213,24 +234,22 @@ export function HomeHeroDemo() {
         />
 
         {/* Scrims for caption legibility */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-page/65 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-page/90 via-page/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/50 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-        {/* Subtle State Pill */}
-        <div className="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-center justify-between text-[10px] font-semibold">
-          {compareMode !== "after" ? (
+        {/* Quiet comparison indicators only when comparing Before / Split */}
+        {compareMode !== "after" && (
+          <div className="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-center justify-between text-[10px] font-semibold">
             <span className="rounded-full border border-ink/15 bg-page/80 px-2 py-0.5 text-ink-secondary backdrop-blur-md">
-              Before
+              Original
             </span>
-          ) : (
-            <span />
-          )}
-          {compareMode !== "before" && (
-            <span className="rounded-full border border-accent/45 bg-accent-soft/90 px-2 py-0.5 text-accent-hover backdrop-blur-md">
-              After · {selectedTemplate.name}
-            </span>
-          )}
-        </div>
+            {compareMode === "split" && (
+              <span className="rounded-full border border-ink/20 bg-page/85 px-2 py-0.5 text-ink backdrop-blur-md">
+                Captioned
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Synchronized Caption Overlay Layer */}
         {showCaptionsLayer && (
@@ -259,8 +278,8 @@ export function HomeHeroDemo() {
             style={{ left: `${splitPercent}%` }}
             className="pointer-events-none absolute bottom-0 top-0 z-30 -translate-x-1/2"
           >
-            <div className="h-full w-0.5 bg-accent shadow-[0_0_12px_rgba(167,139,250,0.9)]" />
-            <div className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent bg-page text-[9px] font-bold text-accent-hover shadow-lg">
+            <div className="h-full w-0.5 bg-ink/90 shadow-md" />
+            <div className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-ink/30 bg-page text-[9px] font-bold text-ink shadow-lg">
               ↔
             </div>
           </div>
@@ -270,7 +289,7 @@ export function HomeHeroDemo() {
         {!isPlaying && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent/60 bg-page/75 text-accent shadow-2xl backdrop-blur-md"
+            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-ink/25 bg-page/80 text-ink shadow-2xl backdrop-blur-md"
           >
             <Play className="ml-0.5 h-4 w-4 fill-current" />
           </div>
@@ -292,9 +311,7 @@ export function HomeHeroDemo() {
             aria-label="Adjust before and after split position"
             className="studio-scrubber h-4 flex-1"
           />
-          <span className="text-[10px] font-medium text-accent-hover">
-            After
-          </span>
+          <span className="text-[10px] font-medium text-ink">After</span>
         </div>
       )}
 
@@ -312,7 +329,7 @@ export function HomeHeroDemo() {
           <button
             type="button"
             onClick={retryMedia}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-300/30 bg-panel px-2 py-0.5 font-semibold text-rose-100 hover:border-accent/55"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-300/30 bg-panel px-2 py-0.5 font-semibold text-rose-100 hover:border-ink/40"
           >
             <RefreshCw className="h-3 w-3" />
             <span>Retry</span>
@@ -321,7 +338,7 @@ export function HomeHeroDemo() {
       )}
 
       {/* Compact Single-Row Transport Bar (Play, Mute, Scrubber, Time) */}
-      <div className="mt-2 flex items-center gap-2 rounded-xl border border-ink/10 bg-panel px-2 py-1.5">
+      <div className="mt-2 flex items-center gap-2 rounded-xl border border-ink/10 bg-inset px-2 py-1.5">
         <button
           type="button"
           data-testid="hero-play-btn"
@@ -340,7 +357,7 @@ export function HomeHeroDemo() {
           type="button"
           onClick={toggleMute}
           aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-page text-ink-secondary transition hover:border-accent/50 hover:text-ink"
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-ink/25 hover:text-ink"
         >
           {isMuted ? (
             <VolumeX className="h-3.5 w-3.5" />
@@ -375,14 +392,14 @@ export function HomeHeroDemo() {
         </span>
       </div>
 
-      {/* Live Style Preset Switcher (always visible right under transport) */}
+      {/* Live Style Preset Switcher across distinct categories */}
       <div
         role="group"
         aria-label="Demo caption style presets"
         data-testid="hero-preset-group"
-        className="mt-1.5 flex items-center gap-1"
+        className="mt-1.5 grid grid-cols-4 gap-1"
       >
-        {BUILTIN_STYLE_TEMPLATES.slice(0, 3).map((tpl, idx) => {
+        {featuredTemplates.map(({ tpl, shortLabel }) => {
           const selected = templateId === tpl.id;
           return (
             <button
@@ -393,15 +410,13 @@ export function HomeHeroDemo() {
                 setTemplateId(tpl.id);
                 if (compareMode === "before") setCompareMode("after");
               }}
-              className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[10px] font-semibold transition sm:text-[11px] ${
-                idx === 0 ? "flex-[1.35]" : "flex-1"
-              } ${
+              className={`whitespace-nowrap rounded-lg border px-1 py-1 text-[10px] font-semibold transition sm:px-1.5 sm:text-[11px] ${
                 selected
-                  ? "border-accent bg-accent-soft text-accent-hover"
-                  : "border-ink/10 bg-panel text-ink-secondary hover:border-ink/25 hover:text-ink"
+                  ? "border-accent bg-accent text-page"
+                  : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
               }`}
             >
-              {tpl.name}
+              {shortLabel}
             </button>
           );
         })}

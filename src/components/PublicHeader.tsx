@@ -28,7 +28,7 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               href="/studio"
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
-              <Play className="h-3.5 w-3.5 text-accent" />
+              <Play className="h-3.5 w-3.5 text-ink-muted" />
               <span>Sample Studio</span>
             </Link>
             <Link
@@ -51,9 +51,9 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
             <Link
               href="/projects"
               prefetch={false}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page sm:px-3.5 sm:py-2"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-panel px-2.5 py-1.5 text-xs font-semibold text-ink transition hover:border-ink/30 hover:bg-elevated sm:px-3.5 sm:py-2"
             >
-              <FolderKanban className="h-3.5 w-3.5" />
+              <FolderKanban className="h-3.5 w-3.5 text-ink-secondary" />
               <span>Projects</span>
             </Link>
             <AccountMenu userEmail={userEmail} compactMobile />
@@ -67,7 +67,7 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               href="/login?mode=signin"
               prefetch={false}
               data-testid="header-signin-link"
-              className="rounded-xl border border-ink/15 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-accent/55 hover:text-accent-hover sm:px-3.5 sm:py-2"
+              className="rounded-xl border border-ink/15 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-ink/30 hover:bg-elevated sm:px-3.5 sm:py-2"
             >
               Sign in
             </Link>

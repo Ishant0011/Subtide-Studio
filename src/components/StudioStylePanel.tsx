@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
+  AlignCenter,
+  AlignLeft,
   Bookmark,
   Check,
   ChevronDown,
@@ -17,6 +19,7 @@ import {
 import {
   BUILTIN_STYLE_TEMPLATES,
   CAPTION_FONT_LIST,
+  CAPTION_TEMPLATE_CATEGORIES,
   MAX_VERTICAL_POSITION,
   MIN_VERTICAL_POSITION,
   applyCaptionCasing,
@@ -24,9 +27,12 @@ import {
   hexToRgba,
   normalizeCaptionStyle,
   type CaptionCasing,
+  type CaptionEmphasisMode,
   type CaptionFontSize,
+  type CaptionLetterSpacing,
   type CaptionShadowStrength,
   type CaptionStyleConfig,
+  type CaptionTemplateCategory,
   type SavedCaptionPresetRow,
 } from "@/lib/caption-editor";
 
@@ -39,7 +45,6 @@ interface StudioStylePanelProps {
   subtitle?: string;
   showSafeArea?: boolean;
   onToggleSafeArea?: (next: boolean) => void;
-  /** Personal saved presets (owner-scoped, only enabled in signed-in project editor) */
   personalPresets?: SavedCaptionPresetRow[];
   onPersonalPresetsChange?: (next: SavedCaptionPresetRow[]) => void;
   enablePersonalPresets?: boolean;
@@ -64,6 +69,20 @@ const SHADOW_OPTIONS: Array<{ id: CaptionShadowStrength; label: string }> = [
   { id: "strong", label: "Strong" },
 ];
 
+const EMPHASIS_OPTIONS: Array<{ id: CaptionEmphasisMode; label: string }> = [
+  { id: "pill", label: "Pill" },
+  { id: "color", label: "Color" },
+  { id: "underline", label: "Underline" },
+  { id: "scale", label: "Pop" },
+  { id: "cue", label: "Steady" },
+];
+
+const SPACING_OPTIONS: Array<{ id: CaptionLetterSpacing; label: string }> = [
+  { id: "tight", label: "Tight" },
+  { id: "normal", label: "Normal" },
+  { id: "wide", label: "Wide" },
+];
+
 const PLACEMENT_OPTIONS: Array<{ label: string; value: number }> = [
   { label: "Bottom", value: 14 },
   { label: "Middle", value: 45 },
@@ -78,7 +97,26 @@ const ACTIVE_WORD_SWATCHES = [
   "#38BDF8",
   "#FB7185",
 ];
-const BG_COLOR_SWATCHES = ["#070B10", "#10121A", "#1E1B4B", "#000000"];
+const BG_COLOR_SWATCHES = ["#0D0E12", "#191C24", "#1E1B4B", "#000000"];
+
+function isMatchingStyle(
+  current: CaptionStyleConfig,
+  candidate: CaptionStyleConfig
+): boolean {
+  const a = computeCaptionLayout(current);
+  const b = computeCaptionLayout(candidate);
+  return (
+    a.preset === b.preset &&
+    a.fontFamily === b.fontFamily &&
+    a.fontSize === b.fontSize &&
+    a.activeWordColor === b.activeWordColor &&
+    a.textColor === b.textColor &&
+    a.emphasisMode === b.emphasisMode &&
+    a.alignment === b.alignment &&
+    a.casing === b.casing &&
+    a.italic === b.italic
+  );
+}
 
 function LivePresetSwatch({ style }: { style: Partial<CaptionStyleConfig> }) {
   const layout = computeCaptionLayout(style);
@@ -89,38 +127,79 @@ function LivePresetSwatch({ style }: { style: Partial<CaptionStyleConfig> }) {
     ? hexToRgba(layout.backgroundColor, layout.backgroundOpacity / 100)
     : "transparent";
 
-  if (layout.preset === "clean") {
+  const textShadow =
+    layout.outlineWidth > 0
+      ? `-1px -1px 0 ${layout.outlineColor}, 1px -1px 0 ${layout.outlineColor}, -1px 1px 0 ${layout.outlineColor}, 1px 1px 0 ${layout.outlineColor}`
+      : layout.shadowStrength !== "none"
+        ? "0 1px 4px rgba(0,0,0,0.85)"
+        : undefined;
+
+  const typoStyle = {
+    fontFamily: layout.cssFontFamily,
+    letterSpacing: layout.cssLetterSpacing,
+    fontStyle: layout.italic ? ("italic" as const) : ("normal" as const),
+  };
+
+  const alignClass =
+    layout.alignment === "left" ? "justify-start px-2.5" : "justify-center px-2";
+
+  if (layout.preset === "word-highlight" || layout.emphasisMode === "pill") {
     return (
       <div
         aria-hidden="true"
-        style={{ fontFamily: layout.cssFontFamily }}
-        className="flex h-8 w-full items-center justify-center rounded-lg bg-page/90 px-2 text-xs font-bold"
+        style={typoStyle}
+        className={`flex h-9 w-full items-center gap-1 rounded-lg bg-page ${alignClass} text-[11px] font-extrabold`}
       >
-        <span style={{ color: layout.textColor, opacity: 0.8 }}>{w1}</span>
-        <span className="mx-1" style={{ color: layout.activeWordColor }}>
+        <span style={{ color: layout.textColor, opacity: 0.85, textShadow }}>
+          {w1}
+        </span>
+        <span
+          className="rounded px-1.5 py-0.5"
+          style={{
+            backgroundColor: layout.activeWordColor,
+            color: layout.activeWordContrastText,
+          }}
+        >
           {w2}
         </span>
-        <span style={{ color: layout.textColor, opacity: 0.8 }}>{w3}</span>
+        <span style={{ color: layout.textColor, opacity: 0.85, textShadow }}>
+          {w3}
+        </span>
       </div>
     );
   }
+
   if (layout.preset === "boxed") {
     return (
       <div
         aria-hidden="true"
-        style={{ fontFamily: layout.cssFontFamily }}
-        className="flex h-8 w-full items-center justify-center rounded-lg bg-page/90 px-2"
+        style={typoStyle}
+        className={`flex h-9 w-full items-center rounded-lg bg-page ${alignClass}`}
       >
         <span
-          style={{ backgroundColor: bgRgba, color: layout.textColor }}
-          className="rounded-md border border-ink/15 px-2 py-0.5 text-xs font-bold"
+          style={{ backgroundColor: bgRgba, color: layout.textColor, textShadow }}
+          className={`truncate rounded-md px-2 py-0.5 text-[11px] font-bold ${
+            layout.alignment === "left"
+              ? "border-l-2 border-l-accent"
+              : "border border-ink/12"
+          }`}
         >
           {w1}{" "}
           <span
-            className="underline underline-offset-2"
+            className={
+              layout.emphasisMode === "underline"
+                ? "underline decoration-2 underline-offset-2"
+                : ""
+            }
             style={{
-              color: layout.activeWordColor,
-              textDecorationColor: layout.activeWordColor,
+              color:
+                layout.emphasisMode === "cue"
+                  ? layout.textColor
+                  : layout.activeWordColor,
+              textDecorationColor:
+                layout.emphasisMode === "underline"
+                  ? layout.activeWordColor
+                  : undefined,
             }}
           >
             {w2}
@@ -130,23 +209,37 @@ function LivePresetSwatch({ style }: { style: Partial<CaptionStyleConfig> }) {
       </div>
     );
   }
+
   return (
     <div
       aria-hidden="true"
-      style={{ fontFamily: layout.cssFontFamily }}
-      className="flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-page/90 px-2 text-[11px] font-extrabold"
+      style={typoStyle}
+      className={`flex h-9 w-full items-center gap-1 rounded-lg bg-page ${alignClass} text-[11px] font-bold`}
     >
-      <span style={{ color: layout.textColor, opacity: 0.8 }}>{w1}</span>
+      <span style={{ color: layout.textColor, opacity: 0.88, textShadow }}>
+        {w1}
+      </span>
       <span
-        className="rounded px-1.5 py-0.5"
+        className={
+          layout.emphasisMode === "scale"
+            ? " inline-block scale-110 font-extrabold"
+            : layout.emphasisMode === "underline"
+              ? "underline decoration-2 underline-offset-2"
+              : ""
+        }
         style={{
-          backgroundColor: layout.activeWordColor,
-          color: layout.activeWordContrastText,
+          color:
+            layout.emphasisMode === "cue"
+              ? layout.textColor
+              : layout.activeWordColor,
+          textShadow,
         }}
       >
         {w2}
       </span>
-      <span style={{ color: layout.textColor, opacity: 0.8 }}>{w3}</span>
+      <span style={{ color: layout.textColor, opacity: 0.88, textShadow }}>
+        {w3}
+      </span>
     </div>
   );
 }
@@ -171,6 +264,9 @@ export function StudioStylePanel({
 
   const [activeSubtab, setActiveSubtab] =
     useState<StylePanelSubtab>(defaultTab);
+  const [categoryFilter, setCategoryFilter] = useState<
+    "All" | CaptionTemplateCategory
+  >("All");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
@@ -187,6 +283,14 @@ export function StudioStylePanel({
     presets: null,
     style: null,
   });
+
+  const filteredTemplates = useMemo(
+    () =>
+      categoryFilter === "All"
+        ? BUILTIN_STYLE_TEMPLATES
+        : BUILTIN_STYLE_TEMPLATES.filter((t) => t.category === categoryFilter),
+    [categoryFilter]
+  );
 
   const handleSubtabKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,
@@ -299,7 +403,7 @@ export function StudioStylePanel({
       {compactLabel && (
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
-            <Bookmark className="h-3 w-3 text-accent" />
+            <Bookmark className="h-3 w-3 text-ink-muted" />
             <span>Save as preset</span>
           </span>
           {presetSavedNotice && (
@@ -332,7 +436,7 @@ export function StudioStylePanel({
           data-testid="preset-save-btn"
           disabled={savingPreset || !newPresetName.trim()}
           onClick={() => void handleSavePersonalPreset()}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-accent/40 bg-accent-soft px-2.5 py-1.5 text-xs font-semibold text-accent-hover transition hover:border-accent hover:bg-accent hover:text-page disabled:opacity-45"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/15 bg-elevated px-2.5 py-1.5 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-45"
         >
           {savingPreset ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -383,12 +487,21 @@ export function StudioStylePanel({
           onKeyDown={(e) => handleSubtabKeyDown(e, "presets")}
           className={`flex min-h-[34px] items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
             activeSubtab === "presets"
-              ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
+              ? "bg-accent text-page"
               : "text-ink-secondary hover:bg-panel hover:text-ink"
           }`}
         >
           <Sparkles className="h-3.5 w-3.5 shrink-0" />
           <span>Presets</span>
+          <span
+            className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] ${
+              activeSubtab === "presets"
+                ? "bg-page/20 text-page"
+                : "bg-elevated text-ink-muted"
+            }`}
+          >
+            {BUILTIN_STYLE_TEMPLATES.length}
+          </span>
         </button>
 
         <button
@@ -406,7 +519,7 @@ export function StudioStylePanel({
           onKeyDown={(e) => handleSubtabKeyDown(e, "style")}
           className={`flex min-h-[34px] items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
             activeSubtab === "style"
-              ? "bg-accent-soft text-accent-hover ring-1 ring-accent/40"
+              ? "bg-accent text-page"
               : "text-ink-secondary hover:bg-panel hover:text-ink"
           }`}
         >
@@ -415,80 +528,93 @@ export function StudioStylePanel({
         </button>
       </div>
 
-      {/* TAB 1: PRESETS (Live Templates + Personal Saved Presets) */}
+      {/* TAB 1: PRESETS GALLERY (12 Distinct Styles Across Clean, Creator, Bold, Editorial + Saved Presets) */}
       <div
         id="style-tabpanel-presets"
         role="tabpanel"
         aria-labelledby="style-tab-presets"
         data-testid="style-panel-presets"
-        className={activeSubtab === "presets" ? "mt-3.5 space-y-4" : "hidden"}
+        className={activeSubtab === "presets" ? "mt-3 space-y-3.5" : "hidden"}
       >
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              Templates
-            </span>
-            <button
-              type="button"
-              onClick={() => setActiveSubtab("style")}
-              className="text-[11px] font-medium text-ink-secondary transition hover:text-accent-hover"
-            >
-              Customize style →
-            </button>
-          </div>
-          <div
-            role="group"
-            aria-label="Caption presets"
-            className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1"
-          >
-            {BUILTIN_STYLE_TEMPLATES.map((tpl) => {
-              const selected =
-                layout.preset === tpl.style.preset &&
-                layout.fontFamily === tpl.style.fontFamily &&
-                layout.activeWordColor === tpl.style.activeWordColor;
-              return (
-                <button
-                  key={tpl.id}
-                  type="button"
-                  data-testid={`builtin-preset-${tpl.id}`}
-                  aria-pressed={selected}
-                  onClick={() => onUpdateStyle(tpl.style)}
-                  className={`group flex flex-col gap-1.5 rounded-xl border p-2.5 text-left transition ${
-                    selected
-                      ? "border-accent bg-accent-soft/70 shadow-[0_0_0_1px_rgba(167,139,250,0.22)]"
-                      : "border-ink/10 bg-inset hover:border-ink/25 hover:bg-elevated/70"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={`text-xs font-semibold ${
-                        selected ? "text-accent-hover" : "text-ink"
-                      }`}
-                    >
-                      {tpl.name}
-                    </span>
-                    {selected && (
-                      <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent-hover">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <LivePresetSwatch style={tpl.style} />
-                </button>
-              );
-            })}
-          </div>
+        {/* Category Filter Bar */}
+        <div
+          role="group"
+          aria-label="Filter preset categories"
+          data-testid="preset-category-filters"
+          className="flex flex-wrap items-center gap-1"
+        >
+          {(["All", ...CAPTION_TEMPLATE_CATEGORIES] as const).map((cat) => {
+            const active = categoryFilter === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                data-testid={`preset-category-${cat.toLowerCase()}`}
+                aria-pressed={active}
+                onClick={() => setCategoryFilter(cat)}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                  active
+                    ? "bg-accent text-page font-semibold"
+                    : "bg-inset text-ink-secondary hover:bg-elevated hover:text-ink"
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Compact 2-Column Visual Preset Gallery */}
+        <div
+          role="group"
+          aria-label="Caption presets"
+          data-testid="preset-gallery-grid"
+          className="grid grid-cols-2 gap-2"
+        >
+          {filteredTemplates.map((tpl) => {
+            const selected = isMatchingStyle(style, tpl.style);
+            return (
+              <button
+                key={tpl.id}
+                type="button"
+                data-testid={`builtin-preset-${tpl.id}`}
+                data-preset-category={tpl.category}
+                aria-pressed={selected}
+                title={tpl.description}
+                onClick={() => onUpdateStyle(tpl.style)}
+                className={`group flex min-w-0 flex-col gap-1.5 rounded-xl border p-2 text-left transition ${
+                  selected
+                    ? "border-accent bg-accent-soft"
+                    : "border-ink/10 bg-inset hover:border-ink/25 hover:bg-elevated"
+                }`}
+              >
+                <LivePresetSwatch style={tpl.style} />
+                <div className="flex items-center justify-between gap-1 px-0.5">
+                  <span
+                    className={`truncate text-[11px] font-semibold ${
+                      selected ? "text-accent-hover" : "text-ink"
+                    }`}
+                  >
+                    {tpl.name}
+                  </span>
+                  <span className="shrink-0 text-[10px] text-ink-muted">
+                    {tpl.category}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Personal Saved Presets (Owner-Scoped) or Guest Sample Mode Explanation */}
         {enablePersonalPresets ? (
           <div
             data-testid="personal-presets-section"
-            className="border-t border-ink/8 pt-3.5"
+            className="border-t border-ink/10 pt-3"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                <Bookmark className="h-3 w-3 text-accent" />
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-secondary">
+                <Bookmark className="h-3 w-3 text-ink-muted" />
                 <span>Saved Presets</span>
               </span>
               <span className="font-mono text-[10px] text-ink-muted">
@@ -505,7 +631,7 @@ export function StudioStylePanel({
             )}
 
             {personalPresets.length > 0 && (
-              <div className="mt-2.5 space-y-1.5">
+              <div className="mt-2.5 grid grid-cols-1 gap-1.5">
                 {personalPresets.map((preset) => {
                   const isRenaming = renamingId === preset.id;
                   const isBusy = busyPresetId === preset.id;
@@ -604,8 +730,8 @@ export function StudioStylePanel({
             data-testid="sample-presets-note"
             className="rounded-xl border border-ink/10 bg-inset px-3 py-2.5 text-[11px] leading-relaxed text-ink-secondary"
           >
-            Style changes preview locally on the sample clip. Upload your own
-            clip to save personal presets and render video exports.
+            Click any preset above to preview it on the sample clip. Upload your
+            own clip to save custom brand presets and export video.
           </div>
         )}
       </div>
@@ -651,12 +777,49 @@ export function StudioStylePanel({
           </div>
         </div>
 
-        {/* 2. Font Size (Everyday Control) */}
+        {/* 2. Font Size + Alignment */}
         {showSizeAndPosition && (
-          <div className="border-t border-ink/8 pt-3.5">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              Size
-            </span>
+          <div className="border-t border-ink/10 pt-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                Size &amp; Alignment
+              </span>
+              <div
+                role="group"
+                aria-label="Caption alignment"
+                className="inline-flex rounded-lg border border-ink/10 bg-page p-0.5"
+              >
+                <button
+                  type="button"
+                  data-testid="style-align-center"
+                  aria-pressed={layout.alignment === "center"}
+                  aria-label="Center align captions"
+                  onClick={() => onUpdateStyle({ alignment: "center" })}
+                  className={`rounded-md p-1 transition ${
+                    layout.alignment === "center"
+                      ? "bg-accent text-page"
+                      : "text-ink-secondary hover:text-ink"
+                  }`}
+                >
+                  <AlignCenter className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  data-testid="style-align-left"
+                  aria-pressed={layout.alignment === "left"}
+                  aria-label="Left align captions"
+                  onClick={() => onUpdateStyle({ alignment: "left" })}
+                  className={`rounded-md p-1 transition ${
+                    layout.alignment === "left"
+                      ? "bg-accent text-page"
+                      : "text-ink-secondary hover:text-ink"
+                  }`}
+                >
+                  <AlignLeft className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
             <div
               role="group"
               aria-label="Font size"
@@ -685,8 +848,8 @@ export function StudioStylePanel({
           </div>
         )}
 
-        {/* 3. Highlight Color (Active Word Color) */}
-        <div className="border-t border-ink/8 pt-3.5">
+        {/* 3. Highlight Color */}
+        <div className="border-t border-ink/10 pt-3.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               Highlight color
@@ -711,7 +874,7 @@ export function StudioStylePanel({
                 style={{ backgroundColor: hex }}
                 className={`h-6 w-6 rounded-full border-2 transition ${
                   layout.activeWordColor === hex
-                    ? "scale-110 border-ink ring-2 ring-accent/50"
+                    ? "scale-110 border-ink ring-2 ring-accent/55"
                     : "border-ink/20"
                 }`}
               />
@@ -732,7 +895,7 @@ export function StudioStylePanel({
 
         {/* 4. Vertical Position + Safe-Area Guide */}
         {showSizeAndPosition && (
-          <div className="border-t border-ink/8 pt-3.5">
+          <div className="border-t border-ink/10 pt-3.5">
             <div className="flex items-center justify-between gap-2">
               <label
                 htmlFor="vertical-position-slider"
@@ -814,15 +977,15 @@ export function StudioStylePanel({
           </div>
         )}
 
-        {/* Quick Save as Preset inside Style tab (quiet secondary control) */}
+        {/* Quick Save as Preset inside Style tab */}
         {enablePersonalPresets && (
-          <div className="border-t border-ink/8 pt-3.5">
+          <div className="border-t border-ink/10 pt-3.5">
             {renderSavePresetBox(true)}
           </div>
         )}
 
-        {/* Collapsible Advanced Settings: Text Color, Casing, Outline, Background, Shadow */}
-        <div className="border-t border-ink/8 pt-3">
+        {/* Collapsible Advanced Adjustments */}
+        <div className="border-t border-ink/10 pt-3">
           <button
             type="button"
             data-testid="style-advanced-toggle"
@@ -841,33 +1004,38 @@ export function StudioStylePanel({
               data-testid="style-advanced-panel"
               className="mt-2.5 space-y-3.5 rounded-xl border border-ink/10 bg-inset p-3"
             >
-              {/* Layout Mode (Word Highlight / Clean / Boxed) */}
+              {/* Word Emphasis Mode */}
               <div>
                 <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                  Caption style mode
+                  Word emphasis
                 </span>
                 <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-                  {(
-                    [
-                      { id: "word-highlight", label: "Highlight" },
-                      { id: "clean", label: "Clean" },
-                      { id: "boxed", label: "Boxed" },
-                    ] as const
-                  ).map((modeOpt) => {
-                    const selected = layout.preset === modeOpt.id;
+                  {EMPHASIS_OPTIONS.map((opt) => {
+                    const selected = layout.emphasisMode === opt.id;
                     return (
                       <button
-                        key={modeOpt.id}
+                        key={opt.id}
                         type="button"
+                        data-testid={`style-emphasis-${opt.id}`}
                         aria-pressed={selected}
-                        onClick={() => onUpdateStyle({ preset: modeOpt.id })}
+                        onClick={() =>
+                          onUpdateStyle({
+                            emphasisMode: opt.id,
+                            preset:
+                              opt.id === "pill"
+                                ? "word-highlight"
+                                : style.preset === "word-highlight"
+                                  ? "clean"
+                                  : style.preset,
+                          })
+                        }
                         className={`min-h-[30px] rounded-lg border py-1 text-xs font-semibold transition ${
                           selected
                             ? "border-accent bg-accent-soft text-accent-hover"
                             : "border-ink/10 bg-page text-ink-secondary hover:text-ink"
                         }`}
                       >
-                        {modeOpt.label}
+                        {opt.label}
                       </button>
                     );
                   })}
@@ -911,11 +1079,26 @@ export function StudioStylePanel({
                 </div>
               </div>
 
-              {/* Casing */}
+              {/* Casing + Italic */}
               <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                  Casing
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                    Casing &amp; Style
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="style-italic-toggle"
+                    aria-pressed={layout.italic}
+                    onClick={() => onUpdateStyle({ italic: !layout.italic })}
+                    className={`rounded-md border px-2 py-0.5 text-[11px] italic font-semibold transition ${
+                      layout.italic
+                        ? "border-accent bg-accent-soft text-accent-hover"
+                        : "border-ink/12 bg-page text-ink-secondary hover:text-ink"
+                    }`}
+                  >
+                    Italic
+                  </button>
+                </div>
                 <div
                   role="group"
                   aria-label="Text casing"
@@ -930,6 +1113,35 @@ export function StudioStylePanel({
                         data-testid={`style-casing-${opt.id}`}
                         aria-pressed={selected}
                         onClick={() => onUpdateStyle({ casing: opt.id })}
+                        className={`min-h-[30px] rounded-lg border py-1 text-xs font-semibold transition ${
+                          selected
+                            ? "border-accent bg-accent-soft text-accent-hover"
+                            : "border-ink/10 bg-page text-ink-secondary hover:text-ink"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Letter Spacing */}
+              <div>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                  Letter spacing
+                </span>
+                <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                  {SPACING_OPTIONS.map((opt) => {
+                    const selected = layout.letterSpacing === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          onUpdateStyle({ letterSpacing: opt.id })
+                        }
                         className={`min-h-[30px] rounded-lg border py-1 text-xs font-semibold transition ${
                           selected
                             ? "border-accent bg-accent-soft text-accent-hover"
@@ -984,18 +1196,23 @@ export function StudioStylePanel({
               <div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold uppercase tracking-wider text-ink-muted">
-                    Background
+                    Background plate
                   </span>
                   <button
                     type="button"
                     aria-pressed={layout.backgroundEnabled}
                     onClick={() =>
                       onUpdateStyle({
+                        preset: !layout.backgroundEnabled
+                          ? layout.emphasisMode === "pill"
+                            ? "word-highlight"
+                            : "boxed"
+                          : "clean",
                         backgroundEnabled: !layout.backgroundEnabled,
                         backgroundOpacity:
                           !layout.backgroundEnabled &&
                           layout.backgroundOpacity === 0
-                            ? 75
+                            ? 80
                             : layout.backgroundOpacity,
                       })
                     }

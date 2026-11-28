@@ -9,6 +9,19 @@ export type CaptionAccentId = "violet" | "mint";
 export type CaptionFontId = "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
 export type CaptionCasing = "original" | "uppercase" | "lowercase";
 export type CaptionShadowStrength = "none" | "soft" | "strong";
+export type CaptionEmphasisMode =
+  | "pill"
+  | "color"
+  | "underline"
+  | "scale"
+  | "cue";
+export type CaptionAlignment = "center" | "left";
+export type CaptionLetterSpacing = "tight" | "normal" | "wide";
+export type CaptionTemplateCategory =
+  | "Clean"
+  | "Creator"
+  | "Bold"
+  | "Editorial";
 
 export interface CaptionFontDescriptor {
   id: CaptionFontId;
@@ -79,6 +92,10 @@ export interface CaptionStyleConfig {
   backgroundColor?: string;
   backgroundOpacity?: number;
   shadowStrength?: CaptionShadowStrength;
+  emphasisMode?: CaptionEmphasisMode;
+  alignment?: CaptionAlignment;
+  letterSpacing?: CaptionLetterSpacing;
+  italic?: boolean;
 }
 
 export interface SavedCaptionPresetRow {
@@ -119,6 +136,12 @@ export interface CaptionLayoutMetrics {
   backgroundColor: string;
   backgroundOpacity: number;
   shadowStrength: CaptionShadowStrength;
+  emphasisMode: CaptionEmphasisMode;
+  alignment: CaptionAlignment;
+  letterSpacing: CaptionLetterSpacing;
+  cssLetterSpacing: string;
+  assSpacing: number;
+  italic: boolean;
 }
 
 export const CAPTION_ACCENTS: Record<
@@ -149,24 +172,38 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyleConfig = {
   activeWordColor: "#A78BFA",
   casing: "uppercase",
   outlineWidth: 0,
-  outlineColor: "#070B10",
+  outlineColor: "#0D0E12",
   backgroundEnabled: true,
-  backgroundColor: "#070B10",
+  backgroundColor: "#0D0E12",
   backgroundOpacity: 60,
   shadowStrength: "soft",
+  emphasisMode: "pill",
+  alignment: "center",
+  letterSpacing: "normal",
+  italic: false,
 };
 
 export interface BuiltInStyleTemplate {
   id: string;
   name: string;
+  category: CaptionTemplateCategory;
   description: string;
   style: CaptionStyleConfig;
 }
 
+export const CAPTION_TEMPLATE_CATEGORIES: CaptionTemplateCategory[] = [
+  "Creator",
+  "Clean",
+  "Bold",
+  "Editorial",
+];
+
 export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
+  // --- CREATOR ---
   {
     id: "word-highlight",
-    name: "Word Highlight",
+    name: "Keyword Highlight",
+    category: "Creator",
     description: "Kinetic violet pill tracking every spoken word.",
     style: {
       preset: "word-highlight",
@@ -178,17 +215,102 @@ export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
       activeWordColor: "#A78BFA",
       casing: "uppercase",
       outlineWidth: 0,
-      outlineColor: "#070B10",
+      outlineColor: "#0D0E12",
       backgroundEnabled: true,
-      backgroundColor: "#070B10",
+      backgroundColor: "#0D0E12",
       backgroundOpacity: 60,
       shadowStrength: "soft",
+      emphasisMode: "pill",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "underline",
+    name: "Underline",
+    category: "Creator",
+    description: "Crisp violet underline gliding under each active word.",
+    style: {
+      preset: "boxed",
+      fontSize: "md",
+      verticalPosition: 15,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#F5F1E8",
+      activeWordColor: "#A78BFA",
+      casing: "original",
+      outlineWidth: 0,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: true,
+      backgroundColor: "#13151B",
+      backgroundOpacity: 84,
+      shadowStrength: "soft",
+      emphasisMode: "underline",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "creator-pop",
+    name: "Creator Pop",
+    category: "Creator",
+    description: "Floating bold type with sky-blue active word scale pop.",
+    style: {
+      preset: "clean",
+      fontSize: "lg",
+      verticalPosition: 17,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#FFFFFF",
+      activeWordColor: "#38BDF8",
+      casing: "original",
+      outlineWidth: 3,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: false,
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 0,
+      shadowStrength: "strong",
+      emphasisMode: "scale",
+      alignment: "center",
+      letterSpacing: "tight",
+      italic: false,
+    },
+  },
+
+  // --- CLEAN ---
+  {
+    id: "minimal",
+    name: "Minimal",
+    category: "Clean",
+    description: "Quiet, steady subtitle line with zero word-by-word motion.",
+    style: {
+      preset: "clean",
+      fontSize: "sm",
+      verticalPosition: 12,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#F5F1E8",
+      activeWordColor: "#F5F1E8",
+      casing: "original",
+      outlineWidth: 1,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: false,
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 0,
+      shadowStrength: "soft",
+      emphasisMode: "cue",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
     },
   },
   {
     id: "clean",
     name: "Clean",
-    description: "Floating bold sans with subtle outline and active word lift.",
+    category: "Clean",
+    description: "Floating sans with crisp stroke and subtle active word color.",
     style: {
       preset: "clean",
       fontSize: "md",
@@ -196,41 +318,53 @@ export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
       accent: "violet",
       fontFamily: "poppins",
       textColor: "#F5F1E8",
-      activeWordColor: "#A78BFA",
+      activeWordColor: "#C4B5FD",
       casing: "original",
       outlineWidth: 2,
-      outlineColor: "#070B10",
+      outlineColor: "#0D0E12",
       backgroundEnabled: false,
-      backgroundColor: "#070B10",
+      backgroundColor: "#0D0E12",
       backgroundOpacity: 0,
       shadowStrength: "strong",
+      emphasisMode: "color",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
     },
   },
   {
-    id: "boxed",
-    name: "Boxed",
-    description: "Deep-ink plate for crisp contrast over busy frames.",
+    id: "broadcast",
+    name: "Broadcast",
+    category: "Clean",
+    description: "Steady dark subtitle bar built for interviews and explainers.",
     style: {
       preset: "boxed",
       fontSize: "md",
-      verticalPosition: 14,
+      verticalPosition: 11,
       accent: "violet",
       fontFamily: "poppins",
-      textColor: "#F5F1E8",
-      activeWordColor: "#A78BFA",
+      textColor: "#FFFFFF",
+      activeWordColor: "#FFFFFF",
       casing: "original",
       outlineWidth: 0,
-      outlineColor: "#070B10",
+      outlineColor: "#0D0E12",
       backgroundEnabled: true,
-      backgroundColor: "#070B10",
-      backgroundOpacity: 82,
-      shadowStrength: "soft",
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 88,
+      shadowStrength: "none",
+      emphasisMode: "cue",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
     },
   },
+
+  // --- BOLD ---
   {
     id: "punch-display",
     name: "Punch Display",
-    description: "Tall condensed Bebas Neue built for high-retention hooks.",
+    category: "Bold",
+    description: "Tall condensed Bebas Neue with gold keyword pill.",
     style: {
       preset: "word-highlight",
       fontSize: "lg",
@@ -241,32 +375,147 @@ export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
       activeWordColor: "#FACC15",
       casing: "uppercase",
       outlineWidth: 2,
-      outlineColor: "#070B10",
+      outlineColor: "#0D0E12",
       backgroundEnabled: true,
-      backgroundColor: "#070B10",
+      backgroundColor: "#0D0E12",
       backgroundOpacity: 55,
       shadowStrength: "strong",
+      emphasisMode: "pill",
+      alignment: "center",
+      letterSpacing: "wide",
+      italic: false,
     },
   },
   {
+    id: "high-contrast",
+    name: "High Contrast",
+    category: "Bold",
+    description: "Solid black plate with vivid yellow active words for maximum clarity.",
+    style: {
+      preset: "boxed",
+      fontSize: "lg",
+      verticalPosition: 14,
+      accent: "violet",
+      fontFamily: "poppins",
+      textColor: "#FFFFFF",
+      activeWordColor: "#FACC15",
+      casing: "uppercase",
+      outlineWidth: 0,
+      outlineColor: "#000000",
+      backgroundEnabled: true,
+      backgroundColor: "#000000",
+      backgroundOpacity: 96,
+      shadowStrength: "none",
+      emphasisMode: "color",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "street-cutout",
+    name: "Poster Cutout",
+    category: "Bold",
+    description: "Heavy outlined display caps with coral-rose active word emphasis.",
+    style: {
+      preset: "clean",
+      fontSize: "lg",
+      verticalPosition: 19,
+      accent: "violet",
+      fontFamily: "bebas-neue",
+      textColor: "#F5F1E8",
+      activeWordColor: "#FB7185",
+      casing: "uppercase",
+      outlineWidth: 4,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: false,
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 0,
+      shadowStrength: "strong",
+      emphasisMode: "scale",
+      alignment: "center",
+      letterSpacing: "wide",
+      italic: false,
+    },
+  },
+
+  // --- EDITORIAL ---
+  {
     id: "editorial-serif",
     name: "Editorial",
+    category: "Editorial",
     description: "Refined DM Serif Display over a dark translucent plate.",
     style: {
       preset: "boxed",
       fontSize: "md",
-      verticalPosition: 16,
+      verticalPosition: 15,
       accent: "violet",
       fontFamily: "dm-serif",
       textColor: "#F5F1E8",
       activeWordColor: "#C4B5FD",
       casing: "original",
       outlineWidth: 0,
-      outlineColor: "#070B10",
+      outlineColor: "#0D0E12",
       backgroundEnabled: true,
-      backgroundColor: "#10121A",
+      backgroundColor: "#13151B",
       backgroundOpacity: 86,
       shadowStrength: "soft",
+      emphasisMode: "underline",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "lower-third",
+    name: "Lower Third",
+    category: "Editorial",
+    description: "Left-aligned Space Mono lower-third tag with mint keyword accent.",
+    style: {
+      preset: "boxed",
+      fontSize: "sm",
+      verticalPosition: 12,
+      accent: "mint",
+      fontFamily: "space-mono",
+      textColor: "#F5F1E8",
+      activeWordColor: "#49E6B3",
+      casing: "uppercase",
+      outlineWidth: 0,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: true,
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 90,
+      shadowStrength: "soft",
+      emphasisMode: "color",
+      alignment: "left",
+      letterSpacing: "wide",
+      italic: false,
+    },
+  },
+  {
+    id: "documentary",
+    name: "Documentary",
+    category: "Editorial",
+    description: "Warm cinema-gold italic serif for storytelling and essays.",
+    style: {
+      preset: "clean",
+      fontSize: "md",
+      verticalPosition: 11,
+      accent: "violet",
+      fontFamily: "dm-serif",
+      textColor: "#FDE68A",
+      activeWordColor: "#FDE68A",
+      casing: "original",
+      outlineWidth: 2,
+      outlineColor: "#0D0E12",
+      backgroundEnabled: false,
+      backgroundColor: "#0D0E12",
+      backgroundOpacity: 0,
+      shadowStrength: "strong",
+      emphasisMode: "cue",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: true,
     },
   },
 ];
@@ -419,6 +668,51 @@ export function computeCaptionLayout(
         ? "strong"
         : "soft";
 
+  const defaultEmphasis: CaptionEmphasisMode =
+    preset === "word-highlight"
+      ? "pill"
+      : preset === "boxed"
+        ? "underline"
+        : "color";
+  const emphasisMode: CaptionEmphasisMode =
+    style?.emphasisMode === "pill" ||
+    style?.emphasisMode === "color" ||
+    style?.emphasisMode === "underline" ||
+    style?.emphasisMode === "scale" ||
+    style?.emphasisMode === "cue"
+      ? style.emphasisMode
+      : defaultEmphasis;
+
+  const alignment: CaptionAlignment =
+    style?.alignment === "left" ? "left" : "center";
+
+  const letterSpacing: CaptionLetterSpacing =
+    style?.letterSpacing === "tight" ||
+    style?.letterSpacing === "normal" ||
+    style?.letterSpacing === "wide"
+      ? style.letterSpacing
+      : "normal";
+
+  const cssLetterSpacing =
+    letterSpacing === "tight"
+      ? "-0.02em"
+      : letterSpacing === "wide"
+        ? "0.06em"
+        : preset === "word-highlight"
+          ? "0.01em"
+          : "-0.01em";
+
+  const assSpacing =
+    letterSpacing === "tight"
+      ? -0.5
+      : letterSpacing === "wide"
+        ? 2.2
+        : preset === "word-highlight"
+          ? 0.4
+          : 0;
+
+  const italic = Boolean(style?.italic);
+
   const metrics = FONT_SIZE_TABLE[fontSize];
   return {
     preset,
@@ -427,11 +721,12 @@ export function computeCaptionLayout(
     previewFontSizeRem: metrics.previewRem,
     renderFontSizePx1080: metrics.renderPx1080,
     bottomPercent,
-    maxWidthPercent: preset === "word-highlight" ? 94 : 90,
+    maxWidthPercent:
+      alignment === "left" ? 88 : preset === "word-highlight" ? 94 : 90,
     accent,
     accentHex: activeWordColor,
     accentAssBgr: hexToAssBgr(activeWordColor),
-    accentShadowRgba: hexToRgba(activeWordColor, 0.45),
+    accentShadowRgba: hexToRgba(activeWordColor, 0.4),
     fontFamily,
     cssFontFamily: fontDesc.cssFamily,
     assFontFamily: fontDesc.assFamily,
@@ -445,6 +740,12 @@ export function computeCaptionLayout(
     backgroundColor,
     backgroundOpacity,
     shadowStrength,
+    emphasisMode,
+    alignment,
+    letterSpacing,
+    cssLetterSpacing,
+    assSpacing,
+    italic,
   };
 }
 
@@ -467,6 +768,10 @@ export function normalizeCaptionStyle(
     backgroundColor: layout.backgroundColor,
     backgroundOpacity: layout.backgroundOpacity,
     shadowStrength: layout.shadowStrength,
+    emphasisMode: layout.emphasisMode,
+    alignment: layout.alignment,
+    letterSpacing: layout.letterSpacing,
+    italic: layout.italic,
   };
 }
 
@@ -562,6 +867,34 @@ export function validateCaptionStyle(
     s.shadowStrength !== "strong"
   ) {
     return { ok: false, error: "Invalid shadow strength." };
+  }
+  if (
+    s.emphasisMode !== undefined &&
+    s.emphasisMode !== "pill" &&
+    s.emphasisMode !== "color" &&
+    s.emphasisMode !== "underline" &&
+    s.emphasisMode !== "scale" &&
+    s.emphasisMode !== "cue"
+  ) {
+    return { ok: false, error: "Invalid caption emphasis mode." };
+  }
+  if (
+    s.alignment !== undefined &&
+    s.alignment !== "center" &&
+    s.alignment !== "left"
+  ) {
+    return { ok: false, error: "Invalid caption alignment." };
+  }
+  if (
+    s.letterSpacing !== undefined &&
+    s.letterSpacing !== "tight" &&
+    s.letterSpacing !== "normal" &&
+    s.letterSpacing !== "wide"
+  ) {
+    return { ok: false, error: "Invalid caption letter spacing." };
+  }
+  if (s.italic !== undefined && typeof s.italic !== "boolean") {
+    return { ok: false, error: "Invalid italic setting." };
   }
 
   return {

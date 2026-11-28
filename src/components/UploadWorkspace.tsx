@@ -290,24 +290,64 @@ export function UploadWorkspace() {
     await startUpload();
   }, [createAndStartTus, selectedFile, startUpload]);
 
+  const [retryingJob, setRetryingJob] = useState(false);
+
+  const retryWorkerProcessing = useCallback(async () => {
+    if (!completed?.project.id) return;
+    setRetryingJob(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/projects/${completed.project.id}/process`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Could not restart caption processing.");
+        return;
+      }
+      setLiveProject((prev) =>
+        prev ? { ...prev, status: "processing", ingest_jobs: [data.job] } : null
+      );
+    } catch {
+      setError("Network error while restarting caption processing.");
+    } finally {
+      setRetryingJob(false);
+    }
+  }, [completed]);
+
   const percent =
     bytesTotal > 0 ? Math.min(100, Math.round((bytesUploaded / bytesTotal) * 100)) : 0;
+
+  const liveJob = liveProject?.ingest_jobs?.[0] ?? null;
+  const isTranscriptionReady =
+    phase === "completed" && liveProject?.status === "ready";
+  const isTranscriptionFailed =
+    phase === "completed" &&
+    (liveProject?.status === "failed" || liveJob?.status === "failed");
+  const isTranscribing =
+    phase === "completed" && !isTranscriptionReady && !isTranscriptionFailed;
+  const isTransferActive =
+    phase === "initializing" ||
+    phase === "uploading" ||
+    phase === "paused" ||
+    phase === "finalizing" ||
+    (phase === "error" && bytesTotal > 0);
 
   return (
     <div className="mx-auto max-w-2xl">
       {/* Limits & Constraints Strip */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
-            <FileVideo className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+            <FileVideo className="h-3.5 w-3.5 text-ink-secondary" />
             <span>Formats</span>
           </div>
           <p className="mt-1 text-xs text-ink-secondary">MP4, MOV, MP3, and WAV</p>
         </div>
 
         <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
-            <Upload className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+            <Upload className="h-3.5 w-3.5 text-ink-secondary" />
             <span>Max File Size</span>
           </div>
           <p className="mt-1 text-xs text-ink-secondary">
@@ -316,8 +356,8 @@ export function UploadWorkspace() {
         </div>
 
         <div className="rounded-xl border border-ink/10 bg-panel p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-accent">
-            <Clock className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-ink">
+            <Clock className="h-3.5 w-3.5 text-ink-secondary" />
             <span>Processing Limit</span>
           </div>
           <p className="mt-1 text-xs text-ink-secondary">
@@ -343,8 +383,8 @@ export function UploadWorkspace() {
           }}
           className={`rounded-2xl border border-dashed p-6 text-center transition ${
             isDragging
-              ? "border-accent bg-accent-soft/45"
-              : "border-ink/20 bg-page/70 hover:border-accent/55"
+              ? "border-accent bg-accent-soft/35"
+              : "border-ink/20 bg-inset hover:border-ink/35"
           }`}
         >
           <input
@@ -356,7 +396,7 @@ export function UploadWorkspace() {
             className="sr-only"
           />
 
-          <div className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-accent/40 bg-accent-soft text-accent">
+          <div className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-ink/15 bg-elevated text-ink">
             <Upload className="h-5 w-5" />
           </div>
 
@@ -373,7 +413,7 @@ export function UploadWorkspace() {
             type="button"
             disabled={phase === "uploading" || phase === "initializing" || phase === "finalizing"}
             onClick={() => fileInputRef.current?.click()}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-elevated px-4 py-2 text-xs font-semibold text-ink transition hover:border-accent/55 hover:text-accent-hover disabled:opacity-50"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-elevated px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/30 disabled:opacity-50"
           >
             <span>{selectedFile ? "Choose a different file" : "Select media file"}</span>
           </button>
@@ -395,46 +435,228 @@ export function UploadWorkspace() {
             disabled={phase === "uploading" || phase === "finalizing"}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Launch Hook v1"
-            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none disabled:opacity-60"
+            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-inset px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none disabled:opacity-60"
           />
         </div>
 
-        {/* Progress Bar */}
-        {(phase === "uploading" ||
-          phase === "paused" ||
-          phase === "finalizing" ||
-          phase === "completed" ||
-          (phase === "error" && bytesTotal > 0)) && (
-          <div className="mt-5 rounded-xl border border-ink/10 bg-page p-4">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-ink">
-                {phase === "uploading" && "Uploading directly to private storage..."}
-                {phase === "paused" && "Upload paused — ready to resume"}
-                {phase === "finalizing" && "Verifying ownership and stored file size..."}
-                {phase === "completed" && "Upload verified and saved to Projects"}
-                {phase === "error" && "Upload interrupted"}
-              </span>
-              <span
-                data-testid="upload-percent"
-                className="font-mono font-semibold tabular-nums text-accent"
+        {/* Clear 3-Stage Status Card: Uploading -> Processing -> Ready */}
+        {(isTransferActive || phase === "completed") && (
+          <div
+            data-testid={phase === "completed" ? "upload-complete-banner" : "upload-transfer-card"}
+            className="mt-5 rounded-xl border border-ink/12 bg-inset p-4"
+          >
+            {/* 3-Step Progression Header */}
+            <ol
+              data-testid="upload-status-steps"
+              aria-label="Upload and transcription status"
+              className="mb-3.5 grid grid-cols-3 gap-2 border-b border-ink/10 pb-3 text-xs"
+            >
+              <li
+                data-active={isTransferActive ? "true" : "false"}
+                className={`flex items-center gap-1.5 font-semibold ${
+                  phase === "completed"
+                    ? "text-ink-secondary"
+                    : "text-ink"
+                }`}
               >
-                {percent}%
-              </span>
-            </div>
+                {phase === "completed" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" />
+                ) : phase === "uploading" || phase === "initializing" || phase === "finalizing" ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-amber-300" />
+                )}
+                <span>Uploading</span>
+              </li>
 
-            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-track">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-150"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
+              <li
+                data-active={isTranscribing ? "true" : "false"}
+                className={`flex items-center gap-1.5 font-semibold ${
+                  isTranscribing
+                    ? "text-ink"
+                    : isTranscriptionReady
+                      ? "text-ink-secondary"
+                      : isTranscriptionFailed
+                        ? "text-rose-200"
+                        : "text-ink-muted"
+                }`}
+              >
+                {isTranscriptionReady ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" />
+                ) : isTranscribing ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-accent" />
+                ) : isTranscriptionFailed ? (
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-300" />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-track" />
+                )}
+                <span>Processing</span>
+              </li>
 
-            <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
-              <span>
-                {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
-              </span>
-              <span>Resumable TUS · No overwrite</span>
-            </div>
+              <li
+                data-active={isTranscriptionReady ? "true" : "false"}
+                className={`flex items-center gap-1.5 font-semibold ${
+                  isTranscriptionReady ? "text-ink" : "text-ink-muted"
+                }`}
+              >
+                {isTranscriptionReady ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-track" />
+                )}
+                <span>Ready</span>
+              </li>
+            </ol>
+
+            {/* Stage 1 Details: File Transfer */}
+            {isTransferActive && (
+              <div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-ink">
+                    {phase === "initializing" && "Preparing private upload..."}
+                    {phase === "uploading" && "Uploading file to private storage..."}
+                    {phase === "paused" && "Upload paused — resume when ready"}
+                    {phase === "finalizing" && "Verifying file transfer..."}
+                    {phase === "error" && "File transfer interrupted"}
+                  </span>
+                  <span
+                    data-testid="upload-percent"
+                    className="font-mono font-semibold tabular-nums text-ink"
+                  >
+                    {percent}%
+                  </span>
+                </div>
+
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-track">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-150"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+
+                <div className="mt-2 flex items-center justify-between font-mono text-[11px] tabular-nums text-ink-muted">
+                  <span>
+                    {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
+                  </span>
+                  <span>Transferring file · Transcription starts next</span>
+                </div>
+              </div>
+            )}
+
+            {/* Stage 2 & 3 Details: File Transfer Done -> Processing / Ready */}
+            {completed && phase === "completed" && (
+              <div>
+                {(() => {
+                  const workerDetail = isTranscriptionReady
+                    ? "Ready to edit"
+                    : isTranscriptionFailed
+                      ? liveJob?.error_message ||
+                        liveProject?.last_error_message ||
+                        "Caption processing failed"
+                      : liveJob?.status === "probing"
+                        ? "Processing · Probing media"
+                        : liveJob?.status === "transcoding"
+                          ? "Processing · Generating preview"
+                          : liveJob?.status === "transcribing"
+                            ? "Processing · Transcribing captions"
+                            : "Processing · Queued for transcription";
+
+                  return (
+                    <>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 text-xs">
+                          <p className="font-semibold text-ink">
+                            {isTranscriptionReady
+                              ? `${completed.project.title} is ready to edit`
+                              : isTranscriptionFailed
+                                ? `${completed.project.title} — transcription needs retry`
+                                : `File uploaded (${formatBytes(completed.asset.verifiedSizeBytes)}) — generating captions`}
+                          </p>
+                          <p className="mt-1 text-ink-secondary">
+                            <span
+                              data-testid="upload-live-stage"
+                              className={`font-medium ${
+                                isTranscriptionReady
+                                  ? "text-ink"
+                                  : isTranscriptionFailed
+                                    ? "text-rose-200"
+                                    : "text-ink-secondary"
+                              }`}
+                            >
+                              {workerDetail}
+                            </span>
+                            <span className="mx-1.5 text-ink-muted">·</span>
+                            <span
+                              data-testid="upload-percent"
+                              className="font-mono text-[11px] text-ink-muted"
+                            >
+                              100% uploaded
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Strictly ONE primary next action per state + quiet secondary links */}
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-3">
+                        <div>
+                          {isTranscriptionReady ? (
+                            <Link
+                              href={`/projects/${completed.project.id}/editor`}
+                              data-testid="upload-open-editor-btn"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span>Open editor</span>
+                            </Link>
+                          ) : isTranscriptionFailed ? (
+                            <button
+                              type="button"
+                              disabled={retryingJob}
+                              onClick={() => void retryWorkerProcessing()}
+                              data-testid="upload-retry-processing-btn"
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover disabled:opacity-50"
+                            >
+                              <RefreshCw
+                                className={`h-3.5 w-3.5 ${retryingJob ? "animate-spin" : ""}`}
+                              />
+                              <span>
+                                {retryingJob ? "Restarting..." : "Retry processing"}
+                              </span>
+                            </button>
+                          ) : (
+                            <Link
+                              href="/projects"
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-panel px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/30 hover:bg-elevated"
+                            >
+                              <FolderKanban className="h-3.5 w-3.5 text-ink-secondary" />
+                              <span>View in Projects</span>
+                            </Link>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-ink-secondary">
+                          {(isTranscriptionReady || isTranscriptionFailed) && (
+                            <Link
+                              href="/projects"
+                              className="font-medium underline-offset-4 hover:text-ink hover:underline"
+                            >
+                              View in Projects
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleFilePicked(null)}
+                            className="font-medium underline-offset-4 hover:text-ink hover:underline"
+                          >
+                            Upload another clip
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
 
@@ -449,156 +671,57 @@ export function UploadWorkspace() {
           </div>
         )}
 
-        {/* Completion & Live Processing Handoff Banner */}
-        {completed && phase === "completed" && (
-          <div
-            data-testid="upload-complete-banner"
-            className="mt-4 rounded-xl border border-accent/40 bg-accent-soft/70 p-4"
-          >
-            {(() => {
-              const liveJob = liveProject?.ingest_jobs?.[0] ?? null;
-              const isReady = liveProject?.status === "ready";
-              const isFailed =
-                liveProject?.status === "failed" || liveJob?.status === "failed";
-              const stageLabel = isReady
-                ? "Ready to edit"
-                : isFailed
-                  ? liveJob?.error_message ||
-                    liveProject?.last_error_message ||
-                    "Processing failed"
-                  : liveJob?.status === "probing"
-                    ? "Probing media"
-                    : liveJob?.status === "transcoding"
-                      ? "Generating preview"
-                      : liveJob?.status === "transcribing"
-                        ? "Transcribing captions"
-                        : "Queued for worker";
+        {/* Action Controls (hidden once transfer completed, since status card owns next action) */}
+        {phase !== "completed" && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
+              <ShieldCheck className="h-4 w-4 text-ink-secondary" />
+              <span>Private resumable upload</span>
+            </div>
 
-              return (
-                <>
-                  <div className="flex items-start justify-between gap-2.5">
-                    <div className="flex items-start gap-2.5">
-                      {isReady ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-                      ) : isFailed ? (
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
-                      ) : (
-                        <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent" />
-                      )}
-                      <div className="text-xs">
-                        <p className="font-semibold text-ink">
-                          {completed.project.title} —{" "}
-                          {isReady
-                            ? "captions are ready!"
-                            : isFailed
-                              ? "processing needs attention"
-                              : "uploaded & processing"}
-                        </p>
-                        <p className="mt-1 font-mono text-ink-secondary">
-                          Verified size:{" "}
-                          {formatBytes(completed.asset.verifiedSizeBytes)} ·{" "}
-                          <span
-                            data-testid="upload-live-stage"
-                            className={
-                              isReady
-                                ? "text-accent-hover"
-                                : isFailed
-                                  ? "text-rose-200"
-                                  : "text-amber-200"
-                            }
-                          >
-                            {stageLabel}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            <div className="flex items-center gap-2">
+              {phase === "uploading" && (
+                <button
+                  type="button"
+                  onClick={() => void pauseUpload()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-xs font-semibold text-ink transition hover:border-ink/30"
+                >
+                  <Pause className="h-3.5 w-3.5" />
+                  <span>Pause</span>
+                </button>
+              )}
 
-                  <div className="mt-3.5 flex flex-wrap gap-2.5">
-                    {isReady && (
-                      <Link
-                        href={`/projects/${completed.project.id}/editor`}
-                        data-testid="upload-open-editor-btn"
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-xs font-semibold text-page transition hover:bg-accent-hover"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        <span>Open editor</span>
-                      </Link>
-                    )}
-                    <Link
-                      href="/projects"
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
-                        isReady
-                          ? "border border-ink/15 bg-panel text-ink hover:border-accent/55"
-                          : "bg-accent text-page hover:bg-accent-hover"
-                      }`}
-                    >
-                      <FolderKanban className="h-3.5 w-3.5" />
-                      <span>View in Projects</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleFilePicked(null)}
-                      className="rounded-lg border border-ink/15 bg-panel px-3.5 py-2 text-xs font-medium text-ink hover:border-ink/30"
-                    >
-                      Upload another clip
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
+              {(phase === "paused" || phase === "error") && (
+                <button
+                  type="button"
+                  onClick={() => void resumeOrRetry()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
+                >
+                  {phase === "paused" ? (
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  <span>{phase === "paused" ? "Resume upload" : "Retry upload"}</span>
+                </button>
+              )}
+
+              {(phase === "idle" || phase === "initializing") && (
+                <button
+                  type="button"
+                  disabled={!selectedFile || phase === "initializing"}
+                  onClick={() => void startUpload()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover disabled:opacity-45"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>
+                    {phase === "initializing" ? "Preparing..." : "Start upload"}
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
         )}
-
-        {/* Action Controls */}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-ink-muted">
-            <ShieldCheck className="h-4 w-4 text-accent" />
-            <span>Server-assigned private object key</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {phase === "uploading" && (
-              <button
-                type="button"
-                onClick={() => void pauseUpload()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-xs font-semibold text-ink transition hover:border-accent/55"
-              >
-                <Pause className="h-3.5 w-3.5" />
-                <span>Pause</span>
-              </button>
-            )}
-
-            {(phase === "paused" || phase === "error") && (
-              <button
-                type="button"
-                onClick={() => void resumeOrRetry()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-xs font-semibold text-page transition hover:bg-accent-hover"
-              >
-                {phase === "paused" ? (
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                <span>{phase === "paused" ? "Resume upload" : "Retry upload"}</span>
-              </button>
-            )}
-
-            {(phase === "idle" || phase === "initializing") && (
-              <button
-                type="button"
-                disabled={!selectedFile || phase === "initializing"}
-                onClick={() => void startUpload()}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover disabled:opacity-45"
-              >
-                <Upload className="h-4 w-4" />
-                <span>
-                  {phase === "initializing" ? "Preparing..." : "Start upload"}
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

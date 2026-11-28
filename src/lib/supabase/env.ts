@@ -29,18 +29,3 @@ export function getSupabasePublicEnv(): { url: string; anonKey: string } {
 
   return { url: url.replace(/\/+$/, ""), anonKey };
 }
-
-export function getSupabaseServiceRoleKey(): string {
-  if (typeof window !== "undefined") {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY must never be accessed in the browser.");
-  }
-
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) {
-    throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY in server environment. Set it in .env.local."
-    );
-  }
-
-  return key;
-}

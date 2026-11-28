@@ -27,6 +27,14 @@ export type CaptionAccentId = "violet" | "mint";
 export type CaptionFontId = "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
 export type CaptionCasing = "original" | "uppercase" | "lowercase";
 export type CaptionShadowStrength = "none" | "soft" | "strong";
+export type CaptionEmphasisMode =
+  | "pill"
+  | "color"
+  | "underline"
+  | "scale"
+  | "cue";
+export type CaptionAlignment = "center" | "left";
+export type CaptionLetterSpacing = "tight" | "normal" | "wide";
 
 export interface CaptionStyleConfig {
   preset: CaptionPresetId;
@@ -43,6 +51,10 @@ export interface CaptionStyleConfig {
   backgroundColor?: string;
   backgroundOpacity?: number;
   shadowStrength?: CaptionShadowStrength;
+  emphasisMode?: CaptionEmphasisMode;
+  alignment?: CaptionAlignment;
+  letterSpacing?: CaptionLetterSpacing;
+  italic?: boolean;
 }
 
 export interface RenderCaptionWord {
@@ -246,12 +258,49 @@ function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
         ? "strong"
         : "soft";
 
+  const defaultEmphasis: CaptionEmphasisMode =
+    preset === "word-highlight"
+      ? "pill"
+      : preset === "boxed"
+        ? "underline"
+        : "color";
+  const emphasisMode: CaptionEmphasisMode =
+    style?.emphasisMode === "pill" ||
+    style?.emphasisMode === "color" ||
+    style?.emphasisMode === "underline" ||
+    style?.emphasisMode === "scale" ||
+    style?.emphasisMode === "cue"
+      ? style.emphasisMode
+      : defaultEmphasis;
+
+  const alignment: CaptionAlignment =
+    style?.alignment === "left" ? "left" : "center";
+
+  const letterSpacing: CaptionLetterSpacing =
+    style?.letterSpacing === "tight" ||
+    style?.letterSpacing === "normal" ||
+    style?.letterSpacing === "wide"
+      ? style.letterSpacing
+      : "normal";
+
+  const assSpacing =
+    letterSpacing === "tight"
+      ? -0.5
+      : letterSpacing === "wide"
+        ? 2.2
+        : preset === "word-highlight"
+          ? 0.4
+          : 0;
+
+  const assItalic = style?.italic ? -1 : 0;
+
   return {
     preset,
     fontSize,
     renderFontSizePx1080: FONT_SIZE_TABLE[fontSize].renderPx1080,
     bottomPercent,
-    maxWidthPercent: preset === "word-highlight" ? 94 : 90,
+    maxWidthPercent:
+      alignment === "left" ? 88 : preset === "word-highlight" ? 94 : 90,
     accent,
     accentHex: activeWordHex,
     accentAssBgr: hexToAssBgr(activeWordHex),
@@ -271,6 +320,10 @@ function computeLayout(style: Partial<CaptionStyleConfig> | null | undefined) {
       : "FF",
     shadowDepth:
       shadowStrength === "strong" ? 3 : shadowStrength === "soft" ? 1.5 : 0,
+    emphasisMode,
+    assAlignment: alignment === "left" ? 1 : 2,
+    assSpacing,
+    assItalic,
   };
 }
 
@@ -372,9 +425,21 @@ function formatStyledCueRun(
   activeWord: RenderCaptionWord | null,
   sampleTimeMs: number
 ): string {
-  const { preset, accentAssBgr, activeInkAssBgr, textAssBgr, bgAssBgr, bgAssAlpha, bgDimAssAlpha, casing } =
-    layout;
-  const useWordTiming = cue.timing_mode === "word" && cue.words.length > 0;
+  const {
+    preset,
+    emphasisMode,
+    accentAssBgr,
+    activeInkAssBgr,
+    textAssBgr,
+    bgAssBgr,
+    bgAssAlpha,
+    bgDimAssAlpha,
+    casing,
+  } = layout;
+  const useWordTiming =
+    cue.timing_mode === "word" &&
+    cue.words.length > 0 &&
+    emphasisMode !== "cue";
   const transform = (s: string) =>
     casing === "uppercase"
       ? s.toUpperCase()
@@ -384,13 +449,17 @@ function formatStyledCueRun(
 
   if (!useWordTiming) {
     const escaped = escapeAssText(transform(cue.text.trim()));
-    if (preset === "word-highlight") {
+    if (emphasisMode === "cue") {
+      return `{\\c&H${textAssBgr}&\\1a&H00&}${escaped}`;
+    }
+    if (preset === "word-highlight" || emphasisMode === "pill") {
       return `{\\c&H${activeInkAssBgr}&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${escaped}`;
     }
     return `{\\c&H${accentAssBgr}&\\1a&H00&}${escaped}`;
   }
 
   const lineBreaks = detectWordLineBreaks(cue.text, cue.words.length);
+  const isPillMode = preset === "word-highlight" || emphasisMode === "pill";
   const parts: string[] = [];
 
   for (let i = 0; i < cue.words.length; i++) {
@@ -402,38 +471,57 @@ function formatStyledCueRun(
     if (i > 0) {
       if (lineBreaks.has(i)) {
         parts.push("\\N");
-      } else if (preset === "word-highlight") {
-        // Transparent separator space so per-word pills stay crisp without seam overlap
+      } else if (isPillMode) {
         parts.push("{\\3a&HFF&} ");
       } else {
         parts.push(" ");
       }
     }
 
-    if (preset === "clean") {
+    if (isPillMode) {
       if (isActive) {
-        parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\fscx104\\fscy104}${wordText}`);
+        parts.push(
+          `{\\c&H${activeInkAssBgr}&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${wordText}`
+        );
       } else if (isPast) {
-        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\fscx100\\fscy100}${wordText}`);
+        parts.push(
+          `{\\c&H${textAssBgr}&\\1a&H00&\\3c&H${bgAssBgr}&\\3a&H${bgAssAlpha}&}${wordText}`
+        );
       } else {
-        parts.push(`{\\c&H${textAssBgr}&\\1a&H33&\\fscx100\\fscy100}${wordText}`);
+        parts.push(
+          `{\\c&H${textAssBgr}&\\1a&H40&\\3c&H${bgAssBgr}&\\3a&H${bgDimAssAlpha}&}${wordText}`
+        );
       }
-    } else if (preset === "boxed") {
+    } else if (emphasisMode === "underline") {
       if (isActive) {
         parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&\\u1}${wordText}`);
       } else if (isPast) {
         parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\u0}${wordText}`);
       } else {
-        parts.push(`{\\c&H${textAssBgr}&\\1a&H45&\\u0}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H42&\\u0}${wordText}`);
+      }
+    } else if (emphasisMode === "scale") {
+      if (isActive) {
+        parts.push(
+          `{\\c&H${accentAssBgr}&\\1a&H00&\\fscx110\\fscy110}${wordText}`
+        );
+      } else if (isPast) {
+        parts.push(
+          `{\\c&H${textAssBgr}&\\1a&H00&\\fscx100\\fscy100}${wordText}`
+        );
+      } else {
+        parts.push(
+          `{\\c&H${textAssBgr}&\\1a&H33&\\fscx100\\fscy100}${wordText}`
+        );
       }
     } else {
-      // word-highlight: kinetic accent pill with contrasting ink vs translucent background pills
+      // emphasisMode === "color"
       if (isActive) {
-        parts.push(`{\\c&H${activeInkAssBgr}&\\1a&H00&\\3c&H${accentAssBgr}&\\3a&H00&}${wordText}`);
+        parts.push(`{\\c&H${accentAssBgr}&\\1a&H00&}${wordText}`);
       } else if (isPast) {
-        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&\\3c&H${bgAssBgr}&\\3a&H${bgAssAlpha}&}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H00&}${wordText}`);
       } else {
-        parts.push(`{\\c&H${textAssBgr}&\\1a&H40&\\3c&H${bgAssBgr}&\\3a&H${bgDimAssAlpha}&}${wordText}`);
+        parts.push(`{\\c&H${textAssBgr}&\\1a&H38&}${wordText}`);
       }
     }
   }
@@ -452,10 +540,7 @@ export function buildAssScript(params: {
   const layout = computeLayout(params.style);
   const cues = hydrateCues(params.cues);
 
-  // Use the validated bundled font family matching browser preview, falling back to worker fontName if empty
   const resolvedFontName = layout.assFontFamily || fontName;
-
-  // Match editor proportion across portrait, square, and landscape canvases
   const refWidth = width > height ? Math.round(height * 0.85) : width;
   const fontSize = Math.max(
     24,
@@ -463,45 +548,49 @@ export function buildAssScript(params: {
   );
   const marginV = Math.max(16, Math.round(height * (layout.bottomPercent / 100)));
   const marginH = Math.max(
-    18,
+    24,
     Math.round(width * ((100 - layout.maxWidthPercent) / 200))
   );
 
-  // Style definition tailored to preset + validated creator settings
   let styleLine: string;
-  const scaledOutline = Number((layout.outlineWidth * (refWidth / 1080) * 1.4).toFixed(1));
-  if (layout.preset === "clean") {
-    const borderStyle = layout.backgroundEnabled ? 3 : 1;
-    const outlineCol = layout.backgroundEnabled
-      ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
-      : `&H10${layout.outlineAssBgr}`;
-    const outlinePx = layout.backgroundEnabled ? 10 : Math.max(0.5, scaledOutline || 2);
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H66100B07,-1,0,0,0,100,100,0,0,${borderStyle},${outlinePx},${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
+  const scaledOutline = Number(
+    (layout.outlineWidth * (refWidth / 1080) * 1.4).toFixed(1)
+  );
+  const isPillMode =
+    layout.preset === "word-highlight" || layout.emphasisMode === "pill";
+
+  if (isPillMode) {
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,3,8,${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   } else if (layout.preset === "boxed") {
     const borderStyle = layout.backgroundEnabled ? 3 : 1;
     const outlineCol = layout.backgroundEnabled
       ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
       : `&H10${layout.outlineAssBgr}`;
     const outlinePx = layout.backgroundEnabled ? 14 : scaledOutline;
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,0,0,0,100,100,0,0,${borderStyle},${outlinePx},${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   } else {
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},-1,0,0,0,100,100,0.4,0,3,8,${layout.shadowDepth},2,${marginH},${marginH},${marginV},1`;
+    const borderStyle = layout.backgroundEnabled ? 3 : 1;
+    const outlineCol = layout.backgroundEnabled
+      ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
+      : `&H10${layout.outlineAssBgr}`;
+    const outlinePx = layout.backgroundEnabled
+      ? 10
+      : Math.max(0.5, scaledOutline || 2);
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},&H66100B07,-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   }
 
   const events: string[] = [];
 
   for (const cue of cues) {
-    const useWordTiming = cue.timing_mode === "word" && cue.words.length > 0;
+    const useWordTiming =
+      cue.timing_mode === "word" &&
+      cue.words.length > 0 &&
+      layout.emphasisMode !== "cue";
     if (!useWordTiming) {
       const startStr = formatAssTime(cue.start_ms);
       const endStr = formatAssTime(cue.end_ms);
       if (startStr !== endStr) {
-        const text = formatStyledCueRun(
-          cue,
-          layout,
-          null,
-          cue.start_ms
-        );
+        const text = formatStyledCueRun(cue, layout, null, cue.start_ms);
         events.push(`Dialogue: 0,${startStr},${endStr},Caption,,0,0,0,,${text}`);
       }
       continue;

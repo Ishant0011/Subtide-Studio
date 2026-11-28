@@ -193,11 +193,11 @@ export function EditorTimeline({
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
 
-    ctx.fillStyle = "rgba(196, 181, 253, 0.22)";
+    ctx.fillStyle = "rgba(245, 241, 232, 0.16)";
     ctx.fillRect(0, Math.floor(height / 2), width, 1);
 
     const barWidth = width / waveformPeaks.length;
-    ctx.fillStyle = "rgba(196, 181, 253, 0.72)";
+    ctx.fillStyle = "rgba(185, 182, 196, 0.65)";
     for (let i = 0; i < waveformPeaks.length; i++) {
       const amp = Math.pow(Math.max(0, Math.min(1, waveformPeaks[i])), 0.74);
       const barH = Math.max(3, Math.round(amp * (height - 8)));
@@ -559,7 +559,7 @@ export function EditorTimeline({
           {selectedCue && (
             <span
               data-testid="timeline-selected-range"
-              className="truncate rounded-lg border border-accent/35 bg-accent-soft/60 px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums text-accent-hover"
+              className="truncate rounded-lg border border-ink/12 bg-inset px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums text-ink-secondary"
             >
               {selectedCueIndex >= 0 ? `Cue #${selectedCueIndex + 1} · ` : ""}
               {formatMsClock(selectedCue.start_ms)} –{" "}
@@ -616,7 +616,7 @@ export function EditorTimeline({
               disabled={!canPlaySelectedCue}
               onClick={onPlaySelectedCue}
               title="Play only the selected cue"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-soft px-2.5 text-xs font-semibold text-accent-hover transition hover:bg-accent hover:text-page disabled:opacity-35"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink/15 bg-elevated px-2.5 text-xs font-semibold text-ink transition hover:border-ink/30 disabled:opacity-35"
             >
               <Play className="h-3 w-3 fill-current" />
               <span className="hidden sm:inline">Play cue</span>
@@ -634,13 +634,13 @@ export function EditorTimeline({
             disabled={zoomIndex === 0}
             onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
             aria-label="Zoom out timeline"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary transition hover:border-ink/25 hover:text-ink disabled:opacity-40"
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </button>
           <span
             data-testid="timeline-zoom-level"
-            className="min-w-[36px] text-center font-mono text-xs font-semibold tabular-nums text-accent-hover"
+            className="min-w-[36px] text-center font-mono text-xs font-semibold tabular-nums text-ink-secondary"
           >
             {zoom}x
           </span>
@@ -652,7 +652,7 @@ export function EditorTimeline({
               setZoomIndex((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1))
             }
             aria-label="Zoom in timeline"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary transition hover:border-accent/50 hover:text-ink disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink/10 bg-elevated text-ink-secondary transition hover:border-ink/25 hover:text-ink disabled:opacity-40"
           >
             <ZoomIn className="h-3.5 w-3.5" />
           </button>
@@ -763,10 +763,10 @@ export function EditorTimeline({
                   }}
                   className={`group absolute bottom-1 top-1 flex cursor-grab items-center justify-between overflow-hidden rounded-lg text-left transition-colors active:cursor-grabbing ${
                     isSelected || isDraggingThis
-                      ? "z-20 border-2 border-accent bg-accent/25 text-ink shadow-[0_0_16px_rgba(167,139,250,0.3)]"
+                      ? "z-20 border-2 border-accent bg-accent/20 text-ink shadow-md"
                       : isActive
-                        ? "z-10 border border-accent/60 bg-elevated/70 text-ink"
-                        : "z-10 border border-ink/25 bg-elevated/50 text-ink-secondary hover:border-ink/45 hover:text-ink"
+                        ? "z-10 border border-ink/40 bg-elevated/85 text-ink"
+                        : "z-10 border border-ink/20 bg-elevated/60 text-ink-secondary hover:border-ink/40 hover:text-ink"
                   }`}
                 >
                   {/* Left (Start) Draggable Handle */}
@@ -782,7 +782,7 @@ export function EditorTimeline({
                     className={`flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center border-r transition ${
                       isSelected
                         ? "border-accent/55 bg-accent text-page"
-                        : "border-accent/35 bg-accent/30 text-ink hover:bg-accent hover:text-page"
+                        : "border-ink/20 bg-panel/80 text-ink-secondary hover:bg-accent hover:text-page"
                     }`}
                   >
                     <span className="h-4 w-0.5 rounded-full bg-current" />
@@ -817,7 +817,7 @@ export function EditorTimeline({
                     className={`flex h-full w-3 shrink-0 cursor-ew-resize items-center justify-center border-l transition ${
                       isSelected
                         ? "border-accent/55 bg-accent text-page"
-                        : "border-accent/35 bg-accent/30 text-ink hover:bg-accent hover:text-page"
+                        : "border-ink/20 bg-panel/80 text-ink-secondary hover:bg-accent hover:text-page"
                     }`}
                   >
                     <span className="h-4 w-0.5 rounded-full bg-current" />
