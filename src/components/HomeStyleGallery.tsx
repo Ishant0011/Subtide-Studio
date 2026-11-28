@@ -47,7 +47,7 @@ export function HomeStyleGallery() {
   const [selectedId, setSelectedId] = useState<string>(galleryPresets[0].id);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [currentTime, setCurrentTime] = useState(3.4);
+  const [currentTime, setCurrentTime] = useState(5.8);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -118,8 +118,8 @@ export function HomeStyleGallery() {
       setDuration(video.duration);
     }
     if (!initialized) {
-      video.currentTime = 3.4;
-      setCurrentTime(3.4);
+      video.currentTime = 5.8;
+      setCurrentTime(5.8);
       setInitialized(true);
     }
   }, [initialized]);
@@ -254,7 +254,7 @@ export function HomeStyleGallery() {
           <video
             ref={videoRef}
             src={SAMPLE_CLIP.src}
-            poster={SAMPLE_CLIP.poster}
+            poster="/sample-gallery-frame.jpg"
             playsInline
             preload="metadata"
             muted={isMuted}

@@ -328,7 +328,7 @@ export function ProjectExportModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-ink/15 bg-panel p-4 shadow-[0_24px_80px_rgba(0,0,0,0.75)] sm:rounded-2xl sm:p-5">
+      <div className="cc-modal-enter max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-ink/15 bg-panel p-4 shadow-[0_24px_80px_rgba(0,0,0,0.75)] sm:rounded-2xl sm:p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-ink/10 pb-3.5">
           <div className="min-w-0">

@@ -443,7 +443,7 @@ export function UploadWorkspace() {
         {(isTransferActive || phase === "completed") && (
           <div
             data-testid={phase === "completed" ? "upload-complete-banner" : "upload-transfer-card"}
-            className="mt-5 rounded-xl border border-ink/12 bg-inset p-4"
+            className="cc-panel-enter mt-5 rounded-xl border border-ink/12 bg-inset p-4"
           >
             {/* 3-Step Progression Header */}
             <ol

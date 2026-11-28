@@ -83,14 +83,43 @@ function getRealFilterBucket(project: ProjectWithMedia): Exclude<ProjectFilterSt
   return "uploaded";
 }
 
+function formatLastEdited(isoString: string | null | undefined): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Edited just now";
+  if (diffMins < 60) return `Edited ${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Edited ${diffHours}h ago`;
+  return `Edited ${date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
 function getStageDisplay(
   project: ProjectWithMedia,
   job: IngestJobRow | null,
   revision: CaptionRevisionRow | null
-): { label: string; tone: "accent" | "amber" | "rose" | "neutral"; spinning: boolean } {
+): {
+  label: string;
+  tone: "accent" | "amber" | "rose" | "neutral";
+  spinning: boolean;
+  kind: "queued" | "transcribing" | "ready" | "failed" | "uploading";
+} {
   const primaryAsset = project.media_assets?.[0] ?? null;
   if (primaryAsset && primaryAsset.status !== "uploaded" && !job) {
-    return { label: "Uploading", tone: "amber", spinning: true };
+    return {
+      label: "Uploading",
+      tone: "amber",
+      spinning: true,
+      kind: "uploading",
+    };
   }
 
   if (job) {
@@ -98,41 +127,64 @@ function getStageDisplay(
       return {
         label:
           job.attempt_count > 0
-            ? `Processing · Retry ${job.attempt_count}/${job.max_attempts}`
-            : "Processing · Queued",
+            ? `Waiting to transcribe · Retry ${job.attempt_count}/${job.max_attempts}`
+            : "Waiting to transcribe",
         tone: "amber",
-        spinning: true,
+        spinning: false,
+        kind: "queued",
       };
     }
     if (job.status === "probing") {
-      return { label: "Processing · Probing", tone: "amber", spinning: true };
+      return {
+        label: "Transcribing · Probing",
+        tone: "amber",
+        spinning: true,
+        kind: "transcribing",
+      };
     }
     if (job.status === "transcoding") {
-      return { label: "Processing · Preview", tone: "amber", spinning: true };
+      return {
+        label: "Transcribing · Preview",
+        tone: "amber",
+        spinning: true,
+        kind: "transcribing",
+      };
     }
     if (job.status === "transcribing") {
-      return { label: "Processing · Captions", tone: "amber", spinning: true };
+      return {
+        label: "Transcribing...",
+        tone: "amber",
+        spinning: true,
+        kind: "transcribing",
+      };
     }
     if (job.status === "failed") {
       return {
-        label: `Needs retry · ${formatErrorLabel(job.error_code)}`,
+        label: `Failed · ${formatErrorLabel(job.error_code)}`,
         tone: "rose",
         spinning: false,
+        kind: "failed",
       };
     }
     if (job.status === "completed") {
       if (revision?.speech_status === "no_speech") {
-        return { label: "Ready · No speech", tone: "accent", spinning: false };
+        return {
+          label: "Ready · No speech",
+          tone: "accent",
+          spinning: false,
+          kind: "ready",
+        };
       }
-      return { label: "Ready", tone: "accent", spinning: false };
+      return { label: "Ready", tone: "accent", spinning: false, kind: "ready" };
     }
   }
 
   if (project.status === "failed") {
     return {
-      label: `Needs retry · ${formatErrorLabel(project.last_error_code)}`,
+      label: `Failed · ${formatErrorLabel(project.last_error_code)}`,
       tone: "rose",
       spinning: false,
+      kind: "failed",
     };
   }
   if (project.status === "ready") {
@@ -140,12 +192,26 @@ function getStageDisplay(
       label: project.active_revision_id ? "Ready" : "Uploaded",
       tone: project.active_revision_id ? "accent" : "neutral",
       spinning: false,
+      kind: "ready",
     };
   }
-  if (project.status === "queued" || project.status === "processing") {
-    return { label: "Processing", tone: "amber", spinning: true };
+  if (project.status === "queued") {
+    return {
+      label: "Waiting to transcribe",
+      tone: "amber",
+      spinning: false,
+      kind: "queued",
+    };
   }
-  return { label: "Uploading", tone: "neutral", spinning: false };
+  if (project.status === "processing") {
+    return {
+      label: "Transcribing...",
+      tone: "amber",
+      spinning: true,
+      kind: "transcribing",
+    };
+  }
+  return { label: "Uploading", tone: "neutral", spinning: false, kind: "uploading" };
 }
 
 function findActiveCueMs(
@@ -174,6 +240,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [loadingAssetId, setLoadingAssetId] = useState<string | null>(null);
   const [openingEditorId, setOpeningEditorId] = useState<string | null>(null);
+  const [failedThumbIds, setFailedThumbIds] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
   const hasActiveJobs = useMemo(
@@ -245,8 +312,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
     });
 
     return [...list].sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.created_at).getTime();
+      const bTime = new Date(b.updated_at || b.created_at).getTime();
       if (sortOrder === "oldest") {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        return aTime - bTime;
       }
       if (sortOrder === "title_asc") {
         return a.title.localeCompare(b.title);
@@ -254,7 +323,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
       if (sortOrder === "duration_desc") {
         return (b.duration_ms ?? 0) - (a.duration_ms ?? 0);
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return bTime - aTime;
     });
   }, [projects, searchQuery, statusFilter, sortOrder]);
 
@@ -505,7 +574,10 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div
+          data-testid="projects-grid"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {filteredProjects.map((project) => {
             const primaryAsset = project.media_assets?.[0] ?? null;
             const job = project.ingest_jobs?.[0] ?? null;
@@ -532,33 +604,38 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               stage.tone === "accent"
                 ? "border border-ink/20 bg-page/85 text-ink"
                 : stage.tone === "amber"
-                  ? "border border-amber-400/35 bg-amber-400/10 text-amber-200"
+                  ? "border border-amber-400/35 bg-amber-400/12 text-amber-200"
                   : stage.tone === "rose"
-                    ? "border border-rose-400/35 bg-rose-500/10 text-rose-200"
+                    ? "border border-rose-400/35 bg-rose-500/15 text-rose-200"
                     : "border border-ink/12 bg-elevated text-ink-secondary";
 
             const isAudio =
               project.media_kind === "audio" ||
               primaryAsset?.mime_type?.startsWith("audio/");
+            const thumbFailed = Boolean(failedThumbIds[project.id]);
             const durationSec = project.duration_ms
               ? `${Math.floor(project.duration_ms / 60000)}:${String(
                   Math.floor((project.duration_ms % 60000) / 1000)
                 ).padStart(2, "0")}`
               : null;
+            const lastEditedLabel = formatLastEdited(
+              project.updated_at || project.created_at
+            );
 
             return (
               <article
                 key={project.id}
                 data-testid={`project-card-${project.id}`}
                 data-project-title={project.title}
-                className="flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition hover:border-ink/25"
+                data-project-stage={stage.kind}
+                className="cc-panel-enter flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/10 bg-panel transition-colors duration-150 hover:border-ink/22"
               >
-                {/* Project Visual Thumbnail / Audio Artwork */}
+                {/* Project Visual Poster / Intentional Placeholder */}
                 <div className="relative h-40 w-full overflow-hidden border-b border-ink/8 bg-inset">
                   {isAudio ? (
                     <div
                       data-testid={`project-audio-artwork-${project.id}`}
-                      className="flex h-full w-full flex-col items-center justify-center bg-inset px-4"
+                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-demo-frame/45 to-inset px-4"
                     >
                       <div className="flex items-end gap-1.5">
                         {[14, 28, 42, 22, 48, 34, 20, 38, 26, 16].map((h, i) => (
@@ -571,12 +648,12 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           />
                         ))}
                       </div>
-                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-panel px-2.5 py-0.5 text-[11px] font-medium text-ink-secondary">
-                        <AudioLines className="h-3 w-3" />
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-ink/15 bg-panel/90 px-2.5 py-0.5 text-[11px] font-medium text-ink-secondary">
+                        <AudioLines className="h-3 w-3 text-accent" />
                         <span>Audio · 9:16 Stage</span>
                       </span>
                     </div>
-                  ) : project.thumbnail_url ? (
+                  ) : project.thumbnail_url && !thumbFailed ? (
                     <div
                       data-testid={`project-video-thumbnail-${project.id}`}
                       className="relative flex h-full w-full items-center justify-center bg-inset"
@@ -587,15 +664,40 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                         playsInline
                         preload="metadata"
                         aria-hidden="true"
-                        className="h-full w-full object-contain"
+                        onError={() =>
+                          setFailedThumbIds((prev) => ({
+                            ...prev,
+                            [project.id]: true,
+                          }))
+                        }
+                        className="h-full w-full object-cover"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-page/65 via-transparent to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-page/75 via-transparent to-page/25" />
                     </div>
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center bg-inset text-ink-muted">
-                      <Film className="h-7 w-7 text-ink-secondary" />
-                      <span className="mt-1.5 text-[11px]">
-                        {stage.spinning ? "Generating preview..." : "Video clip"}
+                    <div
+                      data-testid={`project-placeholder-${project.id}`}
+                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-elevated/70 to-inset px-4 text-center text-ink-muted"
+                    >
+                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-ink/12 bg-panel text-ink-secondary">
+                        {stage.kind === "failed" ? (
+                          <AlertCircle className="h-5 w-5 text-rose-300" />
+                        ) : stage.spinning ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-accent" />
+                        ) : (
+                          <Film className="h-5 w-5" />
+                        )}
+                      </span>
+                      <span className="mt-2 text-[11px] font-medium text-ink-secondary">
+                        {thumbFailed
+                          ? "Preview unavailable"
+                          : stage.kind === "queued"
+                            ? "Waiting for worker"
+                            : stage.kind === "transcribing"
+                              ? "Generating preview..."
+                              : stage.kind === "failed"
+                                ? "Processing stopped"
+                                : "Video clip"}
                       </span>
                     </div>
                   )}
@@ -617,13 +719,16 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                   </span>
 
                   {durationSec && (
-                    <span className="absolute bottom-2.5 right-3 rounded-md border border-ink/15 bg-page/80 px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink">
+                    <span
+                      data-testid={`project-duration-${project.id}`}
+                      className="absolute bottom-2.5 right-3 rounded-md border border-ink/15 bg-page/85 px-2 py-0.5 font-mono text-[11px] tabular-nums text-ink"
+                    >
                       {durationSec}
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+                <div className="flex flex-1 flex-col justify-between p-4">
                   <div>
                     <div className="flex items-start justify-between gap-2">
                       {isEditing ? (
@@ -653,21 +758,31 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex min-w-0 items-center gap-2">
-                          <h2 className="truncate text-base font-semibold tracking-tight text-ink">
-                            {project.title}
-                          </h2>
-                          <button
-                            type="button"
-                            aria-label={`Rename ${project.title}`}
-                            onClick={() => {
-                              setEditingId(project.id);
-                              setDraftTitle(project.title);
-                            }}
-                            className="shrink-0 rounded-md p-1 text-ink-muted transition hover:bg-elevated hover:text-ink"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <h2 className="truncate text-sm font-semibold tracking-tight text-ink">
+                              {project.title}
+                            </h2>
+                            <button
+                              type="button"
+                              aria-label={`Rename ${project.title}`}
+                              onClick={() => {
+                                setEditingId(project.id);
+                                setDraftTitle(project.title);
+                              }}
+                              className="shrink-0 rounded-md p-1 text-ink-muted transition hover:bg-elevated hover:text-ink"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                          {lastEditedLabel && (
+                            <p
+                              data-testid={`project-updated-${project.id}`}
+                              className="mt-0.5 text-[11px] text-ink-muted"
+                            >
+                              {lastEditedLabel}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -725,11 +840,17 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
                       </button>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 rounded-xl border border-ink/12 bg-inset px-3.5 py-2 text-xs font-medium text-ink-secondary">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                        {stage.kind === "queued" ? (
+                          <Clock className="h-3.5 w-3.5 text-amber-300" />
+                        ) : (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                        )}
                         <span>
                           {primaryAsset?.status !== "uploaded"
                             ? "Uploading clip..."
-                            : "Generating captions..."}
+                            : stage.kind === "queued"
+                              ? "Waiting to transcribe"
+                              : "Transcribing..."}
                         </span>
                       </span>
                     )}
@@ -830,7 +951,7 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
           aria-label={`Preview ${preview.title}`}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
         >
-          <div className="w-full max-w-md rounded-2xl border border-ink/15 bg-panel p-4 shadow-2xl">
+          <div className="cc-modal-enter w-full max-w-md rounded-2xl border border-ink/15 bg-panel p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="truncate text-sm font-semibold text-ink">
                 {preview.title}

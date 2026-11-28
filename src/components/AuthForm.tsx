@@ -134,7 +134,7 @@ export function AuthForm({
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-ink/12 bg-panel p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
+    <div className="cc-panel-enter w-full max-w-md rounded-2xl border border-ink/12 bg-panel p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
       <div className="flex items-center gap-2 text-xs font-medium text-accent">
         <Lock className="h-3.5 w-3.5" />
         <span>
@@ -212,7 +212,7 @@ export function AuthForm({
       {error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3 text-xs text-rose-200"
+          className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3 text-xs text-rose-200"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
@@ -220,7 +220,7 @@ export function AuthForm({
       )}
 
       {notice && (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent-soft p-3 text-xs text-accent-hover">
+        <div className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent-soft p-3 text-xs text-accent-hover">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{notice}</span>
         </div>

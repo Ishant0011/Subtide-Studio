@@ -12,3 +12,7 @@ fonts licensed under the SIL Open Font License, Version 1.1
    Copyright (c) 2016 Colophon Foundry — SIL OFL 1.1
 4. DM Serif Display Regular (DMSerifDisplay-Regular.ttf)
    Copyright (c) 2014–2019 Colophon Foundry / DeepMind — SIL OFL 1.1
+5. Montserrat Bold (Montserrat-Bold.ttf)
+   Copyright (c) 2011–2021 The Montserrat Project Authors — SIL OFL 1.1
+6. Noto Sans Devanagari Bold (NotoSansDevanagari-Bold.ttf)
+   Copyright (c) 2012–2023 Google LLC — SIL OFL 1.1

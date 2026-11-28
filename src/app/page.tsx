@@ -15,8 +15,8 @@ import {
 import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
 import { HomeHeroDemo } from "@/components/HomeHeroDemo";
 import { HomeStyleGallery } from "@/components/HomeStyleGallery";
+import { MotionReveal } from "@/components/MotionReveal";
 import { PublicHeader } from "@/components/PublicHeader";
-import { SAMPLE_CLIP } from "@/lib/captions";
 import {
   HOMEPAGE_HEADLINE,
   HOMEPAGE_SUBHEADLINE,
@@ -146,7 +146,7 @@ export default async function HomePage() {
           id="styles"
           className="border-t border-ink/10 bg-inset/50 py-12 lg:py-16"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
                 Compare caption styles on the same clip
@@ -159,12 +159,12 @@ export default async function HomePage() {
             </div>
 
             <HomeStyleGallery />
-          </div>
+          </MotionReveal>
         </section>
 
         {/* SECTION 2: Large Real Editor Preview + Plain-Language Upload -> Edit -> Export */}
         <section id="workflow" className="border-t border-ink/10 py-12 lg:py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="max-w-2xl">
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
@@ -277,9 +277,9 @@ export default async function HomePage() {
                   <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-page">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={SAMPLE_CLIP.poster}
+                      src="/sample-editor-frame.jpg"
                       alt="Talking-head preview inside the ClipCaptions editor"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover object-[50%_18%]"
                     />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                     <div className="pointer-events-none absolute inset-x-2 bottom-4 flex flex-wrap justify-center gap-1 text-center text-[10px] font-extrabold uppercase">
@@ -372,49 +372,55 @@ export default async function HomePage() {
               data-testid="workflow-steps"
               className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3"
             >
-              <li className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <p className="font-mono text-xs font-semibold text-ink-muted">
-                  01 · Upload
-                </p>
-                <h3 className="mt-1.5 text-base font-bold text-ink">
-                  Drop your video or audio clip
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                  Upload MP4, MOV, MP3, or WAV files up to 150 MB and 3 minutes.
-                  ClipCaptions generates word-synced captions and opens the
-                  editor as soon as processing finishes.
-                </p>
-              </li>
+              <MotionReveal delayMs={0} className="h-full">
+                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
+                  <p className="font-mono text-xs font-semibold text-ink-muted">
+                    01 · Upload
+                  </p>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Drop your video or audio clip
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
+                    Upload MP4, MOV, MP3, or WAV files up to 150 MB and 3 minutes.
+                    ClipCaptions generates word-synced captions and opens the
+                    editor as soon as processing finishes.
+                  </p>
+                </li>
+              </MotionReveal>
 
-              <li className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <p className="font-mono text-xs font-semibold text-ink-muted">
-                  02 · Edit
-                </p>
-                <h3 className="mt-1.5 text-base font-bold text-ink">
-                  Fix words and pick your style
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                  Follow playback as the video runs, correct any line inline,
-                  fine-tune boundaries on the audio waveform when needed, and
-                  switch between 12 presets or your own saved style.
-                </p>
-              </li>
+              <MotionReveal delayMs={70} className="h-full">
+                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
+                  <p className="font-mono text-xs font-semibold text-ink-muted">
+                    02 · Edit
+                  </p>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Fix words and pick your style
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
+                    Follow playback as the video runs, correct any line inline,
+                    fine-tune boundaries on the audio waveform when needed, and
+                    switch between built-in presets or your own saved style.
+                  </p>
+                </li>
+              </MotionReveal>
 
-              <li className="rounded-2xl border border-ink/10 bg-panel p-5">
-                <p className="font-mono text-xs font-semibold text-ink-muted">
-                  03 · Export
-                </p>
-                <h3 className="mt-1.5 text-base font-bold text-ink">
-                  Download ready-to-post files
-                </h3>
-                <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                  Export a burned-in H.264 MP4 in the exact resolution you need,
-                  from 240p up to 4K. Every export stays pinned to the saved
-                  revision and resolution tier you chose.
-                </p>
-              </li>
+              <MotionReveal delayMs={140} className="h-full">
+                <li className="h-full rounded-2xl border border-ink/10 bg-panel p-5">
+                  <p className="font-mono text-xs font-semibold text-ink-muted">
+                    03 · Export
+                  </p>
+                  <h3 className="mt-1.5 text-base font-bold text-ink">
+                    Download ready-to-post files
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
+                    Export a burned-in H.264 MP4 in the exact resolution you need,
+                    from 240p up to 4K. Every export stays pinned to the saved
+                    revision and resolution tier you chose.
+                  </p>
+                </li>
+              </MotionReveal>
             </ol>
-          </div>
+          </MotionReveal>
         </section>
 
         {/* SECTION 3: MP4 Output Examples & Resolution Tiers + Short Verified FAQ */}
@@ -422,7 +428,7 @@ export default async function HomePage() {
           id="exports"
           className="border-t border-ink/10 bg-inset/50 py-12 lg:py-16"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
@@ -463,9 +469,9 @@ export default async function HomePage() {
                   <div className="relative mt-3.5 h-32 overflow-hidden rounded-xl border border-ink/10 bg-inset">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={SAMPLE_CLIP.poster}
+                      src="/sample-gallery-frame.jpg"
                       alt="Example portrait burned-in MP4 caption output"
-                      className="h-full w-full object-cover object-top opacity-85"
+                      className="h-full w-full object-cover object-[50%_26%] opacity-90"
                     />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
                     <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-center gap-1 text-center text-xs font-extrabold uppercase">
@@ -594,7 +600,7 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </MotionReveal>
         </section>
       </main>
 

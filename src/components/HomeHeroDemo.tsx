@@ -126,11 +126,11 @@ export function HomeHeroDemo() {
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[312px] rounded-[1.75rem] bg-[#EAE4FA] p-3 text-[#0D0E12] shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:max-w-[352px] sm:rounded-[2rem] sm:p-4 lg:max-w-[372px] lg:p-5"
+      className="relative mx-auto w-full max-w-[312px] rounded-[1.75rem] border border-white/10 bg-[#34304A] p-3 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.48)] sm:max-w-[352px] sm:rounded-[2rem] sm:p-4 lg:max-w-[372px] lg:p-5"
     >
       {/* Quiet Header Bar: Original / Captioned toggle on the same clip without resetting playback */}
       <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
-        <span className="text-[11px] font-semibold tracking-tight text-[#2D2A3A]">
+        <span className="text-[11px] font-semibold tracking-tight text-ink/90">
           {comparison === "captioned" ? "Captioned preview" : "Original clip"}
         </span>
 
@@ -138,7 +138,7 @@ export function HomeHeroDemo() {
           role="group"
           aria-label="Compare original and captioned video"
           data-testid="hero-compare-group"
-          className="inline-flex rounded-full bg-[#191C24]/10 p-0.5 text-[11px] font-semibold"
+          className="inline-flex rounded-full border border-white/12 bg-[#101116]/65 p-0.5 text-[11px] font-semibold"
         >
           <button
             type="button"
@@ -148,7 +148,7 @@ export function HomeHeroDemo() {
             className={`rounded-full px-2.5 py-1 transition ${
               comparison === "original"
                 ? "bg-accent text-page shadow-sm"
-                : "text-[#2D2A3A] hover:text-[#0D0E12]"
+                : "text-ink-secondary hover:text-ink"
             }`}
           >
             Original
@@ -161,7 +161,7 @@ export function HomeHeroDemo() {
             className={`rounded-full px-2.5 py-1 transition ${
               comparison === "captioned"
                 ? "bg-accent text-page shadow-sm"
-                : "text-[#2D2A3A] hover:text-[#0D0E12]"
+                : "text-ink-secondary hover:text-ink"
             }`}
           >
             Captioned
@@ -170,7 +170,7 @@ export function HomeHeroDemo() {
       </div>
 
       {/* Large 9:16 Footage Stage — footage and captions dominate the visual hierarchy */}
-      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[244px] overflow-hidden rounded-[1.25rem] bg-[#0D0E12] shadow-[0_18px_42px_rgba(13,14,18,0.38)] sm:max-w-[288px] lg:max-w-[308px]">
+      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[244px] overflow-hidden rounded-[1.25rem] bg-[#101116] shadow-[0_18px_42px_rgba(16,17,22,0.5)] sm:max-w-[288px] lg:max-w-[308px]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}

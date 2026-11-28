@@ -19,7 +19,9 @@ interface EditorCaptionOverlayProps {
 function buildTextShadow(
   outlineWidth: number,
   outlineColor: string,
-  shadowStrength: "none" | "soft" | "strong"
+  shadowStrength: "none" | "soft" | "strong",
+  shadowColor: string,
+  shadowOpacity: number
 ): string | undefined {
   const shadows: string[] = [];
   if (outlineWidth > 0) {
@@ -31,13 +33,14 @@ function buildTextShadow(
       `${px}px ${px}px 0 ${outlineColor}`
     );
   }
-  if (shadowStrength === "strong") {
+  const shadowAlpha = Math.max(0, Math.min(1, shadowOpacity / 100));
+  if (shadowStrength === "strong" && shadowAlpha > 0) {
     shadows.push(
-      "0 3px 12px rgba(13,14,18,0.95)",
-      "0 1px 3px rgba(13,14,18,0.95)"
+      `0 3px 12px ${hexToRgba(shadowColor, shadowAlpha)}`,
+      `0 1px 3px ${hexToRgba(shadowColor, shadowAlpha)}`
     );
-  } else if (shadowStrength === "soft") {
-    shadows.push("0 2px 8px rgba(13,14,18,0.85)");
+  } else if (shadowStrength === "soft" && shadowAlpha > 0) {
+    shadows.push(`0 2px 8px ${hexToRgba(shadowColor, shadowAlpha * 0.9)}`);
   }
   return shadows.length > 0 ? shadows.join(", ") : undefined;
 }
@@ -68,7 +71,13 @@ export function EditorCaptionOverlay({
   const textShadow = buildTextShadow(
     layout.outlineWidth,
     layout.outlineColor,
-    layout.shadowStrength
+    layout.shadowStrength,
+    layout.shadowColor,
+    layout.shadowOpacity
+  );
+  const highlightBgRgba = hexToRgba(
+    layout.highlightBgColor,
+    layout.highlightBgOpacity / 100
   );
   const bgRgba = layout.backgroundEnabled
     ? hexToRgba(layout.backgroundColor, layout.backgroundOpacity / 100)
@@ -127,9 +136,9 @@ export function EditorCaptionOverlay({
                   style={
                     isActive
                       ? {
-                          backgroundColor: layout.activeWordColor,
-                          color: layout.activeWordContrastText,
-                          boxShadow: `0 4px 16px ${layout.accentShadowRgba}`,
+                          backgroundColor: highlightBgRgba,
+                          color: layout.pillActiveTextColor,
+                          boxShadow: `0 4px 16px ${hexToRgba(layout.highlightBgColor, 0.35)}`,
                         }
                       : {
                           backgroundColor: isPast ? bgRgba : bgDimRgba,
@@ -151,13 +160,11 @@ export function EditorCaptionOverlay({
               data-cue-highlight="true"
               style={{
                 backgroundColor:
-                  layout.emphasisMode === "cue"
-                    ? bgRgba
-                    : layout.activeWordColor,
+                  layout.emphasisMode === "cue" ? bgRgba : highlightBgRgba,
                 color:
                   layout.emphasisMode === "cue"
                     ? layout.textColor
-                    : layout.activeWordContrastText,
+                    : layout.pillActiveTextColor,
                 textShadow:
                   layout.emphasisMode === "cue" ? textShadow : undefined,
               }}

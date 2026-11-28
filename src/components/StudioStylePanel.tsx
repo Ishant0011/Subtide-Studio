@@ -120,12 +120,17 @@ function isMatchingStyle(
 
 function LivePresetSwatch({ style }: { style: Partial<CaptionStyleConfig> }) {
   const layout = computeCaptionLayout(style);
-  const w1 = applyCaptionCasing("Keep", layout.casing);
-  const w2 = applyCaptionCasing("your", layout.casing);
-  const w3 = applyCaptionCasing("style", layout.casing);
+  const isDevanagari = layout.fontFamily === "noto-devanagari";
+  const w1 = isDevanagari ? "हर" : applyCaptionCasing("Keep", layout.casing);
+  const w2 = isDevanagari ? "शब्द" : applyCaptionCasing("your", layout.casing);
+  const w3 = isDevanagari ? "साफ़" : applyCaptionCasing("style", layout.casing);
   const bgRgba = layout.backgroundEnabled
     ? hexToRgba(layout.backgroundColor, layout.backgroundOpacity / 100)
     : "transparent";
+  const highlightBgRgba = hexToRgba(
+    layout.highlightBgColor,
+    layout.highlightBgOpacity / 100
+  );
 
   const textShadow =
     layout.outlineWidth > 0
@@ -156,8 +161,8 @@ function LivePresetSwatch({ style }: { style: Partial<CaptionStyleConfig> }) {
         <span
           className="rounded px-1.5 py-0.5"
           style={{
-            backgroundColor: layout.activeWordColor,
-            color: layout.activeWordContrastText,
+            backgroundColor: highlightBgRgba,
+            color: layout.pillActiveTextColor,
           }}
         >
           {w2}
@@ -1277,11 +1282,62 @@ export function StudioStylePanel({
                 )}
               </div>
 
-              {/* Shadow Strength */}
+              {/* Highlight Box Color & Opacity (Pill mode) */}
+              {(layout.preset === "word-highlight" ||
+                layout.emphasisMode === "pill") && (
+                <div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-semibold uppercase tracking-wider text-ink-muted">
+                      Highlight box
+                    </span>
+                    <span className="font-mono text-ink-secondary">
+                      {layout.highlightBgColor} · {layout.highlightBgOpacity}%
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <input
+                      type="color"
+                      data-testid="style-highlight-bg-color"
+                      aria-label="Highlight box color"
+                      value={layout.highlightBgColor}
+                      onChange={(e) =>
+                        onUpdateStyle({
+                          highlightBgColor: e.target.value.toUpperCase(),
+                        })
+                      }
+                      className="h-6 w-8 cursor-pointer rounded border border-ink/15 bg-page p-0.5"
+                    />
+                    <input
+                      type="range"
+                      data-testid="style-highlight-bg-opacity"
+                      min={15}
+                      max={100}
+                      step={5}
+                      value={layout.highlightBgOpacity}
+                      aria-label="Highlight box opacity"
+                      onChange={(e) =>
+                        onUpdateStyle({
+                          highlightBgOpacity: Number(e.target.value),
+                        })
+                      }
+                      className="studio-scrubber flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Shadow Strength, Color & Opacity */}
               <div>
-                <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                  Shadow
-                </span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold uppercase tracking-wider text-ink-muted">
+                    Shadow
+                  </span>
+                  {layout.shadowStrength !== "none" && (
+                    <span className="font-mono text-ink-secondary">
+                      {layout.shadowColor} · {layout.shadowOpacity}%
+                    </span>
+                  )}
+                </div>
                 <div
                   role="group"
                   aria-label="Shadow strength"
@@ -1308,6 +1364,37 @@ export function StudioStylePanel({
                     );
                   })}
                 </div>
+                {layout.shadowStrength !== "none" && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="color"
+                      data-testid="style-shadow-color"
+                      aria-label="Shadow color"
+                      value={layout.shadowColor}
+                      onChange={(e) =>
+                        onUpdateStyle({
+                          shadowColor: e.target.value.toUpperCase(),
+                        })
+                      }
+                      className="h-6 w-8 cursor-pointer rounded border border-ink/15 bg-page p-0.5"
+                    />
+                    <input
+                      type="range"
+                      data-testid="style-shadow-opacity"
+                      min={10}
+                      max={100}
+                      step={5}
+                      value={layout.shadowOpacity}
+                      aria-label="Shadow opacity"
+                      onChange={(e) =>
+                        onUpdateStyle({
+                          shadowOpacity: Number(e.target.value),
+                        })
+                      }
+                      className="studio-scrubber flex-1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

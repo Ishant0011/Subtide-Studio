@@ -6,7 +6,13 @@ import type {
 
 export type CaptionFontSize = "sm" | "md" | "lg";
 export type CaptionAccentId = "violet" | "mint";
-export type CaptionFontId = "poppins" | "bebas-neue" | "space-mono" | "dm-serif";
+export type CaptionFontId =
+  | "poppins"
+  | "montserrat"
+  | "bebas-neue"
+  | "space-mono"
+  | "dm-serif"
+  | "noto-devanagari";
 export type CaptionCasing = "original" | "uppercase" | "lowercase";
 export type CaptionShadowStrength = "none" | "soft" | "strong";
 export type CaptionEmphasisMode =
@@ -41,6 +47,14 @@ export const CAPTION_FONTS: Record<CaptionFontId, CaptionFontDescriptor> = {
     file: "Poppins-Bold.ttf",
     category: "Geometric Sans",
   },
+  montserrat: {
+    id: "montserrat",
+    label: "Montserrat",
+    cssFamily: '"Montserrat", "Plus Jakarta Sans", sans-serif',
+    assFamily: "Montserrat",
+    file: "Montserrat-Bold.ttf",
+    category: "Bold Sans",
+  },
   "bebas-neue": {
     id: "bebas-neue",
     label: "Bebas Neue",
@@ -65,13 +79,23 @@ export const CAPTION_FONTS: Record<CaptionFontId, CaptionFontDescriptor> = {
     file: "DMSerifDisplay-Regular.ttf",
     category: "Editorial Serif",
   },
+  "noto-devanagari": {
+    id: "noto-devanagari",
+    label: "Noto Devanagari",
+    cssFamily: '"Noto Sans Devanagari", "Poppins", sans-serif',
+    assFamily: "Noto Sans Devanagari",
+    file: "NotoSansDevanagari-Bold.ttf",
+    category: "Devanagari + Latin",
+  },
 };
 
 export const CAPTION_FONT_LIST: CaptionFontDescriptor[] = [
   CAPTION_FONTS.poppins,
+  CAPTION_FONTS.montserrat,
   CAPTION_FONTS["bebas-neue"],
   CAPTION_FONTS["space-mono"],
   CAPTION_FONTS["dm-serif"],
+  CAPTION_FONTS["noto-devanagari"],
 ];
 
 export interface CaptionStyleConfig {
@@ -81,10 +105,12 @@ export interface CaptionStyleConfig {
   verticalPosition: number;
   /** Legacy / quick accent token; preserved for older revisions. */
   accent?: CaptionAccentId;
-  /** Phase 5B creator style controls (stored by value on revisions & personal presets). */
+  /** Phase 5B/5C creator style controls (stored by value on revisions & personal presets). */
   fontFamily?: CaptionFontId;
   textColor?: string;
   activeWordColor?: string;
+  highlightBgColor?: string;
+  highlightBgOpacity?: number;
   casing?: CaptionCasing;
   outlineWidth?: number;
   outlineColor?: string;
@@ -92,6 +118,8 @@ export interface CaptionStyleConfig {
   backgroundColor?: string;
   backgroundOpacity?: number;
   shadowStrength?: CaptionShadowStrength;
+  shadowColor?: string;
+  shadowOpacity?: number;
   emphasisMode?: CaptionEmphasisMode;
   alignment?: CaptionAlignment;
   letterSpacing?: CaptionLetterSpacing;
@@ -129,6 +157,9 @@ export interface CaptionLayoutMetrics {
   textColor: string;
   activeWordColor: string;
   activeWordContrastText: string;
+  highlightBgColor: string;
+  highlightBgOpacity: number;
+  pillActiveTextColor: string;
   casing: CaptionCasing;
   outlineWidth: number;
   outlineColor: string;
@@ -136,6 +167,8 @@ export interface CaptionLayoutMetrics {
   backgroundColor: string;
   backgroundOpacity: number;
   shadowStrength: CaptionShadowStrength;
+  shadowColor: string;
+  shadowOpacity: number;
   emphasisMode: CaptionEmphasisMode;
   alignment: CaptionAlignment;
   letterSpacing: CaptionLetterSpacing;
@@ -518,6 +551,122 @@ export const BUILTIN_STYLE_TEMPLATES: BuiltInStyleTemplate[] = [
       italic: true,
     },
   },
+  {
+    id: "devanagari-clean",
+    name: "Devanagari Clean",
+    category: "Clean",
+    description: "Noto Sans Devanagari tuned for Hindi and bilingual clips.",
+    style: {
+      preset: "clean",
+      fontSize: "md",
+      verticalPosition: 14,
+      accent: "violet",
+      fontFamily: "noto-devanagari",
+      textColor: "#F2F1F6",
+      activeWordColor: "#A99AF2",
+      casing: "original",
+      outlineWidth: 2,
+      outlineColor: "#101116",
+      backgroundEnabled: false,
+      backgroundColor: "#101116",
+      backgroundOpacity: 0,
+      shadowStrength: "strong",
+      shadowColor: "#0D0E12",
+      shadowOpacity: 85,
+      emphasisMode: "color",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "devanagari-pop",
+    name: "Devanagari Pop",
+    category: "Creator",
+    description: "High-visibility periwinkle highlight pill for Devanagari speech.",
+    style: {
+      preset: "word-highlight",
+      fontSize: "md",
+      verticalPosition: 16,
+      accent: "violet",
+      fontFamily: "noto-devanagari",
+      textColor: "#FFFFFF",
+      activeWordColor: "#A99AF2",
+      highlightBgColor: "#A99AF2",
+      highlightBgOpacity: 100,
+      casing: "original",
+      outlineWidth: 0,
+      outlineColor: "#101116",
+      backgroundEnabled: true,
+      backgroundColor: "#101116",
+      backgroundOpacity: 68,
+      shadowStrength: "soft",
+      shadowColor: "#0D0E12",
+      shadowOpacity: 80,
+      emphasisMode: "pill",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "studio-bold",
+    name: "Studio Bold",
+    category: "Bold",
+    description: "Heavy Montserrat caps with dark-violet pill and crisp yellow text.",
+    style: {
+      preset: "word-highlight",
+      fontSize: "lg",
+      verticalPosition: 16,
+      accent: "violet",
+      fontFamily: "montserrat",
+      textColor: "#F2F1F6",
+      activeWordColor: "#FDE047",
+      highlightBgColor: "#34304A",
+      highlightBgOpacity: 95,
+      casing: "uppercase",
+      outlineWidth: 1,
+      outlineColor: "#101116",
+      backgroundEnabled: true,
+      backgroundColor: "#101116",
+      backgroundOpacity: 55,
+      shadowStrength: "soft",
+      shadowColor: "#0D0E12",
+      shadowOpacity: 85,
+      emphasisMode: "pill",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
+  {
+    id: "cinema-sub",
+    name: "Cinema Sub",
+    category: "Editorial",
+    description: "Balanced Montserrat subtitle bar with warm off-white ink.",
+    style: {
+      preset: "boxed",
+      fontSize: "sm",
+      verticalPosition: 11,
+      accent: "violet",
+      fontFamily: "montserrat",
+      textColor: "#F2F1F6",
+      activeWordColor: "#A99AF2",
+      casing: "original",
+      outlineWidth: 0,
+      outlineColor: "#101116",
+      backgroundEnabled: true,
+      backgroundColor: "#101116",
+      backgroundOpacity: 82,
+      shadowStrength: "soft",
+      shadowColor: "#0D0E12",
+      shadowOpacity: 75,
+      emphasisMode: "color",
+      alignment: "center",
+      letterSpacing: "normal",
+      italic: false,
+    },
+  },
 ];
 
 export const MIN_VERTICAL_POSITION = 8;
@@ -628,7 +777,20 @@ export function computeCaptionLayout(
     style?.activeWordColor,
     accentMeta.hex
   );
-  const activeWordContrastText = getContrastingInkForHex(activeWordColor);
+  const highlightBgColor = normalizeHexColor(
+    style?.highlightBgColor,
+    activeWordColor
+  );
+  const highlightBgOpacity =
+    typeof style?.highlightBgOpacity === "number" &&
+    Number.isFinite(style.highlightBgOpacity)
+      ? Math.max(0, Math.min(100, Math.round(style.highlightBgOpacity)))
+      : 100;
+  const activeWordContrastText = getContrastingInkForHex(highlightBgColor);
+  const pillActiveTextColor =
+    highlightBgColor !== activeWordColor
+      ? activeWordColor
+      : activeWordContrastText;
 
   const casing: CaptionCasing =
     style?.casing === "original" ||
@@ -667,6 +829,12 @@ export function computeCaptionLayout(
       : preset === "clean"
         ? "strong"
         : "soft";
+  const shadowColor = normalizeHexColor(style?.shadowColor, "#0D0E12");
+  const shadowOpacity =
+    typeof style?.shadowOpacity === "number" &&
+    Number.isFinite(style.shadowOpacity)
+      ? Math.max(0, Math.min(100, Math.round(style.shadowOpacity)))
+      : 85;
 
   const defaultEmphasis: CaptionEmphasisMode =
     preset === "word-highlight"
@@ -733,6 +901,9 @@ export function computeCaptionLayout(
     textColor,
     activeWordColor,
     activeWordContrastText,
+    highlightBgColor,
+    highlightBgOpacity,
+    pillActiveTextColor,
     casing,
     outlineWidth,
     outlineColor,
@@ -740,6 +911,8 @@ export function computeCaptionLayout(
     backgroundColor,
     backgroundOpacity,
     shadowStrength,
+    shadowColor,
+    shadowOpacity,
     emphasisMode,
     alignment,
     letterSpacing,
@@ -761,6 +934,8 @@ export function normalizeCaptionStyle(
     fontFamily: layout.fontFamily,
     textColor: layout.textColor,
     activeWordColor: layout.activeWordColor,
+    highlightBgColor: layout.highlightBgColor,
+    highlightBgOpacity: layout.highlightBgOpacity,
     casing: layout.casing,
     outlineWidth: layout.outlineWidth,
     outlineColor: layout.outlineColor,
@@ -768,6 +943,8 @@ export function normalizeCaptionStyle(
     backgroundColor: layout.backgroundColor,
     backgroundOpacity: layout.backgroundOpacity,
     shadowStrength: layout.shadowStrength,
+    shadowColor: layout.shadowColor,
+    shadowOpacity: layout.shadowOpacity,
     emphasisMode: layout.emphasisMode,
     alignment: layout.alignment,
     letterSpacing: layout.letterSpacing,
@@ -823,6 +1000,24 @@ export function validateCaptionStyle(
     return { ok: false, error: "Invalid active word color hex value." };
   }
   if (
+    s.highlightBgColor !== undefined &&
+    !isValidHexColor(s.highlightBgColor)
+  ) {
+    return { ok: false, error: "Invalid highlight box color hex value." };
+  }
+  if (
+    s.highlightBgOpacity !== undefined &&
+    (typeof s.highlightBgOpacity !== "number" ||
+      !Number.isFinite(s.highlightBgOpacity) ||
+      s.highlightBgOpacity < 0 ||
+      s.highlightBgOpacity > 100)
+  ) {
+    return {
+      ok: false,
+      error: "Highlight box opacity must be between 0 and 100.",
+    };
+  }
+  if (
     s.casing !== undefined &&
     s.casing !== "original" &&
     s.casing !== "uppercase" &&
@@ -867,6 +1062,18 @@ export function validateCaptionStyle(
     s.shadowStrength !== "strong"
   ) {
     return { ok: false, error: "Invalid shadow strength." };
+  }
+  if (s.shadowColor !== undefined && !isValidHexColor(s.shadowColor)) {
+    return { ok: false, error: "Invalid shadow color hex value." };
+  }
+  if (
+    s.shadowOpacity !== undefined &&
+    (typeof s.shadowOpacity !== "number" ||
+      !Number.isFinite(s.shadowOpacity) ||
+      s.shadowOpacity < 0 ||
+      s.shadowOpacity > 100)
+  ) {
+    return { ok: false, error: "Shadow opacity must be between 0 and 100." };
   }
   if (
     s.emphasisMode !== undefined &&

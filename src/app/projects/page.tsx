@@ -67,18 +67,18 @@ export default async function ProjectsPage() {
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-              Your Projects
+              Projects
             </h1>
             <p className="mt-1 text-sm text-ink-secondary">
-              Track live processing stages here, then open the editor to style
-              captions and export MP4, SRT, or transparent MOV.
+              Pick up where you left off, track transcription status, and export
+              captioned MP4s up to 4K.
             </p>
           </div>
 
           <Link
             href="/upload"
             data-testid="new-project-header-btn"
-            className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page shadow-[0_8px_24px_rgba(167,139,250,0.24)] transition hover:bg-accent-hover"
+            className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-page transition hover:bg-accent-hover"
           >
             <Plus className="h-4 w-4" />
             <span>New project</span>
