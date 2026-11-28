@@ -1,10 +1,10 @@
 export const SITE_NAME = "ClipCaptions";
 export const HOMEPAGE_TITLE = "ClipCaptions | Add Captions to Video";
-export const HOMEPAGE_HEADLINE = "Automatic captions for your videos.";
+export const HOMEPAGE_HEADLINE = "Add captions that move with every word.";
 export const HOMEPAGE_SUBHEADLINE =
-  "Turn speech into timed captions, make them yours, and download an MP4.";
+  "Upload a clip. We time the words. You choose how they look.";
 export const SITE_DESCRIPTION =
-  "Turn speech into timed captions, make them yours, and download an MP4 with ClipCaptions.";
+  "Upload a clip. We time the words. You choose how they look. Export MP4 videos with ClipCaptions.";
 
 export function getPublicOrigin(): string {
   const raw =

@@ -13,7 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { HomeCreatorGallery } from "@/components/HomeCreatorGallery";
-import { HomeLiveShowcase } from "@/components/HomeLiveShowcase";
+import { HomeHeroPlayer } from "@/components/HomeHeroPlayer";
 import { MotionReveal } from "@/components/MotionReveal";
 import { PublicHeader } from "@/components/PublicHeader";
 import {
@@ -117,21 +117,25 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} variant="ivory" />
 
       <main className="relative z-10">
-        {/* 1. SPLIT HERO — 40% Left Copy (steady) + 60% Right Automatic Showcase (bold) */}
+        {/* 1. SPLIT HERO — 42% Left Editorial Copy + 58% Right Persistent Video Player */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-7xl px-4 pb-10 pt-3 sm:px-6 sm:pb-12 sm:pt-5 lg:px-8 lg:pb-16 lg:pt-8"
+          className="mx-auto max-w-7xl px-4 pb-8 pt-3 sm:px-6 sm:pb-12 sm:pt-5 lg:px-8 lg:pb-14 lg:pt-7"
         >
-          <div className="grid grid-cols-1 items-center gap-4 sm:gap-7 lg:grid-cols-[minmax(0,40%)_minmax(0,60%)] lg:gap-10">
-            {/* Left 40%: Steady Editorial Headline + Clear Actions */}
+          <div className="grid grid-cols-1 items-center gap-4 sm:gap-7 lg:grid-cols-[minmax(0,42%)_minmax(0,58%)] lg:gap-10">
+            {/* Left 42%: Strong Editorial Headline + Clear Actions (no eyebrow, no badge, no external arrows) */}
             <div className="max-w-lg">
-              <h1 className="text-[1.95rem] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#181B25] sm:text-5xl lg:text-[3.35rem] lg:leading-[1.03]">
-                Automatic captions for your videos.
+              <h1 className="text-[2rem] font-extrabold leading-[1.04] tracking-[-0.035em] text-[#181B25] sm:text-5xl lg:text-[3.5rem] lg:leading-[1.02]">
+                Add captions
+                <br />
+                that move with
+                <br />
+                every word.
               </h1>
 
               <p
                 data-testid="home-hero-subcopy"
-                className="mt-2.5 text-sm leading-relaxed text-[#50566A] sm:mt-3.5 sm:text-lg"
+                className="mt-2.5 text-sm leading-relaxed text-[#50566A] sm:mt-4 sm:text-lg"
               >
                 {HOMEPAGE_SUBHEADLINE}
               </p>
@@ -142,31 +146,29 @@ export default async function HomePage() {
                     href="/upload"
                     prefetch={false}
                     data-testid="home-upload-cta"
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3.5 sm:text-base"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
-                    <span>Choose a video</span>
-                    <ArrowRight className="h-4 w-4 shrink-0" />
+                    <span>Upload a clip</span>
                   </Link>
                 ) : (
                   <a
                     href="/upload"
                     data-testid="home-upload-cta"
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3.5 sm:text-base"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3 sm:text-base"
                   >
                     <Upload className="h-4 w-4 shrink-0" />
-                    <span>Choose a video</span>
-                    <ArrowRight className="h-4 w-4 shrink-0" />
+                    <span>Upload a clip</span>
                   </a>
                 )}
 
                 <Link
                   href="/studio"
                   data-testid="home-sample-cta"
-                  className="inline-flex items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-3 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-3.5 sm:text-base"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-2.5 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-3 sm:text-base"
                 >
                   <Play className="h-4 w-4 shrink-0 fill-current text-[#2648DB]" />
-                  <span>Try a sample</span>
+                  <span>Try the editor</span>
                 </Link>
               </div>
 
@@ -175,9 +177,9 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {/* Right 60%: Dominant Automatic 3-Scene Showcase */}
+            {/* Right 58%: Dominant Persistent Video Player */}
             <div className="min-w-0">
-              <HomeLiveShowcase />
+              <HomeHeroPlayer />
             </div>
           </div>
         </section>
