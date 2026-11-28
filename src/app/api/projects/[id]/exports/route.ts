@@ -2,11 +2,10 @@ import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { hydrateEditorCues } from "@/lib/caption-editor";
 import {
-  buildExportFilename,
-  generateSrtFromCues,
-  isExportFormat,
+  getDefaultResolutionTier,
+  getResolutionOptionsForSource,
+  validateResolutionTierForSource,
   type ExportJobRow,
 } from "@/lib/exports";
 import {
@@ -16,7 +15,6 @@ import {
   validateSameOrigin,
 } from "@/lib/security/http";
 import { checkRateLimit, RATE_LIMIT_POLICIES } from "@/lib/security/rate-limit";
-import { MEDIA_BUCKET } from "@/lib/uploads";
 
 export async function GET(
   _request: NextRequest,
@@ -54,10 +52,11 @@ export async function GET(
     return noStoreJson({ error: "Project not found." }, { status: 404 });
   }
 
+  // Preserves all historical exports (including any earlier SRT/MOV rows) for owner access
   const { data: jobs, error: jobsError } = await supabase
     .from("export_jobs")
     .select(
-      "id, project_id, revision_id, revision_number, user_id, format, status, stage_message, attempt_count, max_attempts, bucket_id, output_object_key, output_mime_type, output_filename, output_size_bytes, output_width, output_height, output_duration_ms, error_code, error_message, started_at, completed_at, created_at, updated_at"
+      "id, project_id, revision_id, revision_number, user_id, format, resolution_tier, status, stage_message, attempt_count, max_attempts, bucket_id, output_object_key, output_mime_type, output_filename, output_size_bytes, output_width, output_height, output_duration_ms, error_code, error_message, started_at, completed_at, created_at, updated_at"
     )
     .eq("project_id", project.id)
     .eq("user_id", user.id)
@@ -83,7 +82,10 @@ export async function POST(
 
   const originCheck = validateSameOrigin(request);
   if (!originCheck.ok) {
-    return noStoreJson({ error: "Cross-origin request rejected." }, { status: 403 });
+    return noStoreJson(
+      { error: "Cross-origin request rejected." },
+      { status: 403 }
+    );
   }
 
   const { id: projectId } = await context.params;
@@ -112,6 +114,7 @@ export async function POST(
   const parsed = await readBoundedJson<{
     revisionId?: unknown;
     format?: unknown;
+    resolutionTier?: unknown;
   }>(request, 8 * 1024);
   if (!parsed.ok) {
     return noStoreJson({ error: parsed.error }, { status: parsed.status });
@@ -127,17 +130,21 @@ export async function POST(
     );
   }
 
-  if (!isExportFormat(body.format)) {
+  // New exports are strictly MP4-only
+  const requestedFormat =
+    body.format === undefined || body.format === null ? "mp4" : body.format;
+  if (requestedFormat !== "mp4") {
     return noStoreJson(
-      { error: "Format must be 'srt', 'mp4', or 'mov_alpha'." },
+      { error: "New exports support MP4 video only." },
       { status: 400 }
     );
   }
-  const format = body.format;
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id, user_id, title, status, duration_ms")
+    .select(
+      "id, user_id, title, status, media_kind, duration_ms, preview_width, preview_height, media_assets(id, status, media_kind, mime_type, width, height, rotation_deg, created_at)"
+    )
     .eq("id", projectId)
     .maybeSingle();
 
@@ -152,9 +159,56 @@ export async function POST(
     );
   }
 
+  const assets = Array.isArray(project.media_assets)
+    ? (project.media_assets as Array<{
+        id: string;
+        status: string;
+        media_kind: string | null;
+        mime_type: string | null;
+        width: number | null;
+        height: number | null;
+        rotation_deg: number | null;
+      }>)
+    : [];
+  const primaryAsset =
+    assets.find((a) => a.status === "uploaded") ?? assets[0] ?? null;
+
+  const mediaKind: "video" | "audio" =
+    project.media_kind === "audio" ||
+    primaryAsset?.media_kind === "audio" ||
+    primaryAsset?.mime_type?.startsWith("audio/")
+      ? "audio"
+      : "video";
+
+  const sourceWidth = primaryAsset?.width ?? project.preview_width ?? null;
+  const sourceHeight = primaryAsset?.height ?? project.preview_height ?? null;
+  const sourceRotationDeg = primaryAsset?.rotation_deg ?? 0;
+
+  const options = getResolutionOptionsForSource({
+    mediaKind,
+    sourceWidth,
+    sourceHeight,
+    sourceRotationDeg,
+  });
+  const requestedTier =
+    typeof body.resolutionTier === "string" && body.resolutionTier.trim()
+      ? body.resolutionTier.trim().toLowerCase()
+      : getDefaultResolutionTier(options);
+
+  const tierCheck = validateResolutionTierForSource({
+    tier: requestedTier,
+    mediaKind,
+    sourceWidth,
+    sourceHeight,
+    sourceRotationDeg,
+  });
+  if (!tierCheck.ok) {
+    return noStoreJson({ error: tierCheck.error }, { status: 400 });
+  }
+
   const { data: revision, error: revError } = await supabase
     .from("caption_revisions")
-    .select("id, project_id, user_id, revision_number, cues, style")
+    .select("id, project_id, user_id, revision_number")
     .eq("id", revisionId)
     .eq("project_id", project.id)
     .maybeSingle();
@@ -173,7 +227,8 @@ export async function POST(
       p_user_id: user.id,
       p_project_id: project.id,
       p_revision_id: revision.id,
-      p_format: format,
+      p_format: "mp4",
+      p_resolution_tier: tierCheck.option.tier,
     }
   );
 
@@ -191,71 +246,9 @@ export async function POST(
     job: ExportJobRow;
   };
 
-  let job = result.job;
-
-  // Synchronous UTF-8 SRT generation & upload to private storage when not already ready
-  if (format === "srt" && job.status !== "ready") {
-    const cues = hydrateEditorCues(revision.cues);
-    const srtText = generateSrtFromCues(cues);
-    const srtBuffer = Buffer.from(srtText, "utf8");
-    const filename = buildExportFilename(
-      project.title,
-      revision.revision_number,
-      "srt"
-    );
-    const objectKey = `${user.id}/${project.id}/exports/${job.id}.srt`;
-
-    const { error: uploadError } = await admin.storage
-      .from(MEDIA_BUCKET)
-      .upload(objectKey, srtBuffer, {
-        contentType: "text/plain",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      await admin
-        .from("export_jobs")
-        .update({
-          status: "failed",
-          stage_message: "SRT upload failed",
-          error_code: "storage_error",
-          error_message: "Unable to store subtitle export artifact.",
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", job.id);
-
-      return noStoreJson(
-        { error: "Failed to store SRT subtitle file." },
-        { status: 500 }
-      );
-    }
-
-    const { data: pubData, error: pubError } = await admin.rpc(
-      "publish_immediate_export",
-      {
-        p_user_id: user.id,
-        p_job_id: job.id,
-        p_output_object_key: objectKey,
-        p_output_mime_type: "text/plain; charset=utf-8",
-        p_output_filename: filename,
-        p_output_size_bytes: Math.max(1, srtBuffer.byteLength),
-        p_output_duration_ms: project.duration_ms ?? null,
-      }
-    );
-
-    if (pubError || !pubData || !(pubData as { ok: boolean }).ok) {
-      return noStoreJson(
-        { error: "Failed to finalize SRT export." },
-        { status: 500 }
-      );
-    }
-
-    job = (pubData as { ok: true; job: ExportJobRow }).job;
-  }
-
   return noStoreJson(
     {
-      job,
+      job: result.job,
       idempotent: result.idempotent,
       retried: Boolean(result.retried),
     },

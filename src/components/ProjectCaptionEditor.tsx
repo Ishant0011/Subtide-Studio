@@ -58,7 +58,10 @@ import { EditorTimeline } from "@/components/EditorTimeline";
 import { ProjectExportModal } from "@/components/ProjectExportModal";
 import { StudioStylePanel } from "@/components/StudioStylePanel";
 import { StudioTabs, type StudioMobileTab } from "@/components/StudioTabs";
-import { generateSrtFromCues } from "@/lib/exports";
+import {
+  formatResolutionTierLabel,
+  type ExportJobRow,
+} from "@/lib/exports";
 
 type SaveStatus = "saved" | "saving" | "error" | "conflict";
 type WorkspaceViewMode = "editor" | "timeline";
@@ -85,6 +88,9 @@ interface ProjectCaptionEditorProps {
   posterUrl?: string;
   previewWidth?: number | null;
   previewHeight?: number | null;
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
+  sourceRotationDeg?: number | null;
   durationMs: number;
   initialRevisionId?: string | null;
   initialRevisionNumber?: number;
@@ -125,6 +131,9 @@ export function ProjectCaptionEditor({
   posterUrl,
   previewWidth = null,
   previewHeight = null,
+  sourceWidth = null,
+  sourceHeight = null,
+  sourceRotationDeg = 0,
   durationMs,
   initialRevisionId = null,
   initialRevisionNumber = 0,
@@ -196,6 +205,59 @@ export function ProjectCaptionEditor({
     initialRevisionId
   );
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportJobs, setExportJobs] = useState<ExportJobRow[]>([]);
+  const [loadingExports, setLoadingExports] = useState(false);
+
+  const fetchProjectExports = useCallback(async () => {
+    if (isSampleMode || !projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/exports`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.exports)) {
+        setExportJobs(data.exports as ExportJobRow[]);
+      }
+    } catch {
+      // retry next cycle
+    }
+  }, [isSampleMode, projectId]);
+
+  useEffect(() => {
+    if (isSampleMode || !projectId) return;
+    setLoadingExports(true);
+    void fetchProjectExports().finally(() => setLoadingExports(false));
+  }, [isSampleMode, projectId, fetchProjectExports]);
+
+  const hasActiveExportJob = useMemo(
+    () =>
+      exportJobs.some((j) => j.status === "queued" || j.status === "rendering"),
+    [exportJobs]
+  );
+
+  // Poll continuously while any export job is queued or rendering, even when the dialog is closed
+  useEffect(() => {
+    if (isSampleMode || !projectId || !hasActiveExportJob) return;
+    const timer = setInterval(() => {
+      void fetchProjectExports();
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [isSampleMode, projectId, hasActiveExportJob, fetchProjectExports]);
+
+  const latestBannerExportJob = useMemo(() => {
+    if (exportJobs.length === 0) return null;
+    const active = exportJobs.find(
+      (j) => j.status === "rendering" || j.status === "queued"
+    );
+    if (active) return active;
+    const currentRevJob = savedRevisionId
+      ? exportJobs.find(
+          (j) => j.revision_id === savedRevisionId && j.format === "mp4"
+        )
+      : null;
+    return currentRevJob ?? exportJobs[0] ?? null;
+  }, [exportJobs, savedRevisionId]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   // Inline individual timed word edit state
@@ -1190,23 +1252,6 @@ export function ProjectCaptionEditor({
     void performSave();
   };
 
-  const downloadSampleSrt = useCallback(() => {
-    const srtText = generateSrtFromCues(cues);
-    if (!srtText) return;
-    const blob = new Blob([srtText], {
-      type: "application/x-subrip;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "clipcaptions-sample.srt";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    flashNotice("Downloaded clipcaptions-sample.srt");
-  }, [cues, flashNotice]);
-
   const resetSampleEdits = useCallback(() => {
     latestCuesRef.current = initialCues;
     latestStyleRef.current = initialStyle;
@@ -1335,23 +1380,13 @@ export function ProjectCaptionEditor({
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  data-testid="sample-download-srt-btn"
-                  onClick={downloadSampleSrt}
-                  className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-panel px-2 py-1 text-xs font-semibold text-ink transition hover:border-ink/30 sm:gap-1.5 sm:px-3 sm:py-1.5"
-                >
-                  <Download className="h-3.5 w-3.5 text-ink-secondary" />
-                  <span>Download SRT</span>
-                </button>
-
                 <a
                   href="/upload"
                   data-testid="sample-upload-cta"
-                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3 sm:py-1.5"
+                  className="inline-flex items-center gap-1 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold text-page transition hover:bg-accent-hover sm:gap-1.5 sm:px-3.5 sm:py-1.5"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  <span>Upload a clip</span>
+                  <span>Upload a clip to export</span>
                 </a>
               </>
             ) : (
@@ -1401,6 +1436,47 @@ export function ProjectCaptionEditor({
                   >
                     <RefreshCw className="h-3 w-3" />
                     <span>Retry</span>
+                  </button>
+                )}
+
+                {latestBannerExportJob && (
+                  <button
+                    type="button"
+                    data-testid="header-export-status-pill"
+                    data-export-status={latestBannerExportJob.status}
+                    onClick={() => setExportModalOpen(true)}
+                    className={`hidden items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition md:inline-flex ${
+                      latestBannerExportJob.status === "ready"
+                        ? "border-accent/45 bg-accent-soft text-accent-hover hover:bg-accent hover:text-page"
+                        : latestBannerExportJob.status === "failed"
+                          ? "border-rose-400/35 bg-rose-500/10 text-rose-200 hover:border-rose-300/60"
+                          : "border-amber-400/35 bg-amber-400/10 text-amber-200 hover:border-amber-300/60"
+                    }`}
+                  >
+                    {latestBannerExportJob.status === "rendering" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : latestBannerExportJob.status === "queued" ? (
+                      <Clock className="h-3 w-3" />
+                    ) : latestBannerExportJob.status === "ready" ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <AlertCircle className="h-3 w-3" />
+                    )}
+                    <span>
+                      {latestBannerExportJob.format === "mp4"
+                        ? formatResolutionTierLabel(
+                            latestBannerExportJob.resolution_tier
+                          )
+                        : latestBannerExportJob.format.toUpperCase()}{" "}
+                      ·{" "}
+                      {latestBannerExportJob.status === "ready"
+                        ? "Ready"
+                        : latestBannerExportJob.status === "rendering"
+                          ? "Rendering"
+                          : latestBannerExportJob.status === "failed"
+                            ? "Failed"
+                            : "Queued"}
+                    </span>
                   </button>
                 )}
 
@@ -2759,10 +2835,17 @@ export function ProjectCaptionEditor({
           projectId={projectId}
           projectTitle={projectTitle}
           mediaKind={mediaKind}
+          sourceWidth={sourceWidth}
+          sourceHeight={sourceHeight}
+          sourceRotationDeg={sourceRotationDeg}
           savedRevisionId={savedRevisionId}
           savedRevisionNumber={revisionNumber}
           hasUnsavedChanges={saveStatus !== "saved"}
           saveStatus={saveStatus}
+          jobs={exportJobs}
+          loadingList={loadingExports}
+          onJobsUpdated={setExportJobs}
+          onRefreshJobs={fetchProjectExports}
         />
       )}
     </div>

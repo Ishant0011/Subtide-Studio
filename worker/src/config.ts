@@ -94,7 +94,7 @@ export function loadWorkerConfig(argv: string[] = process.argv.slice(2)): Worker
   );
   const maxRenderRuntimeMs = Math.max(
     20_000,
-    Number.parseInt(process.env.WORKER_MAX_RENDER_RUNTIME_MS || "240000", 10) || 240_000
+    Number.parseInt(process.env.WORKER_MAX_RENDER_RUNTIME_MS || "300000", 10) || 300_000
   );
   const maxPreviewBytes = Math.max(
     5 * 1024 * 1024,
@@ -103,8 +103,8 @@ export function loadWorkerConfig(argv: string[] = process.argv.slice(2)): Worker
   );
   const maxMp4ExportBytes = Math.max(
     10 * 1024 * 1024,
-    Number.parseInt(process.env.WORKER_MAX_MP4_EXPORT_BYTES || String(150 * 1024 * 1024), 10) ||
-      150 * 1024 * 1024
+    Number.parseInt(process.env.WORKER_MAX_MP4_EXPORT_BYTES || String(250 * 1024 * 1024), 10) ||
+      250 * 1024 * 1024
   );
   const maxMovExportBytes = Math.max(
     20 * 1024 * 1024,

@@ -42,19 +42,19 @@ export const metadata: Metadata = {
 const FAQ_ITEMS = [
   {
     q: "Can I try ClipCaptions without creating an account?",
-    a: "Yes. You can play the demo right on this page or open Sample Studio to edit transcript lines, test all 12 caption styles, and download a UTF-8 .srt file with no account required.",
+    a: "Yes. You can play the demo right on this page or open Sample Studio to edit transcript lines and test caption styles with no account required. Sign in when you're ready to upload your own clip and export MP4 video.",
   },
   {
     q: "What file formats and limits are supported?",
     a: "Private uploads accept MP4, MOV, MP3, and WAV files up to 150 MB and 3 minutes per clip. Transfers use resumable TUS uploads so flaky connections can pause and resume cleanly.",
   },
   {
-    q: "Which export formats can I download?",
-    a: "Signed-in projects export revision-pinned Burned-in MP4 (H.264/AAC), UTF-8 SRT subtitles, and Transparent MOV (ProRes 4444 alpha overlay with no audio track for NLE timelines).",
+    q: "Which export resolutions are available?",
+    a: "Signed-in projects export revision-pinned burned-in MP4 (H.264/AAC) across 240p, 360p, 480p, 720p, 1080p, 1440p, and 2160p (4K) up to your clip's source resolution, preserving aspect ratio, rotation, and audio.",
   },
   {
     q: "Can I save my own brand caption style?",
-    a: "Yes. Signed-in accounts can customize font, size, highlight color, alignment, emphasis, and vertical position, then save reusable personal presets for future clips.",
+    a: "Yes. Signed-in accounts can customize font, size, colors, alignment, emphasis, and vertical position, then save reusable personal presets for future clips.",
   },
 ] as const;
 
@@ -408,16 +408,16 @@ export default async function HomePage() {
                   Download ready-to-post files
                 </h3>
                 <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
-                  Export a burned-in MP4, a clean UTF-8 SRT file, or a
-                  transparent ProRes 4444 MOV overlay. Every export stays pinned
-                  to the saved revision you chose.
+                  Export a burned-in H.264 MP4 in the exact resolution you need,
+                  from 240p up to 4K. Every export stays pinned to the saved
+                  revision and resolution tier you chose.
                 </p>
               </li>
             </ol>
           </div>
         </section>
 
-        {/* SECTION 3: Actual Output Examples (MP4, SRT, Transparent MOV) + Short Verified FAQ */}
+        {/* SECTION 3: MP4 Output Examples & Resolution Tiers + Short Verified FAQ */}
         <section
           id="exports"
           className="border-t border-ink/10 bg-inset/50 py-12 lg:py-16"
@@ -426,11 +426,12 @@ export default async function HomePage() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
-                  Three real outputs for social feeds and edit timelines
+                  Ready-to-post MP4 exports up to 4K
                 </h2>
                 <p className="mt-1.5 text-sm text-ink-secondary">
-                  Download a free UTF-8 SRT in Sample Studio without an account,
-                  or sign in to render MP4 and transparent MOV.
+                  Export burned-in H.264/AAC MP4 directly from your original
+                  uploaded media — preserving portrait, landscape, or audio-only
+                  framing without upscaling.
                 </p>
               </div>
               <a
@@ -446,16 +447,16 @@ export default async function HomePage() {
               data-testid="home-output-examples"
               className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3"
             >
-              {/* Output 1: Burned-in MP4 */}
+              {/* Output 1: Portrait Social MP4 */}
               <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
                       <Film className="h-4 w-4 text-ink-secondary" />
-                      <span>Burned-in MP4</span>
+                      <span>Portrait Social MP4</span>
                     </span>
                     <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      H.264 / AAC
+                      1080×1920 · 4K
                     </span>
                   </div>
 
@@ -463,7 +464,7 @@ export default async function HomePage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={SAMPLE_CLIP.poster}
-                      alt="Example burned-in MP4 caption output"
+                      alt="Example portrait burned-in MP4 caption output"
                       className="h-full w-full object-cover object-top opacity-85"
                     />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
@@ -481,73 +482,82 @@ export default async function HomePage() {
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Preserves source aspect ratio and AAC audio for Reels,
-                    Shorts, and TikTok — or renders a 9:16 portrait stage for
-                    MP3 and WAV clips.
+                    Preserves upright vertical framing and source audio for
+                    Reels, Shorts, and TikTok with captions scaled cleanly to
+                    the chosen resolution.
                   </p>
                 </div>
               </article>
 
-              {/* Output 2: UTF-8 SRT */}
+              {/* Output 2: Landscape Widescreen MP4 */}
               <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
                       <FileText className="h-4 w-4 text-ink-secondary" />
-                      <span>UTF-8 SRT Subtitles</span>
+                      <span>Landscape &amp; 4K MP4</span>
                     </span>
                     <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      .srt
+                      240p – 2160p
                     </span>
                   </div>
 
-                  <pre className="mt-3.5 h-32 overflow-hidden rounded-xl border border-ink/10 bg-inset p-3 font-mono text-[11px] leading-relaxed text-ink-secondary">
-{`1
-00:00:00,350 --> 00:00:02,830
-Great short-form clips hook
-viewers in two seconds.
-
-2
-00:00:02,950 --> 00:00:05,550
-Most people watch with the sound off.`}
-                  </pre>
+                  <div className="mt-3.5 flex h-32 flex-col justify-between rounded-xl border border-ink/10 bg-inset p-3 font-mono text-[11px] text-ink-secondary">
+                    <div className="flex items-center justify-between">
+                      <span>2160p (4K)</span>
+                      <span className="text-ink">3840 × 2160</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>1440p</span>
+                      <span className="text-ink">2560 × 1440</span>
+                    </div>
+                    <div className="flex items-center justify-between text-accent-hover">
+                      <span>1080p (Default)</span>
+                      <span>1920 × 1080</span>
+                    </div>
+                    <div className="flex items-center justify-between text-ink-muted">
+                      <span>720p · 480p · 360p · 240p</span>
+                      <span>Even px</span>
+                    </div>
+                  </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Millisecond-accurate subtitle files ready for YouTube,
-                    LinkedIn, or any NLE caption track — also downloadable free
-                    from Sample Studio.
+                    Pick the exact tier you need without upscaling above your
+                    source clip. Multiple tiers on the same revision render
+                    independently.
                   </p>
                 </div>
               </article>
 
-              {/* Output 3: Transparent ProRes 4444 MOV */}
+              {/* Output 3: Audio-Only Portrait Stage MP4 */}
               <article className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-panel p-5">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-sm font-bold text-ink">
                       <Layers className="h-4 w-4 text-ink-secondary" />
-                      <span>Transparent MOV</span>
+                      <span>Audio-to-Video MP4</span>
                     </span>
                     <span className="rounded-md border border-ink/12 bg-elevated px-2 py-0.5 font-mono text-[10px] text-ink-secondary">
-                      ProRes 4444 Alpha
+                      9:16 Stage
                     </span>
                   </div>
 
-                  <div className="alpha-checkerboard mt-3.5 flex h-32 items-center justify-center rounded-xl border border-ink/10 px-3">
-                    <div
+                  <div className="mt-3.5 flex h-32 flex-col items-center justify-center rounded-xl border border-ink/10 bg-inset px-3 text-center">
+                    <span className="rounded-full border border-ink/12 bg-panel px-2.5 py-0.5 font-mono text-[10px] text-ink-secondary">
+                      MP3 / WAV → 1080×1920 MP4
+                    </span>
+                    <p
                       style={{ fontFamily: '"DM Serif Display", serif' }}
-                      className="rounded-lg border border-ink/15 bg-page/90 px-3.5 py-2 text-center text-sm text-ink shadow-md"
+                      className="mt-2.5 text-sm text-ink"
                     >
                       Make <span className="text-accent underline">every</span>{" "}
                       word land.
-                    </div>
+                    </p>
                   </div>
 
                   <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
-                    Captions-only{" "}
-                    <code className="font-mono text-ink">yuva444p10le</code>{" "}
-                    overlay with true alpha transparency and no audio track for
-                    Premiere Pro, DaVinci Resolve, or Final Cut.
+                    Turns voice memos, podcasts, and WAV clips into clean 9:16
+                    captioned MP4 video up to 1080p with AAC audio preserved.
                   </p>
                 </div>
               </article>

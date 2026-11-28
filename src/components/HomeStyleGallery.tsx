@@ -223,8 +223,8 @@ export function HomeStyleGallery() {
 
         <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-ink-secondary">
           <span>
-            12 built-in styles across Creator, Clean, Bold, and Editorial — all
-            rendered identically in preview, MP4, and transparent MOV.
+            Built-in styles across Creator, Clean, Bold, and Editorial — all
+            rendered identically in browser preview and exported MP4 video.
           </span>
           <Link
             href="/studio"

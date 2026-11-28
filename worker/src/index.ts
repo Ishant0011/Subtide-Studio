@@ -39,6 +39,15 @@ interface ClaimedExportJob {
   revisionNumber: number;
   userId: string;
   format: "mp4" | "mov_alpha";
+  resolutionTier?:
+    | "original"
+    | "240p"
+    | "360p"
+    | "480p"
+    | "720p"
+    | "1080p"
+    | "1440p"
+    | "2160p";
   attemptCount: number;
   maxAttempts: number;
   attemptToken: string;
@@ -50,6 +59,8 @@ interface ClaimedExportJob {
   previewWidth: number | null;
   previewHeight: number | null;
   sourceObjectKey: string | null;
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
   sourceRotationDeg: number;
   style: Partial<CaptionStyleConfig> | null;
   cues: unknown;
@@ -68,7 +79,8 @@ function log(level: "info" | "warn" | "error", msg: string, meta?: Record<string
 function buildExportFilename(
   projectTitle: string,
   revisionNumber: number,
-  format: "mp4" | "mov_alpha"
+  format: "mp4" | "mov_alpha",
+  resolutionTier?: string | null
 ): string {
   const slug =
     projectTitle
@@ -77,9 +89,11 @@ function buildExportFilename(
       .replace(/^-+|-+$/g, "")
       .slice(0, 60) || "clipcaptions-export";
 
-  return format === "mp4"
-    ? `${slug}-rev${revisionNumber}.mp4`
-    : `${slug}-rev${revisionNumber}-alpha.mov`;
+  if (format === "mp4") {
+    const tierSuffix = resolutionTier ? `-${resolutionTier}` : "";
+    return `${slug}-rev${revisionNumber}${tierSuffix}.mp4`;
+  }
+  return `${slug}-rev${revisionNumber}-alpha.mov`;
 }
 
 async function processIngestJob(
@@ -357,9 +371,17 @@ async function processExportJob(
       maxAttempts: job.maxAttempts,
     });
 
-    // Prefer normalized upright zero-based preview media; fall back to original upload key
-    const mediaKey = job.previewObjectKey || job.sourceObjectKey;
-    const usedPreviewSource = Boolean(job.previewObjectKey);
+    // For video exports, always use the original uploaded media so native 1080p/1440p/4K
+    // quality is preserved (never upscaled from the 720p editor preview).
+    // For audio-only projects, use the normalized zero-based MP3 preview when available.
+    const mediaKey =
+      job.mediaKind === "video"
+        ? job.sourceObjectKey || job.previewObjectKey
+        : job.previewObjectKey || job.sourceObjectKey;
+    const usedPreviewSource =
+      job.mediaKind === "video"
+        ? !job.sourceObjectKey && Boolean(job.previewObjectKey)
+        : Boolean(job.previewObjectKey);
     if (!mediaKey) {
       throw new RenderError(
         "corrupt_media",
@@ -391,6 +413,7 @@ async function processExportJob(
 
     const rendered = await renderExportArtifact({
       format: job.format,
+      resolutionTier: job.resolutionTier ?? "1080p",
       mediaKind: job.mediaKind,
       sourceMediaPath: sourcePath,
       usedPreviewSource,
@@ -437,7 +460,8 @@ async function processExportJob(
     const outputFilename = buildExportFilename(
       job.projectTitle,
       job.revisionNumber,
-      job.format
+      job.format,
+      job.resolutionTier ?? "1080p"
     );
 
     const { data: publishData, error: publishError } = await supabase.rpc(

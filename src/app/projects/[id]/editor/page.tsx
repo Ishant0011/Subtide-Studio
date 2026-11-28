@@ -38,7 +38,7 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
     supabase
       .from("projects")
       .select(
-        "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_width, preview_height, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, width, height, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
+        "id, user_id, title, status, media_kind, duration_ms, preview_object_key, preview_width, preview_height, active_revision_id, media_assets(id, object_key, mime_type, duration_ms, width, height, rotation_deg, status), caption_revisions!caption_revisions_project_id_fkey(id, revision_number, style, cues, words, created_at)"
       )
       .eq("id", projectId)
       .maybeSingle(),
@@ -63,6 +63,7 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
         duration_ms: number | null;
         width?: number | null;
         height?: number | null;
+        rotation_deg?: number | null;
       }
     | undefined;
 
@@ -118,6 +119,19 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
     ? (presetsRes.data as SavedCaptionPresetRow[])
     : [];
 
+  const sourceWidth =
+    typeof primaryAsset?.width === "number" && primaryAsset.width > 0
+      ? primaryAsset.width
+      : previewWidth;
+  const sourceHeight =
+    typeof primaryAsset?.height === "number" && primaryAsset.height > 0
+      ? primaryAsset.height
+      : previewHeight;
+  const sourceRotationDeg =
+    typeof primaryAsset?.rotation_deg === "number"
+      ? primaryAsset.rotation_deg
+      : 0;
+
   return (
     <ProjectCaptionEditor
       userEmail={user.email ?? "Signed in"}
@@ -127,6 +141,9 @@ export default async function ProjectEditorPage({ params }: EditorPageProps) {
       previewUrl={signed.signedUrl}
       previewWidth={previewWidth}
       previewHeight={previewHeight}
+      sourceWidth={sourceWidth}
+      sourceHeight={sourceHeight}
+      sourceRotationDeg={sourceRotationDeg}
       durationMs={durationMs}
       initialRevisionId={activeRevision?.id ?? null}
       initialRevisionNumber={activeRevision?.revision_number ?? 0}

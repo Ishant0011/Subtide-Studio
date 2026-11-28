@@ -74,8 +74,19 @@ export interface RenderCaptionCue {
   timing_mode: "word" | "cue";
 }
 
+export type ExportResolutionTier =
+  | "original"
+  | "240p"
+  | "360p"
+  | "480p"
+  | "720p"
+  | "1080p"
+  | "1440p"
+  | "2160p";
+
 export interface ExportRenderInput {
   format: "mp4" | "mov_alpha";
+  resolutionTier?: ExportResolutionTier;
   mediaKind: "video" | "audio";
   sourceMediaPath: string;
   usedPreviewSource: boolean;
@@ -139,10 +150,20 @@ const ACCENT_PALETTE: Record<
 
 const MIN_VERTICAL_POSITION = 8;
 const MAX_VERTICAL_POSITION = 85;
-const MAX_LONG_EDGE = 1280;
-const AUDIO_STAGE_WIDTH = 720;
-const AUDIO_STAGE_HEIGHT = 1280;
+const MAX_OUTPUT_DIMENSION = 4096;
+const MAX_OUTPUT_PIXELS = 4096 * 2160;
+const AUDIO_STAGE_MAX_SHORT_EDGE = 1080;
 const OUTPUT_FPS = 30;
+
+const TIER_SHORT_EDGE_PX: Record<Exclude<ExportResolutionTier, "original">, number> = {
+  "240p": 240,
+  "360p": 360,
+  "480p": 480,
+  "720p": 720,
+  "1080p": 1080,
+  "1440p": 1440,
+  "2160p": 2160,
+};
 
 const FONT_SIZE_TABLE: Record<CaptionFontSize, { renderPx1080: number }> = {
   sm: { renderPx1080: 44 },
@@ -796,11 +817,12 @@ function makeEven(n: number): number {
   return rounded % 2 === 0 ? rounded : rounded - 1;
 }
 
-function computeDisplayCanvas(
+function computeTargetCanvas(
   rawWidth: number,
   rawHeight: number,
   sarStr: string | undefined,
-  rotationDeg: number
+  rotationDeg: number,
+  resolutionTier: ExportResolutionTier
 ): { width: number; height: number } {
   let sarNum = 1;
   let sarDen = 1;
@@ -821,18 +843,61 @@ function computeDisplayCanvas(
     dispH = tmp;
   }
 
-  // Bound long edge while preserving display aspect ratio
-  const longEdge = Math.max(dispW, dispH);
-  if (longEdge > MAX_LONG_EDGE) {
-    const scale = MAX_LONG_EDGE / longEdge;
-    dispW = Math.round(dispW * scale);
-    dispH = Math.round(dispH * scale);
+  dispW = makeEven(dispW);
+  dispH = makeEven(dispH);
+
+  const srcShort = Math.min(dispW, dispH);
+  let outW = dispW;
+  let outH = dispH;
+
+  if (resolutionTier !== "original") {
+    const targetShort = TIER_SHORT_EDGE_PX[resolutionTier] ?? 1080;
+    if (targetShort > srcShort) {
+      throw new RenderError(
+        "bounds_exceeded",
+        `Requested ${resolutionTier} exceeds source resolution (${dispW}x${dispH}).`,
+        false
+      );
+    }
+    if (dispH >= dispW) {
+      const scale = targetShort / dispW;
+      outW = makeEven(targetShort);
+      outH = makeEven(dispH * scale);
+    } else {
+      const scale = targetShort / dispH;
+      outH = makeEven(targetShort);
+      outW = makeEven(dispW * scale);
+    }
   }
 
-  return {
-    width: makeEven(dispW),
-    height: makeEven(dispH),
-  };
+  if (
+    outW > MAX_OUTPUT_DIMENSION ||
+    outH > MAX_OUTPUT_DIMENSION ||
+    outW * outH > MAX_OUTPUT_PIXELS
+  ) {
+    throw new RenderError(
+      "bounds_exceeded",
+      `Target output dimensions ${outW}x${outH} exceed maximum allowed bounds.`,
+      false
+    );
+  }
+
+  return { width: outW, height: outH };
+}
+
+function computeAudioStageCanvas(
+  resolutionTier: ExportResolutionTier
+): { width: number; height: number } {
+  const shortEdge =
+    resolutionTier === "original"
+      ? AUDIO_STAGE_MAX_SHORT_EDGE
+      : Math.min(
+          AUDIO_STAGE_MAX_SHORT_EDGE,
+          TIER_SHORT_EDGE_PX[resolutionTier] ?? AUDIO_STAGE_MAX_SHORT_EDGE
+        );
+  const width = makeEven(shortEdge);
+  const height = makeEven((shortEdge * 16) / 9);
+  return { width, height };
 }
 
 function buildAssFilterExpr(
@@ -854,6 +919,7 @@ export async function renderExportArtifact(
 ): Promise<ExportRenderResult> {
   const {
     format,
+    resolutionTier = "1080p",
     mediaKind,
     sourceMediaPath,
     usedPreviewSource,
@@ -891,17 +957,19 @@ export async function renderExportArtifact(
       : Math.max(500, Math.round(input.durationMs || 5000));
   const durationSecStr = (durationMs / 1000).toFixed(3);
 
-  let outWidth = AUDIO_STAGE_WIDTH;
-  let outHeight = AUDIO_STAGE_HEIGHT;
+  const audioCanvas = computeAudioStageCanvas(resolutionTier);
+  let outWidth = audioCanvas.width;
+  let outHeight = audioCanvas.height;
   let applyRotationDeg = 0;
 
   if (mediaKind === "video" && videoStream?.width && videoStream?.height) {
     applyRotationDeg = usedPreviewSource ? 0 : sourceRotationDeg;
-    const canvas = computeDisplayCanvas(
+    const canvas = computeTargetCanvas(
       videoStream.width,
       videoStream.height,
       videoStream.sample_aspect_ratio,
-      applyRotationDeg
+      applyRotationDeg,
+      resolutionTier
     );
     outWidth = canvas.width;
     outHeight = canvas.height;
