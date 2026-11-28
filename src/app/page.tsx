@@ -7,14 +7,13 @@ import {
   Download,
   Film,
   Languages,
-  Palette,
   Play,
   SlidersHorizontal,
   Sparkles,
   Upload,
 } from "lucide-react";
-import { HomeAutoTour } from "@/components/HomeAutoTour";
 import { HomeCreatorGallery } from "@/components/HomeCreatorGallery";
+import { HomeLiveShowcase } from "@/components/HomeLiveShowcase";
 import { MotionReveal } from "@/components/MotionReveal";
 import { PublicHeader } from "@/components/PublicHeader";
 import {
@@ -38,18 +37,25 @@ export const metadata: Metadata = {
   },
 };
 
+const WORKFLOW_STRIP = [
+  { label: "Upload", icon: Upload },
+  { label: "Transcribe", icon: Sparkles },
+  { label: "Edit", icon: SlidersHorizontal },
+  { label: "Export", icon: Download },
+] as const;
+
 const FAQ_GETTING_STARTED = [
   {
     q: "Can I try it without an account?",
-    a: "Yes. Watch the interactive tour on this page or open Sample Studio to edit lines, test presets, and preview all 10 bundled fonts with no sign-in required.",
+    a: "Yes. Try the live showcase above or open Sample Studio to edit lines, switch presets, and preview all 10 bundled fonts without signing in.",
   },
   {
     q: "When do I need to sign in?",
-    a: "Sign in when you want to upload your own clip, save projects and custom presets to your account, use AI Assist, or render and download MP4 exports.",
+    a: "Sign in when you want to upload your own clip, save projects and custom presets, use AI Assist, or render and download MP4 exports.",
   },
   {
     q: "Which video and audio files are supported?",
-    a: "Private uploads accept MP4, MOV, MP3, and WAV files. Audio-only uploads are automatically placed on a 9:16 portrait stage for captioned MP4 export.",
+    a: "Private uploads accept MP4, MOV, MP3, and WAV files. Audio-only uploads are placed automatically on a 9:16 portrait stage for captioned MP4 export.",
   },
   {
     q: "What are the size and duration limits?",
@@ -64,11 +70,11 @@ const FAQ_EDITING_EXPORT = [
   },
   {
     q: "Can I change fonts, colors, and caption styles?",
-    a: "Yes. Pick from 16 built-in presets, save your own reusable custom presets, and style with 10 bundled fonts (Poppins, Montserrat, Bebas Neue, Inter, Oswald, Archivo Black, Playfair Display, Space Mono, DM Serif, and Noto Sans Devanagari).",
+    a: "Yes. Pick from 16 built-in presets, save reusable custom presets, and style with 10 bundled fonts (Poppins, Montserrat, Bebas Neue, Inter, Oswald, Archivo Black, Playfair Display, Space Mono, DM Serif, and Noto Sans Devanagari).",
   },
   {
     q: "Which languages can I caption or translate, including Hindi?",
-    a: "ClipCaptions transcribes speech into timed captions and lets signed-in projects translate captions into Hindi (Devanagari) or Hinglish, styled with Noto Sans Devanagari and rendered with full HarfBuzz shaping.",
+    a: "ClipCaptions transcribes speech into timed captions and lets signed-in projects translate captions into Hindi (Devanagari) or Hinglish, rendered with Noto Sans Devanagari and full HarfBuzz shaping.",
   },
   {
     q: "Which MP4 resolutions can I export?",
@@ -111,45 +117,43 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} variant="ivory" />
 
       <main className="relative z-10">
-        {/* 1. FIRST SCREEN — Warm Ivory #FAF7F0, editorial H1, cobalt CTA, automatic 24s product tour */}
+        {/* 1. FIRST SCREEN — Compact Ivory Hero + Live 3-Scene Product Showcase */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-6xl px-4 pb-10 pt-4 sm:px-6 sm:pb-12 sm:pt-5 lg:px-8 lg:pb-14 lg:pt-5"
+          className="mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 sm:pb-12 sm:pt-4 lg:px-8 lg:pb-14 lg:pt-4"
         >
           <div className="max-w-3xl">
-            <h1 className="text-[1.95rem] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#181B25] sm:text-4xl lg:text-[3.1rem] lg:leading-[1.04]">
-              Automatic captions
-              <br />
-              for your videos.
+            <h1 className="text-[1.9rem] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#181B25] sm:text-4xl lg:text-[3rem] lg:leading-[1.04]">
+              Automatic captions for your videos.
             </h1>
 
             <p
               data-testid="home-hero-subcopy"
-              className="mt-2 max-w-2xl text-sm leading-relaxed text-[#50566A] sm:mt-2.5 sm:text-base"
+              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[#50566A] sm:mt-2 sm:text-base"
             >
               {HOMEPAGE_SUBHEADLINE}
             </p>
 
-            <div className="mt-3.5 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-3.5 sm:gap-3">
               {user ? (
                 <Link
                   href="/upload"
                   prefetch={false}
                   data-testid="home-upload-cta"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3 sm:text-base"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-5 sm:py-2.5 sm:text-base"
                 >
                   <Upload className="h-4 w-4 shrink-0" />
-                  <span>Upload a clip</span>
+                  <span>Choose a video</span>
                   <ArrowRight className="h-4 w-4 shrink-0" />
                 </Link>
               ) : (
                 <a
                   href="/upload"
                   data-testid="home-upload-cta"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3 sm:text-base"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-5 sm:py-2.5 sm:text-base"
                 >
                   <Upload className="h-4 w-4 shrink-0" />
-                  <span>Upload a clip</span>
+                  <span>Choose a video</span>
                   <ArrowRight className="h-4 w-4 shrink-0" />
                 </a>
               )}
@@ -157,23 +161,19 @@ export default async function HomePage() {
               <Link
                 href="/studio"
                 data-testid="home-sample-cta"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-2.5 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-3 sm:text-base"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-2.5 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-2.5 sm:text-base"
               >
                 <Play className="h-4 w-4 shrink-0 fill-current text-[#2648DB]" />
                 <span>Try a sample</span>
               </Link>
-
-              <span className="text-xs font-medium text-[#50566A] sm:ml-1">
-                No account needed for the sample.
-              </span>
             </div>
           </div>
 
-          {/* Automatic ~24-Second Pre-Edited Product Tour */}
-          <HomeAutoTour />
+          {/* Live 3-Scene Interactive Showcase (Add captions -> Change the style -> Fix a word) */}
+          <HomeLiveShowcase />
         </section>
 
-        {/* 2. EXAMPLES — Four distinct playable creator clips */}
+        {/* 2. CREATOR EXAMPLES — Directly after the showcase */}
         <section
           id="examples"
           data-testid="home-examples"
@@ -182,9 +182,9 @@ export default async function HomePage() {
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
-                Four formats, four caption styles
+                Four clips, four caption looks
               </h2>
-              <p className="mt-1.5 text-sm text-[#50566A] sm:text-base">
+              <p className="mt-1 text-sm text-[#50566A] sm:text-base">
                 Pick any example to play it with its caption treatment.
               </p>
             </div>
@@ -193,253 +193,254 @@ export default async function HomePage() {
           </MotionReveal>
         </section>
 
-        {/* 3. WHAT YOU CAN DO — Three focused, readable product close-ups */}
+        {/* 3. SUBSTANTIAL VISUAL SECTION A — "Make the captions yours." */}
         <section
-          id="capabilities"
+          id="make-it-yours"
+          data-testid="home-make-it-yours"
           className="scroll-mt-20 border-t border-[#181B25]/10 bg-[#F2EEE4]/70 py-12 lg:py-16"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <MotionReveal>
-              <div className="max-w-2xl">
-                <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
-                  Built for fast fixes and consistent styles
-                </h2>
-                <p className="mt-1.5 text-sm text-[#50566A] sm:text-base">
-                  Everything you need from timed transcripts to Hindi MP4 export.
-                </p>
-              </div>
-            </MotionReveal>
-
-            <div className="mt-7 grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {/* Close-up 1: Timed transcription & word/timing edits */}
-              <MotionReveal delayMs={0} className="h-full">
-                <div className="flex h-full flex-col justify-between rounded-2xl border border-[#181B25]/10 bg-white p-5">
-                  <div>
-                    <div className="flex items-center gap-2 text-[#2648DB]">
-                      <SlidersHorizontal className="h-4 w-4" />
-                      <h3 className="text-base font-bold text-[#181B25]">
-                        Timed edits &amp; waveform sync
-                      </h3>
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-[#50566A]">
-                      Fix misheard words inline and nudge cue edges on the
-                      waveform with live autosave.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 rounded-xl bg-[#FAF7F0] p-3.5 text-xs">
-                    <div className="flex items-center justify-between font-mono text-[10px] text-[#50566A]">
-                      <span>0:00.64 – 0:04.24</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-sans font-semibold text-emerald-800">
-                        <Check className="h-3 w-3" />
-                        <span>Saved</span>
-                      </span>
-                    </div>
-                    <p className="mt-2 font-semibold text-[#181B25]">
-                      Great short-form clips hook viewers in{" "}
-                      <span className="rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[#2648DB] ring-1 ring-[#2648DB]/40">
-                        two
-                      </span>{" "}
-                      seconds.
-                    </p>
-                  </div>
-                </div>
-              </MotionReveal>
-
-              {/* Close-up 2: Styles, 10 fonts & reusable presets */}
-              <MotionReveal delayMs={70} className="h-full">
-                <div className="flex h-full flex-col justify-between rounded-2xl border border-[#181B25]/10 bg-white p-5">
-                  <div>
-                    <div className="flex items-center gap-2 text-[#2648DB]">
-                      <Palette className="h-4 w-4" />
-                      <h3 className="text-base font-bold text-[#181B25]">
-                        10 fonts &amp; saved presets
-                      </h3>
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-[#50566A]">
-                      Start from 16 built-in looks or save your custom font,
-                      color, and highlight preset.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#181B25] p-3 text-center text-xs">
-                    <div className="rounded-lg bg-white/10 px-2 py-2.5 font-semibold text-[#FAF7F0]">
-                      Clean
-                    </div>
-                    <div className="rounded-lg bg-[#2648DB] px-2 py-2.5 font-extrabold uppercase text-white">
-                      Word
-                    </div>
-                    <div
-                      style={{ fontFamily: '"Bebas Neue", sans-serif' }}
-                      className="rounded-lg bg-[#FACC15] px-2 py-2 text-base tracking-wider text-[#181B25]"
-                    >
-                      BOLD
-                    </div>
-                  </div>
-                </div>
-              </MotionReveal>
-
-              {/* Close-up 3: Hindi Devanagari translation & AI Assist */}
-              <MotionReveal delayMs={140} className="h-full">
-                <div
-                  data-testid="home-hindi-capability"
-                  className="flex h-full flex-col justify-between rounded-2xl border border-[#181B25]/10 bg-white p-5"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 text-[#2648DB]">
-                      <Languages className="h-4 w-4" />
-                      <h3 className="text-base font-bold text-[#181B25]">
-                        Hindi translation &amp; AI Assist
-                      </h3>
-                    </div>
-                    <p className="mt-1.5 text-xs leading-relaxed text-[#50566A]">
-                      Translate into Devanagari or Hinglish with HarfBuzz MP4
-                      shaping, or run optional text-only Polish.
-                    </p>
-                  </div>
-
-                  <div className="mt-4 rounded-xl border border-[#2648DB]/25 bg-[#EEF2FF] p-3.5 text-xs">
-                    <span className="font-mono text-[10px] font-semibold uppercase text-[#2648DB]">
-                      Hindi · Noto Sans Devanagari
-                    </span>
-                    <p
-                      lang="hi"
-                      style={{
-                        fontFamily: '"Noto Sans Devanagari", sans-serif',
-                      }}
-                      className="mt-1 text-sm font-bold leading-snug text-[#181B25]"
-                    >
-                      बेहतरीन शॉर्ट क्लिप्स दो सेकंड में ध्यान खींचती हैं।
-                    </p>
-                  </div>
-                </div>
-              </MotionReveal>
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
+                Make the captions yours.
+              </h2>
+              <p className="mt-1 text-sm text-[#50566A] sm:text-base">
+                Edit words inline, adjust timing on the waveform, save your
+                style, or translate into Hindi.
+              </p>
             </div>
-          </div>
+
+            {/* Real Workspace Close-Up */}
+            <div className="mt-7 grid grid-cols-1 gap-5 rounded-3xl border border-[#181B25]/10 bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-7">
+              {/* Left: Transcript Edit + Waveform Timing + Saved Presets */}
+              <div className="flex flex-col justify-between gap-4">
+                <div className="rounded-2xl bg-[#FAF7F0] p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-mono font-semibold text-[#50566A]">
+                      Cue #1 · 0:00.64 – 0:04.24
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 font-semibold text-emerald-800">
+                      <Check className="h-3 w-3" />
+                      <span>Saved</span>
+                    </span>
+                  </div>
+                  <p className="mt-2.5 text-base font-bold text-[#181B25] sm:text-lg">
+                    Great short-form clips hook viewers in{" "}
+                    <span className="rounded-md bg-[#EEF2FF] px-1.5 py-0.5 text-[#2648DB] ring-1 ring-[#2648DB]/40">
+                      two
+                    </span>{" "}
+                    seconds.
+                  </p>
+                  <div className="mt-3.5 flex h-9 items-end gap-1 rounded-xl bg-[#181B25] px-2.5 py-2">
+                    {[24, 52, 76, 44, 88, 64, 36, 80, 92, 58, 42, 70, 48, 30, 62, 82, 50, 34].map(
+                      (h, i) => (
+                        <span
+                          key={i}
+                          style={{ height: `${Math.round(h * 0.24)}px` }}
+                          className={`flex-1 rounded-full ${
+                            i >= 4 && i <= 11 ? "bg-[#5B7CFF]" : "bg-white/22"
+                          }`}
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-lg bg-[#2648DB] px-3 py-1.5 font-semibold text-white">
+                    Word Highlight · Poppins
+                  </span>
+                  <span className="rounded-lg bg-[#EEF2FF] px-3 py-1.5 font-semibold text-[#181B25]">
+                    Brand Hook (Saved)
+                  </span>
+                  <span className="rounded-lg bg-[#FAF7F0] px-3 py-1.5 font-medium text-[#50566A]">
+                    16 presets · 10 fonts
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: Verified English / Hindi Devanagari + Optional AI Assist Preview */}
+              <div className="flex flex-col justify-between gap-4 rounded-2xl bg-[#181B25] p-5 text-[#FAF7F0]">
+                <div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-mono font-semibold text-[#93B4FF]">
+                      <Languages className="h-3.5 w-3.5" />
+                      <span>English → Hindi · Devanagari</span>
+                    </span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold text-[#C9CEDE]">
+                      HarfBuzz MP4
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs text-[#C9CEDE]">
+                    Great short-form clips hook viewers in two seconds.
+                  </p>
+                  <p
+                    lang="hi"
+                    data-testid="home-hindi-example"
+                    style={{
+                      fontFamily: '"Noto Sans Devanagari", sans-serif',
+                    }}
+                    className="mt-2 rounded-xl bg-white/8 px-3.5 py-3 text-base font-bold leading-snug text-[#FAF7F0] sm:text-lg"
+                  >
+                    बेहतरीन शॉर्ट क्लिप्स दो सेकंड में ध्यान खींचती हैं।
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-white/12 bg-white/5 px-3.5 py-2.5 text-xs">
+                  <div>
+                    <span className="font-semibold text-[#93B4FF]">
+                      AI Assist · Polish
+                    </span>
+                    <p className="text-[11px] text-[#C9CEDE]">
+                      Optional text-only suggestions — never sends your video.
+                    </p>
+                  </div>
+                  <Link
+                    href="/studio"
+                    className="shrink-0 font-semibold text-white underline decoration-[#5B7CFF] underline-offset-4 hover:text-[#93B4FF]"
+                  >
+                    Try editor
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </MotionReveal>
         </section>
 
-        {/* 4. HOW IT WORKS — Upload -> Transcribe -> Edit -> Export + Download example MP4 */}
+        {/* 4. SUBSTANTIAL VISUAL SECTION B — "Ready to post." (Real Exported MP4 + Resolution Picker + Download) */}
+        <section
+          id="ready-to-post"
+          data-testid="home-ready-to-post"
+          className="scroll-mt-20 border-t border-[#181B25]/10 py-12 lg:py-16"
+        >
+          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 items-center gap-8 rounded-3xl border border-[#181B25]/10 bg-white p-6 shadow-sm sm:p-8 lg:grid-cols-[minmax(0,1.08fr)_300px] lg:gap-10">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
+                  Ready to post.
+                </h2>
+                <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-[#50566A] sm:text-base">
+                  Download a burned-in MP4 with your original audio intact.
+                  Available resolutions depend on your uploaded clip so footage
+                  is never upscaled.
+                </p>
+
+                {/* Real Resolution Picker Preview */}
+                <div className="mt-5 grid grid-cols-2 gap-2 sm:max-w-md sm:grid-cols-3">
+                  <div className="rounded-xl border-2 border-[#2648DB] bg-[#EEF2FF] px-3 py-2 text-xs">
+                    <span className="block font-bold text-[#181B25]">
+                      1080p MP4
+                    </span>
+                    <span className="font-mono text-[10px] text-[#2648DB]">
+                      1080×1920
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-[#181B25]/12 bg-[#FAF7F0] px-3 py-2 text-xs">
+                    <span className="block font-bold text-[#181B25]">
+                      720p MP4
+                    </span>
+                    <span className="font-mono text-[10px] text-[#50566A]">
+                      720×1280
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-[#181B25]/12 bg-[#FAF7F0] px-3 py-2 text-xs">
+                    <span className="block font-bold text-[#181B25]">
+                      2160p (4K)
+                    </span>
+                    <span className="font-mono text-[10px] text-[#50566A]">
+                      Up to source
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <a
+                    href="/home/clipcaptions-example-export.mp4"
+                    download="clipcaptions-example.mp4"
+                    data-testid="download-example-mp4"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E3BC0]"
+                  >
+                    <Download className="h-4 w-4 shrink-0" />
+                    <span>Download example MP4</span>
+                  </a>
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[#50566A]">
+                    <Film className="h-3.5 w-3.5 text-[#2648DB]" />
+                    <span>720×1280 · H.264 / AAC · 1.5 MB</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Real Playable Exported MP4 */}
+              <div className="mx-auto w-full max-w-[260px] overflow-hidden rounded-2xl bg-[#181B25] shadow-[0_18px_48px_rgba(24,27,37,0.2)] lg:max-w-[280px]">
+                <video
+                  data-testid="example-export-video"
+                  src="/home/clipcaptions-example-export.mp4"
+                  poster="/home/clipcaptions-example-poster.jpg"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="aspect-[9/15] w-full object-cover object-[50%_26%]"
+                />
+              </div>
+            </div>
+          </MotionReveal>
+        </section>
+
+        {/* 5. COMPACT HOW IT WORKS STRIP */}
         <section
           id="how-it-works"
           data-testid="home-how-it-works"
-          className="scroll-mt-20 border-t border-[#181B25]/10 py-12 lg:py-16"
+          className="scroll-mt-20 border-t border-[#181B25]/10 bg-[#F2EEE4]/70 py-8 lg:py-10"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <MotionReveal>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="max-w-2xl">
-                  <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
-                    How it works
-                  </h2>
-                  <p className="mt-1.5 text-sm text-[#50566A] sm:text-base">
-                    One clip from raw upload to a burned-in MP4 ready to post.
-                  </p>
-                </div>
-                <span className="rounded-full bg-[#EEF2FF] px-3.5 py-1.5 font-mono text-[11px] font-semibold text-[#2648DB]">
-                  MP4 · MOV · MP3 · WAV · up to 150 MB / 3 min
-                </span>
-              </div>
-            </MotionReveal>
-
-            <ol className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <li className="rounded-2xl border border-[#181B25]/10 bg-white p-4">
-                <span className="font-mono text-xs font-bold text-[#2648DB]">
-                  01 · Upload
-                </span>
-                <p className="mt-1.5 text-sm font-bold text-[#181B25]">
-                  hook-take-02.mp4
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-[#50566A]">
-                  Auto-resuming private upload up to 150 MB and 3 minutes.
-                </p>
-              </li>
-
-              <li className="rounded-2xl border border-[#181B25]/10 bg-white p-4">
-                <span className="font-mono text-xs font-bold text-[#2648DB]">
-                  02 · Transcribe
-                </span>
-                <p className="mt-1.5 text-sm font-bold text-[#181B25]">
-                  Word-timed captions
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-[#50566A]">
-                  Speech becomes timed caption cues automatically.
-                </p>
-              </li>
-
-              <li className="rounded-2xl border border-[#181B25]/10 bg-white p-4">
-                <span className="font-mono text-xs font-bold text-[#2648DB]">
-                  03 · Edit
-                </span>
-                <p className="mt-1.5 text-sm font-bold text-[#181B25]">
-                  Fix words &amp; style
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-[#50566A]">
-                  Correct names, adjust timing, or translate into Hindi.
-                </p>
-              </li>
-
-              <li className="rounded-2xl border border-[#181B25]/10 bg-white p-4">
-                <span className="font-mono text-xs font-bold text-[#2648DB]">
-                  04 · Export
-                </span>
-                <p className="mt-1.5 text-sm font-bold text-[#181B25]">
-                  Download MP4
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-[#50566A]">
-                  240p–4K output matched to your source clip without upscaling.
-                </p>
-              </li>
-            </ol>
-
-            {/* Real Export Example Download Strip */}
-            <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl border border-[#181B25]/10 bg-white p-5 sm:flex-row sm:items-center">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF2FF] text-[#2648DB]">
-                  <Film className="h-5 w-5" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-[#181B25] sm:text-base">
-                    Inspect a real ClipCaptions MP4 export
-                  </h3>
-                  <p className="mt-0.5 text-xs text-[#50566A]">
-                    Available export resolutions (240p–4K) depend on your
-                    uploaded video. This public sample is 720×1280 H.264/AAC
-                    with burned-in captions.
-                  </p>
-                </div>
-              </div>
-
-              <a
-                href="/home/clipcaptions-example-export.mp4"
-                download="clipcaptions-example.mp4"
-                data-testid="download-example-mp4"
-                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#1E3BC0] sm:text-sm"
-              >
-                <Download className="h-4 w-4 shrink-0" />
-                <span>Download example MP4</span>
-              </a>
+          <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[#2648DB]">
+                How it works
+              </h2>
+              <ol className="mt-2 flex flex-wrap items-center gap-2">
+                {WORKFLOW_STRIP.map((step, idx) => {
+                  const Icon = step.icon;
+                  return (
+                    <li
+                      key={step.label}
+                      className="inline-flex items-center gap-2"
+                    >
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#181B25]/12 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#181B25]">
+                        <Icon className="h-3.5 w-3.5 text-[#2648DB]" />
+                        <span>{step.label}</span>
+                      </span>
+                      {idx < WORKFLOW_STRIP.length - 1 && (
+                        <ArrowRight className="h-3.5 w-3.5 text-[#50566A]" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
+
+            <span className="rounded-full bg-[#EEF2FF] px-3.5 py-1.5 font-mono text-[11px] font-semibold text-[#2648DB]">
+              MP4 · MOV · MP3 · WAV · up to 150 MB / 3 min
+            </span>
           </div>
         </section>
 
-        {/* 5. FAQ — 10 verified questions under 3 clear groups */}
+        {/* 6. CLEAN FAQ — 10 verified questions */}
         <section
           id="faq"
           data-testid="home-faq"
-          className="scroll-mt-20 border-t border-[#181B25]/10 bg-[#F2EEE4]/70 py-12 lg:py-16"
+          className="scroll-mt-20 border-t border-[#181B25]/10 py-12 lg:py-16"
         >
           <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
                 Frequently asked questions
               </h2>
-              <p className="mt-1.5 text-sm text-[#50566A] sm:text-base">
+              <p className="mt-1 text-sm text-[#50566A]">
                 Accounts, file limits, editing, Hindi exports, and privacy.
               </p>
             </div>
 
             <div className="mt-7 grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Group 1: Getting started */}
               <div>
                 <h3 className="mb-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#2648DB]">
                   Getting started
@@ -463,7 +464,6 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* Group 2: Editing and export */}
               <div>
                 <h3 className="mb-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#2648DB]">
                   Editing and export
@@ -483,7 +483,6 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* Group 3: Privacy and AI */}
               <div>
                 <h3 className="mb-2.5 text-xs font-bold uppercase tracking-[0.12em] text-[#2648DB]">
                   Privacy and AI
@@ -506,39 +505,29 @@ export default async function HomePage() {
           </MotionReveal>
         </section>
 
-        {/* 6. CHARCOAL CLOSING CTA ON IVORY CANVAS */}
+        {/* 7. CHARCOAL CLOSING CTA — One clear primary upload action */}
         <section
           data-testid="home-final-cta"
           className="border-t border-[#181B25]/10 py-12 lg:py-16"
         >
           <MotionReveal className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="rounded-3xl bg-[#181B25] px-6 py-10 text-center text-[#FAF7F0] shadow-[0_24px_60px_rgba(24,27,37,0.18)] sm:px-10 sm:py-14">
-              <Sparkles className="mx-auto h-6 w-6 text-[#93B4FF]" />
-              <h2 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-4xl">
+              <h2 className="text-2xl font-extrabold tracking-tight sm:text-4xl">
                 Caption your first clip
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-[#C9CEDE]">
-                Upload a video for automatic timed captions and MP4 export, or
-                try the sample editor right away.
+                Upload a video and download a captioned MP4 in minutes.
               </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <div className="mt-6 flex justify-center">
                 <a
                   href="/upload"
                   data-testid="home-bottom-upload-cta"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3.5 sm:text-base"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1E3BC0] sm:text-base"
                 >
                   <Upload className="h-4 w-4 shrink-0" />
-                  <span>Upload a clip</span>
+                  <span>Choose a video</span>
                   <ArrowRight className="h-4 w-4 shrink-0" />
                 </a>
-                <Link
-                  href="/studio"
-                  data-testid="home-bottom-sample-cta"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold text-[#FAF7F0] transition hover:bg-white/18 sm:px-6 sm:py-3.5 sm:text-base"
-                >
-                  <Play className="h-4 w-4 shrink-0 fill-current" />
-                  <span>Try a sample</span>
-                </Link>
               </div>
             </div>
           </MotionReveal>
