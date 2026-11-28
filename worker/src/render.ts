@@ -28,9 +28,13 @@ export type CaptionFontId =
   | "poppins"
   | "montserrat"
   | "bebas-neue"
+  | "noto-devanagari"
+  | "inter"
+  | "oswald"
+  | "archivo-black"
+  | "playfair-display"
   | "space-mono"
-  | "dm-serif"
-  | "noto-devanagari";
+  | "dm-serif";
 export type CaptionCasing = "original" | "uppercase" | "lowercase";
 export type CaptionShadowStrength = "none" | "soft" | "strong";
 export type CaptionEmphasisMode =
@@ -147,9 +151,13 @@ const FONT_ASS_MAP: Record<CaptionFontId, string> = {
   poppins: "Poppins",
   montserrat: "Montserrat",
   "bebas-neue": "Bebas Neue",
+  "noto-devanagari": "Noto Sans Devanagari",
+  inter: "Inter",
+  oswald: "Oswald",
+  "archivo-black": "Archivo Black",
+  "playfair-display": "Playfair Display",
   "space-mono": "Space Mono",
   "dm-serif": "DM Serif Display",
-  "noto-devanagari": "Noto Sans Devanagari",
 };
 
 const ACCENT_PALETTE: Record<

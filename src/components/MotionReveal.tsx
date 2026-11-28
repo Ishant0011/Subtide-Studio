@@ -5,18 +5,20 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 interface MotionRevealProps {
   children: ReactNode;
   delayMs?: number;
+  variant?: "rise" | "scale" | "slide-left" | "slide-right";
   className?: string;
 }
 
 /**
  * Progressive-enhancement scroll reveal:
  * - Renders visible in SSR HTML so content is never hidden if scripting fails.
- * - On hydration, only applies a subtle fade+rise to elements currently below the viewport fold.
- * - Immediately reveals when intersecting and respects prefers-reduced-motion.
+ * - On hydration, only applies a subtle fade+transform to elements currently below the viewport fold.
+ * - Immediately reveals once when intersecting and respects prefers-reduced-motion.
  */
 export function MotionReveal({
   children,
   delayMs = 0,
+  variant = "rise",
   className = "",
 }: MotionRevealProps) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -62,11 +64,20 @@ export function MotionReveal({
     return () => observer.disconnect();
   }, []);
 
+  const variantClass =
+    variant === "scale"
+      ? "cc-reveal-scale"
+      : variant === "slide-left"
+        ? "cc-reveal-left"
+        : variant === "slide-right"
+          ? "cc-reveal-right"
+          : "";
+
   const stateClass =
     state === "pending"
-      ? "cc-reveal cc-reveal-pending"
+      ? `cc-reveal cc-reveal-pending ${variantClass}`
       : state === "visible"
-        ? "cc-reveal cc-reveal-visible"
+        ? `cc-reveal cc-reveal-visible ${variantClass}`
         : "";
 
   return (

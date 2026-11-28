@@ -49,6 +49,38 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Bold.ttf") format("truetype");
+  font-weight: 500 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Oswald";
+  src: url("/fonts/Oswald-Bold.ttf") format("truetype");
+  font-weight: 500 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Archivo Black";
+  src: url("/fonts/ArchivoBlack-Regular.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-Bold.ttf") format("truetype");
+  font-weight: 500 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg-page: #101116;
   --bg-inset: #15171f;
@@ -131,14 +163,38 @@
   }
 }
 
-@keyframes cc-hero-rise {
+@keyframes cc-hero-mask {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(24px);
+    clip-path: inset(0 0 100% 0);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+    clip-path: inset(0 0 0% 0);
+  }
+}
+
+@keyframes cc-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cc-hero-scale {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -165,19 +221,19 @@
 }
 
 .cc-hero-line {
-  animation: cc-hero-rise var(--motion-section) var(--ease-cinema) 0ms both;
+  animation: cc-hero-mask 620ms var(--ease-cinema) 0ms both;
 }
 
 .cc-hero-sub {
-  animation: cc-hero-rise var(--motion-section) var(--ease-cinema) 80ms both;
+  animation: cc-hero-rise 540ms var(--ease-cinema) 110ms both;
 }
 
 .cc-hero-actions {
-  animation: cc-hero-rise var(--motion-section) var(--ease-cinema) 150ms both;
+  animation: cc-hero-rise 540ms var(--ease-cinema) 190ms both;
 }
 
 .cc-hero-stage {
-  animation: cc-hero-rise 520ms var(--ease-cinema) 100ms both;
+  animation: cc-hero-scale 720ms var(--ease-cinema) 120ms both;
 }
 
 .cc-stage-frame {
@@ -200,12 +256,24 @@
 
 .cc-reveal-pending {
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(22px);
+}
+
+.cc-reveal-pending.cc-reveal-scale {
+  transform: translateY(18px) scale(0.96);
+}
+
+.cc-reveal-pending.cc-reveal-left {
+  transform: translateX(-20px);
+}
+
+.cc-reveal-pending.cc-reveal-right {
+  transform: translateX(20px);
 }
 
 .cc-reveal-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .cc-panel-enter {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenter,
   AlignLeft,
@@ -11,6 +11,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Search,
   SlidersHorizontal,
   Sparkles,
   Trash2,
@@ -18,10 +19,12 @@ import {
 } from "lucide-react";
 import {
   BUILTIN_STYLE_TEMPLATES,
+  CAPTION_FONTS,
   CAPTION_FONT_LIST,
   CAPTION_TEMPLATE_CATEGORIES,
   MAX_VERTICAL_POSITION,
   MIN_VERTICAL_POSITION,
+  QUICK_PICK_FONT_IDS,
   applyCaptionCasing,
   computeCaptionLayout,
   hexToRgba,
@@ -282,6 +285,44 @@ export function StudioStylePanel({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [busyPresetId, setBusyPresetId] = useState<string | null>(null);
+  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+  const [fontSearch, setFontSearch] = useState("");
+  const fontDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!fontDropdownOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        fontDropdownRef.current &&
+        !fontDropdownRef.current.contains(event.target as Node)
+      ) {
+        setFontDropdownOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFontDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [fontDropdownOpen]);
+
+  const filteredFonts = useMemo(() => {
+    const q = fontSearch.trim().toLowerCase();
+    if (!q) return CAPTION_FONT_LIST;
+    return CAPTION_FONT_LIST.filter(
+      (f) =>
+        f.label.toLowerCase().includes(q) ||
+        f.category.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q)
+    );
+  }, [fontSearch]);
+
+  const activeFontDesc = CAPTION_FONTS[layout.fontFamily];
+  const isCustomLibraryFont = !QUICK_PICK_FONT_IDS.includes(layout.fontFamily);
 
   const presetInputRef = useRef<HTMLInputElement | null>(null);
   const subtabRefs = useRef<Record<StylePanelSubtab, HTMLButtonElement | null>>({
@@ -755,17 +796,34 @@ export function StudioStylePanel({
           activeSubtab === "style" ? "cc-panel-enter mt-3.5 space-y-4" : "hidden"
         }
       >
-        {/* 1. Font Family */}
+        {/* 1. Font Family: 4 Quick-Pick Live Cards + Single Searchable Full-Library Dropdown */}
         <div>
-          <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-            Font
-          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+              Font
+            </span>
+            <span
+              data-testid="style-active-font-badge"
+              style={{ fontFamily: activeFontDesc.cssFamily }}
+              className={`truncate rounded-md px-1.5 py-0.5 text-[11px] font-bold ${
+                isCustomLibraryFont
+                  ? "border border-accent/55 bg-accent-soft text-accent-hover"
+                  : "text-ink-secondary"
+              }`}
+            >
+              {activeFontDesc.label}
+            </span>
+          </div>
+
+          {/* 4 Quick-Pick Live-Preview Cards */}
           <div
             role="group"
-            aria-label="Caption font family"
+            aria-label="Quick-pick caption fonts"
+            data-testid="style-font-quick-picks"
             className="mt-2 grid grid-cols-2 gap-1.5"
           >
-            {CAPTION_FONT_LIST.map((font) => {
+            {QUICK_PICK_FONT_IDS.map((fontId) => {
+              const font = CAPTION_FONTS[fontId];
               const selected = layout.fontFamily === font.id;
               return (
                 <button
@@ -774,17 +832,143 @@ export function StudioStylePanel({
                   data-testid={`style-font-${font.id}`}
                   aria-pressed={selected}
                   onClick={() => onUpdateStyle({ fontFamily: font.id })}
-                  style={{ fontFamily: font.cssFamily }}
-                  className={`rounded-xl border px-2.5 py-2 text-left text-xs transition ${
+                  className={`cc-card-interactive rounded-xl border px-2.5 py-2 text-left ${
                     selected
                       ? "border-accent bg-accent-soft text-accent-hover"
                       : "border-ink/10 bg-page text-ink-secondary hover:border-ink/25 hover:text-ink"
                   }`}
                 >
-                  <span className="block truncate font-bold">{font.label}</span>
+                  <span
+                    style={{ fontFamily: font.cssFamily }}
+                    className="block truncate text-xs font-bold"
+                  >
+                    {font.id === "noto-devanagari" ? "Noto Devanagari" : font.label}
+                  </span>
+                  <span
+                    style={{ fontFamily: font.cssFamily }}
+                    className="mt-0.5 block truncate text-[10px] opacity-75"
+                  >
+                    {font.id === "noto-devanagari"
+                      ? "नमस्ते · Aa Bb"
+                      : "Make words land"}
+                  </span>
                 </button>
               );
             })}
+          </div>
+
+          {/* Single Accessible, Searchable Full-Library Dropdown (All 10 Bundled Fonts) */}
+          <div ref={fontDropdownRef} className="relative mt-2">
+            <button
+              type="button"
+              data-testid="style-font-dropdown-trigger"
+              aria-haspopup="listbox"
+              aria-expanded={fontDropdownOpen}
+              onClick={() => setFontDropdownOpen((open) => !open)}
+              className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs transition ${
+                isCustomLibraryFont || fontDropdownOpen
+                  ? "border-accent bg-accent-soft/60 text-ink"
+                  : "border-ink/12 bg-page text-ink-secondary hover:border-ink/25 hover:text-ink"
+              }`}
+            >
+              <span className="min-w-0 truncate">
+                <span className="text-[10px] uppercase tracking-wider text-ink-muted">
+                  All {CAPTION_FONT_LIST.length} fonts:{" "}
+                </span>
+                <span
+                  style={{ fontFamily: activeFontDesc.cssFamily }}
+                  className="font-bold text-ink"
+                >
+                  {activeFontDesc.label}
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 shrink-0 text-ink-muted transition-transform ${
+                  fontDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {fontDropdownOpen && (
+              <div
+                data-testid="style-font-dropdown-menu"
+                className="cc-panel-enter absolute left-0 right-0 z-30 mt-1.5 overflow-hidden rounded-xl border border-ink/15 bg-elevated shadow-[0_18px_48px_rgba(0,0,0,0.65)]"
+              >
+                <div className="flex items-center gap-2 border-b border-ink/10 bg-page/80 px-2.5 py-2">
+                  <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                  <input
+                    type="text"
+                    autoFocus
+                    data-testid="style-font-search-input"
+                    value={fontSearch}
+                    onChange={(e) => setFontSearch(e.target.value)}
+                    placeholder="Search all 10 fonts..."
+                    aria-label="Search caption fonts"
+                    className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
+                  />
+                  {fontSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setFontSearch("")}
+                      aria-label="Clear font search"
+                      className="text-ink-muted hover:text-ink"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  role="listbox"
+                  aria-label="All supported caption fonts"
+                  className="studio-scroll max-h-56 overflow-y-auto p-1.5"
+                >
+                  {filteredFonts.length === 0 ? (
+                    <p className="px-2.5 py-3 text-center text-xs text-ink-muted">
+                      No matching fonts
+                    </p>
+                  ) : (
+                    filteredFonts.map((font) => {
+                      const selected = layout.fontFamily === font.id;
+                      return (
+                        <button
+                          key={font.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          data-testid={`style-font-option-${font.id}`}
+                          onClick={() => {
+                            onUpdateStyle({ fontFamily: font.id });
+                            setFontDropdownOpen(false);
+                            setFontSearch("");
+                          }}
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition ${
+                            selected
+                              ? "bg-accent-soft text-accent-hover"
+                              : "text-ink hover:bg-panel"
+                          }`}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span
+                              style={{ fontFamily: font.cssFamily }}
+                              className="block truncate text-sm font-bold"
+                            >
+                              {font.label}
+                            </span>
+                            <span className="block truncate text-[10px] text-ink-muted">
+                              {font.category}
+                            </span>
+                          </span>
+                          {selected && (
+                            <Check className="h-3.5 w-3.5 shrink-0 text-accent" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

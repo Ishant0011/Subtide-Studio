@@ -10,9 +10,13 @@ export type CaptionFontId =
   | "poppins"
   | "montserrat"
   | "bebas-neue"
+  | "noto-devanagari"
+  | "inter"
+  | "oswald"
+  | "archivo-black"
+  | "playfair-display"
   | "space-mono"
-  | "dm-serif"
-  | "noto-devanagari";
+  | "dm-serif";
 export type CaptionCasing = "original" | "uppercase" | "lowercase";
 export type CaptionShadowStrength = "none" | "soft" | "strong";
 export type CaptionEmphasisMode =
@@ -81,21 +85,64 @@ export const CAPTION_FONTS: Record<CaptionFontId, CaptionFontDescriptor> = {
   },
   "noto-devanagari": {
     id: "noto-devanagari",
-    label: "Noto Devanagari",
+    label: "Noto Sans Devanagari",
     cssFamily: '"Noto Sans Devanagari", "Poppins", sans-serif',
     assFamily: "Noto Sans Devanagari",
     file: "NotoSansDevanagari-Bold.ttf",
     category: "Devanagari + Latin",
   },
+  inter: {
+    id: "inter",
+    label: "Inter",
+    cssFamily: '"Inter", "Plus Jakarta Sans", sans-serif',
+    assFamily: "Inter",
+    file: "Inter-Bold.ttf",
+    category: "Clean UI Sans",
+  },
+  oswald: {
+    id: "oswald",
+    label: "Oswald",
+    cssFamily: '"Oswald", "Bebas Neue", sans-serif',
+    assFamily: "Oswald",
+    file: "Oswald-Bold.ttf",
+    category: "Tall Condensed",
+  },
+  "archivo-black": {
+    id: "archivo-black",
+    label: "Archivo Black",
+    cssFamily: '"Archivo Black", Impact, sans-serif',
+    assFamily: "Archivo Black",
+    file: "ArchivoBlack-Regular.ttf",
+    category: "Heavy Impact",
+  },
+  "playfair-display": {
+    id: "playfair-display",
+    label: "Playfair Display",
+    cssFamily: '"Playfair Display", Georgia, serif',
+    assFamily: "Playfair Display",
+    file: "PlayfairDisplay-Bold.ttf",
+    category: "Luxury Serif",
+  },
 };
+
+export const QUICK_PICK_FONT_IDS: readonly CaptionFontId[] = [
+  "poppins",
+  "montserrat",
+  "bebas-neue",
+  "noto-devanagari",
+] as const;
 
 export const CAPTION_FONT_LIST: CaptionFontDescriptor[] = [
   CAPTION_FONTS.poppins,
   CAPTION_FONTS.montserrat,
   CAPTION_FONTS["bebas-neue"],
+  CAPTION_FONTS["noto-devanagari"],
+  CAPTION_FONTS.inter,
+  CAPTION_FONTS.oswald,
+  CAPTION_FONTS["archivo-black"],
+  CAPTION_FONTS["playfair-display"],
   CAPTION_FONTS["space-mono"],
   CAPTION_FONTS["dm-serif"],
-  CAPTION_FONTS["noto-devanagari"],
 ];
 
 export interface CaptionStyleConfig {

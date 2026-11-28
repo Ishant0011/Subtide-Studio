@@ -13,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { ClipCaptionsLockup } from "@/components/ClipCaptionsLogo";
+import { HomeCinematicSequence } from "@/components/HomeCinematicSequence";
 import { HomeHeroDemo } from "@/components/HomeHeroDemo";
 import { HomeStyleGallery } from "@/components/HomeStyleGallery";
 import { MotionReveal } from "@/components/MotionReveal";
@@ -141,12 +142,15 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* STANDOUT SCROLL SEQUENCE: Footage -> Caption Close-Up -> Full Editor */}
+        <HomeCinematicSequence />
+
         {/* SECTION 1: Compact Interactive Style Gallery on the Same Clip */}
         <section
           id="styles"
           className="border-t border-ink/10 bg-inset/50 py-14 lg:py-24"
         >
-          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal variant="scale" className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">
                 Compare caption styles on the same clip
@@ -164,7 +168,7 @@ export default async function HomePage() {
 
         {/* SECTION 2: Large Real Editor Preview + Plain-Language Upload -> Edit -> Export */}
         <section id="workflow" className="border-t border-ink/10 py-14 lg:py-24">
-          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal variant="slide-left" className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="max-w-2xl">
                 <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">

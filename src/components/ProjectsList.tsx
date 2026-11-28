@@ -462,22 +462,22 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
         </div>
       )}
 
-      {/* Search, Real-Status Filters & Sort Bar */}
+      {/* Compact Unified Toolbar: Search, Real-Status Filters & Sort */}
       {projects.length > 0 && (
         <div
           data-testid="projects-controls"
-          className="mb-5 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-panel p-3 sm:p-3.5"
+          className="mb-5 flex flex-col gap-2.5 rounded-2xl border border-ink/10 bg-panel p-3 lg:flex-row lg:items-center lg:justify-between"
         >
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
             {/* Search by title or filename */}
-            <div className="flex flex-1 items-center gap-2 rounded-xl border border-ink/12 bg-page px-3 py-2 focus-within:border-accent">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-ink/12 bg-page px-3 py-2 focus-within:border-accent">
               <Search className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
               <input
                 type="text"
                 data-testid="projects-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search projects by title or filename..."
+                placeholder="Search by title or filename..."
                 aria-label="Search projects"
                 className="min-w-0 flex-1 bg-transparent text-xs text-ink placeholder:text-ink-muted focus:outline-none"
               />
@@ -493,64 +493,64 @@ export function ProjectsList({ initialProjects }: ProjectsListProps) {
               )}
             </div>
 
-            {/* Sort dropdown */}
-            <label className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-ink/12 bg-inset px-3 py-2 text-xs text-ink-secondary">
-              <ArrowUpDown className="h-3.5 w-3.5 text-ink-muted" />
-              <span className="sr-only">Sort projects</span>
-              <select
-                data-testid="projects-sort-select"
-                aria-label="Sort projects"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as ProjectSortOrder)}
-                className="bg-inset text-xs font-medium text-ink focus:outline-none"
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="title_asc">Title (A–Z)</option>
-                <option value="duration_desc">Longest clip</option>
-              </select>
-            </label>
+            {/* Real-status filter chips */}
+            <div
+              role="group"
+              aria-label="Filter projects by status"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {(
+                [
+                  { id: "all", label: "All" },
+                  { id: "ready", label: "Ready" },
+                  { id: "processing", label: "Processing" },
+                  { id: "failed", label: "Failed" },
+                  { id: "uploaded", label: "Uploaded" },
+                ] as const
+              ).map((chip) => {
+                const active = statusFilter === chip.id;
+                const count = statusCounts[chip.id];
+                if (chip.id === "uploaded" && count === 0) return null;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    data-testid={`projects-filter-${chip.id}`}
+                    aria-pressed={active}
+                    onClick={() => setStatusFilter(chip.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                      active
+                        ? "border-accent bg-accent text-page"
+                        : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                    <span className="font-mono text-[10px] opacity-80">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Real-status filter chips */}
-          <div
-            role="group"
-            aria-label="Filter projects by status"
-            className="flex flex-wrap items-center gap-1.5"
-          >
-            {(
-              [
-                { id: "all", label: "All" },
-                { id: "ready", label: "Ready" },
-                { id: "processing", label: "Processing" },
-                { id: "failed", label: "Failed" },
-                { id: "uploaded", label: "Uploaded" },
-              ] as const
-            ).map((chip) => {
-              const active = statusFilter === chip.id;
-              const count = statusCounts[chip.id];
-              if (chip.id === "uploaded" && count === 0) return null;
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  data-testid={`projects-filter-${chip.id}`}
-                  aria-pressed={active}
-                  onClick={() => setStatusFilter(chip.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
-                    active
-                      ? "border-accent bg-accent text-page"
-                      : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
-                  }`}
-                >
-                  <span>{chip.label}</span>
-                  <span className="font-mono text-[10px] opacity-80">
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Sort dropdown */}
+          <label className="inline-flex shrink-0 items-center justify-between gap-2 rounded-xl border border-ink/12 bg-inset px-3 py-2 text-xs text-ink-secondary sm:justify-start">
+            <ArrowUpDown className="h-3.5 w-3.5 text-ink-muted" />
+            <span className="sr-only">Sort projects</span>
+            <select
+              data-testid="projects-sort-select"
+              aria-label="Sort projects"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as ProjectSortOrder)}
+              className="bg-inset text-xs font-medium text-ink focus:outline-none"
+            >
+              <option value="newest">Recently edited</option>
+              <option value="oldest">Oldest first</option>
+              <option value="title_asc">Title (A–Z)</option>
+              <option value="duration_desc">Longest clip</option>
+            </select>
+          </label>
         </div>
       )}
 
