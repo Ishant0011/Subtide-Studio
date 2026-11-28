@@ -5,7 +5,9 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "smoke:hindi": "node dist/smoke-hindi-render.js",
+    "test:hindi": "node scripts/smoke-hindi-render.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

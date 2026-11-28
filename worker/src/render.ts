@@ -591,6 +591,42 @@ function formatStyledCueRun(
   return parts.join("");
 }
 
+const COMPLEX_SCRIPT_RE = /[\u0900-\u0D7F\u0600-\u06FF]/;
+
+function cuesContainComplexScript(cues: RenderCaptionCue[]): boolean {
+  return cues.some(
+    (c) =>
+      COMPLEX_SCRIPT_RE.test(c.text) ||
+      c.words.some((w) => COMPLEX_SCRIPT_RE.test(w.text))
+  );
+}
+
+const ffmpegShapingCache = new Map<string, boolean>();
+
+export async function verifyFfmpegComplexShaping(
+  ffmpegPath: string,
+  cwd: string
+): Promise<boolean> {
+  const cached = ffmpegShapingCache.get(ffmpegPath);
+  if (cached !== undefined) return cached;
+  try {
+    const { stdout, stderr } = await runProcess(
+      ffmpegPath,
+      ["-version"],
+      10_000,
+      cwd
+    );
+    const combined = `${stdout}\n${stderr}`;
+    const ok =
+      combined.includes("--enable-libass") &&
+      combined.includes("--enable-libharfbuzz");
+    ffmpegShapingCache.set(ffmpegPath, ok);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export function buildAssScript(params: {
   width: number;
   height: number;
@@ -601,6 +637,9 @@ export function buildAssScript(params: {
   const { width, height, fontName } = params;
   const layout = computeLayout(params.style);
   const cues = hydrateCues(params.cues);
+  const hasComplexScript = cuesContainComplexScript(cues);
+  // Non-zero ASS Spacing breaks Indic/Devanagari conjunct & matra shaping in libass
+  const effectiveAssSpacing = hasComplexScript ? 0 : layout.assSpacing;
 
   const resolvedFontName = layout.assFontFamily || fontName;
   const refWidth = width > height ? Math.round(height * 0.85) : width;
@@ -622,14 +661,14 @@ export function buildAssScript(params: {
     layout.preset === "word-highlight" || layout.emphasisMode === "pill";
 
   if (isPillMode) {
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,3,8,${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},&H${layout.bgAssAlpha}${layout.bgAssBgr},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${effectiveAssSpacing},0,3,8,${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   } else if (layout.preset === "boxed") {
     const borderStyle = layout.backgroundEnabled ? 3 : 1;
     const outlineCol = layout.backgroundEnabled
       ? `&H${layout.bgAssAlpha}${layout.bgAssBgr}`
       : `&H10${layout.outlineAssBgr}`;
     const outlinePx = layout.backgroundEnabled ? 14 : scaledOutline;
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${effectiveAssSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   } else {
     const borderStyle = layout.backgroundEnabled ? 3 : 1;
     const outlineCol = layout.backgroundEnabled
@@ -638,7 +677,7 @@ export function buildAssScript(params: {
     const outlinePx = layout.backgroundEnabled
       ? 10
       : Math.max(0.5, scaledOutline || 2);
-    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${layout.assSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
+    styleLine = `Style: Caption,${resolvedFontName},${fontSize},&H00${layout.textAssBgr},&H00${layout.accentAssBgr},${outlineCol},${layout.shadowAssCol},-1,${layout.assItalic},0,0,100,100,${effectiveAssSpacing},0,${borderStyle},${outlinePx},${layout.shadowDepth},${layout.assAlignment},${marginH},${marginH},${marginV},1`;
   }
 
   const events: string[] = [];
@@ -944,7 +983,8 @@ function computeAudioStageCanvas(
 function buildAssFilterExpr(
   assFilename: string,
   alpha: boolean,
-  fontsDir: string | null
+  fontsDir: string | null,
+  _complexShaping = true
 ): string {
   const opts = [`filename=${assFilename}`];
   if (alpha) opts.push("alpha=1");
@@ -952,6 +992,7 @@ function buildAssFilterExpr(
     const escapedDir = fontsDir.replace(/\\/g, "/").replace(/:/g, "\\:");
     opts.push(`fontsdir='${escapedDir}'`);
   }
+  opts.push("shaping=complex");
   return `ass=${opts.join(":")}`;
 }
 
@@ -1016,7 +1057,21 @@ export async function renderExportArtifact(
     outHeight = canvas.height;
   }
 
-  // 2. Write ASS subtitle script aligned to exact output resolution & editor layout
+  // 2. Verify HarfBuzz complex shaping support when rendering Devanagari/Indic captions
+  const hydratedCues = hydrateCues(input.cues);
+  const hasComplexScript = cuesContainComplexScript(hydratedCues);
+  const supportsComplexShaping = await verifyFfmpegComplexShaping(
+    ffmpegPath,
+    workDir
+  );
+  if (hasComplexScript && !supportsComplexShaping) {
+    throw new RenderError(
+      "render_failed",
+      "The configured FFmpeg binary lacks libass/HarfBuzz complex shaping required for Hindi/Devanagari captions. Install a HarfBuzz-enabled FFmpeg build or point FFMPEG_PATH to one.",
+      false
+    );
+  }
+
   const assFilename = "captions.ass";
   const assPath = path.join(workDir, assFilename);
   const assScript = buildAssScript({
@@ -1032,7 +1087,12 @@ export async function renderExportArtifact(
   if (format === "mov_alpha") {
     const outputFilename = "export-alpha.mov";
     const outputPath = path.join(workDir, outputFilename);
-    const assFilter = buildAssFilterExpr(assFilename, true, fontsDir);
+    const assFilter = buildAssFilterExpr(
+      assFilename,
+      true,
+      fontsDir,
+      supportsComplexShaping
+    );
 
     const args = [
       "-y",
