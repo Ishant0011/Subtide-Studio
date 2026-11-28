@@ -3,13 +3,23 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Loader2, Lock } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  RefreshCw,
+} from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { EnabledOAuthProviders } from "@/lib/supabase/env";
 
+export type AuthFormMode = "signin" | "magic" | "signup" | "forgot";
+
 interface AuthFormProps {
   nextPath: string;
-  initialMode?: "signin" | "signup";
+  initialMode?: AuthFormMode;
   initialError?: string | null;
   supabaseConfigured: boolean;
   enabledProviders: EnabledOAuthProviders;
@@ -23,17 +33,28 @@ export function AuthForm({
   enabledProviders,
 }: AuthFormProps) {
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
+  const [mode, setMode] = useState<AuthFormMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<"google" | "discord" | null>(
     null
   );
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showResendHelper, setShowResendHelper] = useState(false);
 
   const hasSocialProviders = enabledProviders.google || enabledProviders.discord;
+
+  function switchMode(nextMode: AuthFormMode) {
+    setMode(nextMode);
+    setError(null);
+    setNotice(null);
+    if (nextMode !== "signin" && nextMode !== "signup") {
+      setShowResendHelper(false);
+    }
+  }
 
   async function handleOAuth(provider: "google" | "discord") {
     if (!supabaseConfigured) {
@@ -67,11 +88,45 @@ export function AuthForm({
     }
   }
 
+  async function handleResendConfirmation() {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Enter your email address above first to resend confirmation.");
+      return;
+    }
+    setResending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed, nextPath }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not resend confirmation email.");
+        return;
+      }
+      setNotice(
+        data.message ||
+          "If an unconfirmed account exists for that email, we sent a fresh confirmation link."
+      );
+    } catch {
+      setError("Network error while resending confirmation email.");
+    } finally {
+      setResending(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabaseConfigured) {
       setError(
-        "Supabase environment variables are not configured. Copy .env.example to .env.local and start local Supabase."
+        "Supabase environment variables are not configured. Copy .env.example to .env.local to sign in."
       );
       return;
     }
@@ -92,11 +147,53 @@ export function AuthForm({
         });
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) {
-          setError(data.error || "Sign-in failed.");
+          setError(data.error || "Invalid email or password.");
+          setShowResendHelper(true);
           return;
         }
         router.push(nextPath);
         router.refresh();
+      } else if (mode === "magic") {
+        const res = await fetch("/api/auth/magic-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            nextPath,
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        if (!res.ok) {
+          setError(data.error || "Could not send sign-in link.");
+          return;
+        }
+        setNotice(
+          data.message ||
+            "Check your inbox for a one-time sign-in link."
+        );
+      } else if (mode === "forgot") {
+        const res = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        if (!res.ok) {
+          setError(data.error || "Could not send password reset email.");
+          return;
+        }
+        setNotice(
+          data.message ||
+            "If an account exists for that email, we sent a password reset link."
+        );
       } else {
         const res = await fetch("/api/auth/signup", {
           method: "POST",
@@ -123,7 +220,7 @@ export function AuthForm({
           setNotice(
             "Account created. Check your inbox to confirm your email, then sign in."
           );
-          setMode("signin");
+          setShowResendHelper(true);
         }
       }
     } catch {
@@ -133,8 +230,31 @@ export function AuthForm({
     }
   }
 
+  const heading =
+    mode === "signup"
+      ? "Create your account"
+      : mode === "magic"
+        ? "Email me a sign-in link"
+        : mode === "forgot"
+          ? "Reset your password"
+          : "Sign in to ClipCaptions";
+
+  const subcopy =
+    mode === "signup"
+      ? "Start uploading MP4, MOV, MP3, and WAV clips to your private workspace."
+      : mode === "magic"
+        ? "We will email you a one-time link — no password required."
+        : mode === "forgot"
+          ? "Enter your account email and we will send a password reset link."
+          : nextPath.startsWith("/upload")
+            ? "You'll land directly on Upload right after signing in."
+            : "Access your private projects, caption revisions, and MP4 exports.";
+
   return (
-    <div className="cc-panel-enter w-full max-w-md rounded-2xl border border-ink/12 bg-panel p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7">
+    <div
+      data-testid="auth-form-card"
+      className="cc-panel-enter w-full max-w-md rounded-2xl border border-ink/12 bg-panel p-5 shadow-[0_24px_70px_rgba(0,0,0,0.6)] sm:p-7"
+    >
       <div className="flex items-center gap-2 text-xs font-medium text-accent">
         <Lock className="h-3.5 w-3.5" />
         <span>
@@ -145,96 +265,20 @@ export function AuthForm({
       </div>
 
       <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-ink">
-        {mode === "signin" ? "Sign in to ClipCaptions" : "Create your account"}
+        {heading}
       </h1>
-      <p className="mt-1.5 text-sm text-ink-secondary">
-        {mode === "signin"
-          ? nextPath.startsWith("/upload")
-            ? "You'll land directly on Upload right after signing in."
-            : "Access your private projects, caption revisions, and exports."
-          : "Start uploading MP4, MOV, MP3, and WAV clips to your private workspace."}
-      </p>
+      <p className="mt-1.5 text-sm text-ink-secondary">{subcopy}</p>
 
-      {/* Mode Switcher */}
-      <div
-        role="tablist"
-        aria-label="Authentication mode"
-        className="mt-5 grid grid-cols-2 rounded-xl border border-ink/10 bg-page p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "signin"}
-          onClick={() => {
-            setMode("signin");
-            setError(null);
-            setNotice(null);
-          }}
-          className={`rounded-lg py-2 text-xs font-semibold transition ${
-            mode === "signin"
-              ? "bg-accent-soft text-accent-hover"
-              : "text-ink-secondary hover:text-ink"
-          }`}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "signup"}
-          onClick={() => {
-            setMode("signup");
-            setError(null);
-            setNotice(null);
-          }}
-          className={`rounded-lg py-2 text-xs font-semibold transition ${
-            mode === "signup"
-              ? "bg-accent-soft text-accent-hover"
-              : "text-ink-secondary hover:text-ink"
-          }`}
-        >
-          Sign up
-        </button>
-      </div>
-
-      {!supabaseConfigured && (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            Supabase is not configured yet. Copy{" "}
-            <code className="font-mono">.env.example</code> to{" "}
-            <code className="font-mono">.env.local</code> and start local
-            Supabase to sign in.
-          </span>
-        </div>
-      )}
-
-      {error && (
-        <div
-          role="alert"
-          className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3 text-xs text-rose-200"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {notice && (
-        <div className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent-soft p-3 text-xs text-accent-hover">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{notice}</span>
-        </div>
-      )}
-
-      {/* OAuth Providers (rendered only when explicitly enabled for the environment) */}
-      {hasSocialProviders && (
-        <div className="mt-5 space-y-2.5">
+      {/* OAuth Providers (rendered only when explicitly enabled for this environment) */}
+      {hasSocialProviders && mode !== "forgot" && (
+        <div className="mt-5 space-y-2.5" data-testid="auth-social-providers">
           {enabledProviders.google && (
             <button
               type="button"
+              data-testid="auth-google-btn"
               disabled={loading || oauthLoading !== null}
               onClick={() => void handleOAuth("google")}
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-sm font-medium text-ink transition hover:border-accent/55 hover:bg-track disabled:opacity-60"
+              className="cc-card-interactive inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/18 bg-elevated px-4 py-2.5 text-sm font-semibold text-ink hover:border-accent/55 hover:bg-track disabled:opacity-60"
             >
               {oauthLoading === "google" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,9 +297,10 @@ export function AuthForm({
           {enabledProviders.discord && (
             <button
               type="button"
+              data-testid="auth-discord-btn"
               disabled={loading || oauthLoading !== null}
               onClick={() => void handleOAuth("discord")}
-              className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/15 bg-elevated px-4 py-2.5 text-sm font-medium text-ink transition hover:border-accent/55 hover:bg-track disabled:opacity-60"
+              className="cc-card-interactive inline-flex w-full items-center justify-center gap-2.5 rounded-xl border border-ink/15 bg-inset px-4 py-2.5 text-sm font-medium text-ink hover:border-accent/55 hover:bg-elevated disabled:opacity-60"
             >
               {oauthLoading === "discord" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -281,7 +326,94 @@ export function AuthForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+      {/* Primary Email Method Switcher (easy to reach on desktop & mobile) */}
+      <div
+        role="tablist"
+        aria-label="Email authentication method"
+        className="mt-5 grid grid-cols-3 gap-1 rounded-xl border border-ink/10 bg-page p-1"
+      >
+        <button
+          type="button"
+          role="tab"
+          data-testid="auth-tab-signin"
+          aria-selected={mode === "signin"}
+          onClick={() => switchMode("signin")}
+          className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${
+            mode === "signin"
+              ? "bg-accent-soft text-accent-hover ring-1 ring-accent/35"
+              : "text-ink-secondary hover:text-ink"
+          }`}
+        >
+          Password
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-testid="auth-tab-magic"
+          aria-selected={mode === "magic"}
+          onClick={() => switchMode("magic")}
+          className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${
+            mode === "magic"
+              ? "bg-accent-soft text-accent-hover ring-1 ring-accent/35"
+              : "text-ink-secondary hover:text-ink"
+          }`}
+        >
+          Email link
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-testid="auth-tab-signup"
+          aria-selected={mode === "signup"}
+          onClick={() => switchMode("signup")}
+          className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${
+            mode === "signup"
+              ? "bg-accent-soft text-accent-hover ring-1 ring-accent/35"
+              : "text-ink-secondary hover:text-ink"
+          }`}
+        >
+          Create
+        </button>
+      </div>
+
+      {!supabaseConfigured && (
+        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Supabase is not configured yet. Copy{" "}
+            <code className="font-mono">.env.example</code> to{" "}
+            <code className="font-mono">.env.local</code> to sign in.
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          data-testid="auth-error-banner"
+          className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-rose-400/35 bg-rose-500/10 p-3 text-xs text-rose-200"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {notice && (
+        <div
+          role="status"
+          data-testid="auth-notice-banner"
+          className="cc-panel-enter mt-4 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-accent-soft p-3 text-xs text-accent-hover"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <form
+        key={mode}
+        onSubmit={handleSubmit}
+        className="cc-panel-enter mt-5 space-y-4"
+      >
         <div>
           <label
             htmlFor="auth-email"
@@ -301,39 +433,122 @@ export function AuthForm({
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="auth-password"
-            className="block text-xs font-medium text-ink-secondary"
-          >
-            Password
-          </label>
-          <input
-            id="auth-password"
-            type="password"
-            required
-            minLength={6}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
-            className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
-          />
-        </div>
+        {(mode === "signin" || mode === "signup") && (
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <label
+                htmlFor="auth-password"
+                className="block text-xs font-medium text-ink-secondary"
+              >
+                Password
+              </label>
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  data-testid="auth-forgot-link"
+                  onClick={() => switchMode("forgot")}
+                  className="text-xs font-medium text-accent hover:text-accent-hover hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+            <input
+              id="auth-password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete={
+                mode === "signin" ? "current-password" : "new-password"
+              }
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="mt-1.5 w-full rounded-xl border border-ink/12 bg-page px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
+            />
+          </div>
+        )}
 
         <button
           type="submit"
+          data-testid="auth-submit-btn"
           disabled={loading || oauthLoading !== null}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-page transition hover:bg-accent-hover disabled:opacity-60"
+          className="cc-card-interactive inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-page hover:bg-accent-hover disabled:opacity-60"
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          <span>{mode === "signin" ? "Sign in" : "Create account"}</span>
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : mode === "magic" ? (
+            <Mail className="h-4 w-4" />
+          ) : mode === "forgot" ? (
+            <KeyRound className="h-4 w-4" />
+          ) : null}
+          <span>
+            {mode === "signin"
+              ? "Sign in"
+              : mode === "signup"
+                ? "Create account"
+                : mode === "magic"
+                  ? "Email me a sign-in link"
+                  : "Send password reset link"}
+          </span>
         </button>
+
+        {/* Secondary direct shortcut to passwordless link from Password tab */}
+        {mode === "signin" && (
+          <button
+            type="button"
+            data-testid="auth-shortcut-magic-btn"
+            onClick={() => switchMode("magic")}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-ink/12 bg-inset px-4 py-2.5 text-xs font-semibold text-ink-secondary transition hover:border-ink/25 hover:text-ink"
+          >
+            <Mail className="h-3.5 w-3.5 text-accent" />
+            <span>Email me a sign-in link instead</span>
+          </button>
+        )}
+
+        {mode === "forgot" && (
+          <button
+            type="button"
+            onClick={() => switchMode("signin")}
+            className="w-full text-center text-xs font-medium text-ink-secondary hover:text-ink"
+          >
+            Back to password sign-in
+          </button>
+        )}
       </form>
+
+      {/* Resend Confirmation Helper (shown on Create tab or after sign-in error) */}
+      {(showResendHelper || mode === "signup") && (
+        <div
+          data-testid="auth-resend-confirmation-box"
+          className="cc-panel-enter mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 bg-inset px-3.5 py-2.5 text-xs"
+        >
+          <span className="text-ink-secondary">
+            Need a fresh confirmation email?
+          </span>
+          <button
+            type="button"
+            data-testid="auth-resend-confirmation-btn"
+            disabled={resending}
+            onClick={() => void handleResendConfirmation()}
+            className="inline-flex items-center gap-1 font-semibold text-accent hover:text-accent-hover disabled:opacity-60"
+          >
+            {resending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3" />
+            )}
+            <span>Resend confirmation</span>
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 border-t border-ink/10 pt-4 text-center text-xs text-ink-muted">
         Want to try the studio first?{" "}
-        <Link href="/studio" className="font-medium text-accent hover:text-accent-hover hover:underline">
+        <Link
+          href="/studio"
+          className="font-medium text-accent hover:text-accent-hover hover:underline"
+        >
           Open the public sample
         </Link>
       </div>

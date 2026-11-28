@@ -22,6 +22,9 @@ export interface RateLimitResult {
 export const RATE_LIMIT_POLICIES = {
   authSignIn: { scope: "auth_signin", limit: 15, windowSeconds: 300 },
   authSignUp: { scope: "auth_signup", limit: 8, windowSeconds: 600 },
+  authMagicLink: { scope: "auth_magic_link", limit: 6, windowSeconds: 600 },
+  authRecovery: { scope: "auth_recovery", limit: 5, windowSeconds: 600 },
+  authResend: { scope: "auth_resend", limit: 5, windowSeconds: 600 },
   uploadInit: { scope: "upload_init", limit: 20, windowSeconds: 300 },
   uploadComplete: { scope: "upload_complete", limit: 30, windowSeconds: 300 },
   processJob: { scope: "process_job", limit: 20, windowSeconds: 300 },

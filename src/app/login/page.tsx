@@ -28,7 +28,23 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const nextPath = sanitizeNextPath(params.next, "/projects");
 
-  const initialMode = params.mode === "signup" ? "signup" : "signin";
+  const initialMode =
+    params.mode === "signup"
+      ? "signup"
+      : params.mode === "magic"
+        ? "magic"
+        : params.mode === "forgot"
+          ? "forgot"
+          : "signin";
+
+  const initialError =
+    params.error === "auth_cancelled"
+      ? "Sign-in was cancelled before completing. Choose any option below to try again."
+      : params.error === "auth_link_expired"
+        ? "That email link has expired or was already used. Request a fresh link below."
+        : params.error === "auth_callback_failed"
+          ? "Sign-in callback failed. Please try signing in again."
+          : null;
 
   const user = await getVerifiedUser();
   if (user) {
@@ -62,11 +78,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <AuthForm
           nextPath={nextPath}
           initialMode={initialMode}
-          initialError={
-            params.error === "auth_callback_failed"
-              ? "Sign-in callback failed. Please try signing in again."
-              : null
-          }
+          initialError={initialError}
           supabaseConfigured={isSupabaseConfigured()}
           enabledProviders={getEnabledOAuthProviders()}
         />
