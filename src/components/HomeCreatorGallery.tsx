@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
   Pause,
   Play,
   RefreshCw,
@@ -63,10 +64,12 @@ export function HomeCreatorGallery() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const selectionTokenRef = useRef(0);
+  const activeIdRef = useRef<string>(CREATOR_CLIPS[0].id);
   const wantPlayRef = useRef(false);
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [playBlocked, setPlayBlocked] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
@@ -78,10 +81,10 @@ export function HomeCreatorGallery() {
     }
   };
 
-  // Pause gallery if export sample starts playing
   useEffect(() => {
     const onPauseGallery = () => {
       wantPlayRef.current = false;
+      setIsLoading(false);
       videoRef.current?.pause();
     };
     window.addEventListener("clipcaptions:pause-gallery", onPauseGallery);
@@ -89,21 +92,27 @@ export function HomeCreatorGallery() {
       window.removeEventListener("clipcaptions:pause-gallery", onPauseGallery);
   }, []);
 
-  const attemptPlayForToken = useCallback((token: number) => {
+  const attemptPlayForToken = useCallback((token: number, expectedId: string) => {
     const v = videoRef.current;
-    if (!v || selectionTokenRef.current !== token) return;
+    if (!v || selectionTokenRef.current !== token || activeIdRef.current !== expectedId) {
+      return;
+    }
     v.muted = true;
     const p = v.play();
     if (p && typeof p.then === "function") {
       p.then(() => {
-        if (selectionTokenRef.current !== token) {
+        if (selectionTokenRef.current !== token || activeIdRef.current !== expectedId) {
           v.pause();
           return;
         }
+        setIsLoading(false);
         setPlayBlocked(false);
         setMediaError(null);
       }).catch((err: unknown) => {
-        if (selectionTokenRef.current !== token) return;
+        if (selectionTokenRef.current !== token || activeIdRef.current !== expectedId) {
+          return;
+        }
+        setIsLoading(false);
         const name = err instanceof Error ? err.name : "";
         if (name !== "AbortError") {
           setPlayBlocked(true);
@@ -115,9 +124,13 @@ export function HomeCreatorGallery() {
   const selectClip = useCallback(
     (idx: number, startPlayback = true) => {
       const nextIdx = (idx + CREATOR_CLIPS.length) % CREATOR_CLIPS.length;
+      const nextClip = CREATOR_CLIPS[nextIdx];
+
       selectionTokenRef.current += 1;
       const token = selectionTokenRef.current;
+      activeIdRef.current = nextClip.id;
 
+      // Update selected card & poster immediately on first press
       setActiveIdx(nextIdx);
       setIsPlaying(false);
       setPlayBlocked(false);
@@ -126,11 +139,13 @@ export function HomeCreatorGallery() {
 
       if (startPlayback) {
         pauseOtherMedia();
-        // If same clip clicked again, play immediately; otherwise onCanPlay fires safely for the new <video>
+        setIsLoading(true);
         if (nextIdx === activeIdx && videoRef.current) {
           videoRef.current.currentTime = 0;
-          attemptPlayForToken(token);
+          attemptPlayForToken(token, nextClip.id);
         }
+      } else {
+        setIsLoading(false);
       }
     },
     [activeIdx, attemptPlayForToken]
@@ -139,31 +154,35 @@ export function HomeCreatorGallery() {
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused || v.ended) {
+    if (!v.paused && !v.ended) {
+      wantPlayRef.current = false;
+      setIsLoading(false);
+      v.pause();
+    } else {
       pauseOtherMedia();
       if (v.ended) v.currentTime = 0;
       wantPlayRef.current = true;
-      attemptPlayForToken(selectionTokenRef.current);
-    } else {
-      wantPlayRef.current = false;
-      v.pause();
+      setIsLoading(v.readyState < 3);
+      attemptPlayForToken(selectionTokenRef.current, activeIdRef.current);
     }
   }, [attemptPlayForToken]);
 
   const retryClip = useCallback(() => {
     setMediaError(null);
     setPlayBlocked(false);
+    setIsLoading(true);
     wantPlayRef.current = true;
     const v = videoRef.current;
     if (!v) return;
     v.load();
-    attemptPlayForToken(selectionTokenRef.current);
+    attemptPlayForToken(selectionTokenRef.current, activeIdRef.current);
   }, [attemptPlayForToken]);
 
   return (
     <div
       data-testid="home-creator-gallery"
-      className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:items-start"
+      data-gallery-playing={isPlaying ? "true" : "false"}
+      className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.32fr)_minmax(300px,0.68fr)] lg:items-start"
       onTouchStart={(e) => {
         touchStartXRef.current = e.touches[0]?.clientX ?? null;
       }}
@@ -192,17 +211,29 @@ export function HomeCreatorGallery() {
             muted
             loop
             preload="metadata"
+            onLoadStart={() => {
+              if (wantPlayRef.current) setIsLoading(true);
+            }}
             onCanPlay={() => {
               if (wantPlayRef.current) {
-                attemptPlayForToken(selectionTokenRef.current);
+                attemptPlayForToken(selectionTokenRef.current, activeClip.id);
+              } else {
+                setIsLoading(false);
               }
             }}
-            onPlay={() => {
+            onPlaying={() => {
+              if (activeIdRef.current !== activeClip.id) return;
+              setIsLoading(false);
               setIsPlaying(true);
               setPlayBlocked(false);
             }}
-            onPause={() => setIsPlaying(false)}
+            onPause={() => {
+              if (activeIdRef.current !== activeClip.id) return;
+              setIsPlaying(false);
+            }}
             onError={() => {
+              if (activeIdRef.current !== activeClip.id) return;
+              setIsLoading(false);
               setIsPlaying(false);
               setMediaError("Could not load this example clip.");
             }}
@@ -210,24 +241,37 @@ export function HomeCreatorGallery() {
             className="h-full w-full cursor-pointer object-cover"
           />
 
+          {/* Loading Feedback while clip prepares */}
+          {isLoading && !isPlaying && !mediaError && (
+            <div
+              data-testid="creator-gallery-loading"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-20 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full bg-[#181B25]/88 px-4 py-2 text-xs font-semibold text-[#FAF7F0] shadow-lg backdrop-blur-md"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#93B4FF]" />
+              <span>Loading clip…</span>
+            </div>
+          )}
+
           {/* Caption visible before Play */}
           {!isPlaying && !mediaError && (
             <>
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181B25]/82 via-[#181B25]/14 to-transparent" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#181B25]/84 via-[#181B25]/14 to-transparent" />
               <div className="pointer-events-none absolute inset-x-5 bottom-5 text-center">
                 <span className="inline-block rounded-xl bg-[#181B25]/88 px-3.5 py-1.5 text-sm font-extrabold tracking-tight text-[#FAF7F0] sm:text-base">
                   {activeClip.captionLine}
                 </span>
               </div>
-              <button
-                type="button"
-                data-testid="creator-gallery-play"
-                onClick={togglePlay}
-                aria-label={`Play ${activeClip.label} clip`}
-                className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#2648DB] text-white shadow-xl transition hover:scale-105 hover:bg-[#1E3BC0]"
-              >
-                <Play className="ml-0.5 h-6 w-6 fill-current" />
-              </button>
+              {!isLoading && (
+                <button
+                  type="button"
+                  data-testid="creator-gallery-play"
+                  onClick={togglePlay}
+                  aria-label={`Play ${activeClip.label} clip`}
+                  className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-[#2648DB] text-white shadow-xl transition hover:scale-105 hover:bg-[#1E3BC0]"
+                >
+                  <Play className="ml-0.5 h-6 w-6 fill-current" />
+                </button>
+              )}
             </>
           )}
 
@@ -263,6 +307,7 @@ export function HomeCreatorGallery() {
             {playBlocked && !isPlaying && (
               <button
                 type="button"
+                data-testid="creator-gallery-play-fallback"
                 onClick={togglePlay}
                 className="rounded-full bg-[#2648DB] px-3 py-1 text-xs font-semibold text-white"
               >
@@ -271,6 +316,7 @@ export function HomeCreatorGallery() {
             )}
             <button
               type="button"
+              data-testid="creator-gallery-toggle"
               onClick={togglePlay}
               aria-label={isPlaying ? "Pause example clip" : "Play example clip"}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#181B25]/85 text-[#FAF7F0] backdrop-blur-md transition hover:bg-[#2648DB]"

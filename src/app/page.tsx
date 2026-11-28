@@ -117,69 +117,78 @@ export default async function HomePage() {
       <PublicHeader userEmail={user?.email ?? null} variant="ivory" />
 
       <main className="relative z-10">
-        {/* 1. FIRST SCREEN — Compact Ivory Hero + Live 3-Scene Product Showcase */}
+        {/* 1. SPLIT HERO — 40% Left Copy (steady) + 60% Right Automatic Showcase (bold) */}
         <section
           data-testid="home-open-hero"
-          className="mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 sm:pb-12 sm:pt-4 lg:px-8 lg:pb-14 lg:pt-4"
+          className="mx-auto max-w-7xl px-4 pb-10 pt-3 sm:px-6 sm:pb-12 sm:pt-5 lg:px-8 lg:pb-16 lg:pt-8"
         >
-          <div className="max-w-3xl">
-            <h1 className="text-[1.9rem] font-extrabold leading-[1.06] tracking-[-0.035em] text-[#181B25] sm:text-4xl lg:text-[3rem] lg:leading-[1.04]">
-              Automatic captions for your videos.
-            </h1>
+          <div className="grid grid-cols-1 items-center gap-4 sm:gap-7 lg:grid-cols-[minmax(0,40%)_minmax(0,60%)] lg:gap-10">
+            {/* Left 40%: Steady Editorial Headline + Clear Actions */}
+            <div className="max-w-lg">
+              <h1 className="text-[1.95rem] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#181B25] sm:text-5xl lg:text-[3.35rem] lg:leading-[1.03]">
+                Automatic captions for your videos.
+              </h1>
 
-            <p
-              data-testid="home-hero-subcopy"
-              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[#50566A] sm:mt-2 sm:text-base"
-            >
-              {HOMEPAGE_SUBHEADLINE}
-            </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-3.5 sm:gap-3">
-              {user ? (
-                <Link
-                  href="/upload"
-                  prefetch={false}
-                  data-testid="home-upload-cta"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-5 sm:py-2.5 sm:text-base"
-                >
-                  <Upload className="h-4 w-4 shrink-0" />
-                  <span>Choose a video</span>
-                  <ArrowRight className="h-4 w-4 shrink-0" />
-                </Link>
-              ) : (
-                <a
-                  href="/upload"
-                  data-testid="home-upload-cta"
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-5 sm:py-2.5 sm:text-base"
-                >
-                  <Upload className="h-4 w-4 shrink-0" />
-                  <span>Choose a video</span>
-                  <ArrowRight className="h-4 w-4 shrink-0" />
-                </a>
-              )}
-
-              <Link
-                href="/studio"
-                data-testid="home-sample-cta"
-                className="inline-flex items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-2.5 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-2.5 sm:text-base"
+              <p
+                data-testid="home-hero-subcopy"
+                className="mt-2.5 text-sm leading-relaxed text-[#50566A] sm:mt-3.5 sm:text-lg"
               >
-                <Play className="h-4 w-4 shrink-0 fill-current text-[#2648DB]" />
-                <span>Try a sample</span>
-              </Link>
+                {HOMEPAGE_SUBHEADLINE}
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2.5 sm:mt-6 sm:gap-3">
+                {user ? (
+                  <Link
+                    href="/upload"
+                    prefetch={false}
+                    data-testid="home-upload-cta"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3.5 sm:text-base"
+                  >
+                    <Upload className="h-4 w-4 shrink-0" />
+                    <span>Choose a video</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </Link>
+                ) : (
+                  <a
+                    href="/upload"
+                    data-testid="home-upload-cta"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2648DB] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1E3BC0] sm:px-6 sm:py-3.5 sm:text-base"
+                  >
+                    <Upload className="h-4 w-4 shrink-0" />
+                    <span>Choose a video</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
+                  </a>
+                )}
+
+                <Link
+                  href="/studio"
+                  data-testid="home-sample-cta"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#181B25]/18 bg-white px-4 py-3 text-sm font-semibold text-[#181B25] transition hover:border-[#2648DB]/50 hover:bg-[#EEF2FF] sm:px-5 sm:py-3.5 sm:text-base"
+                >
+                  <Play className="h-4 w-4 shrink-0 fill-current text-[#2648DB]" />
+                  <span>Try a sample</span>
+                </Link>
+              </div>
+
+              <p className="mt-2.5 text-xs font-medium text-[#50566A]">
+                No account needed for the sample.
+              </p>
+            </div>
+
+            {/* Right 60%: Dominant Automatic 3-Scene Showcase */}
+            <div className="min-w-0">
+              <HomeLiveShowcase />
             </div>
           </div>
-
-          {/* Live 3-Scene Interactive Showcase (Add captions -> Change the style -> Fix a word) */}
-          <HomeLiveShowcase />
         </section>
 
-        {/* 2. CREATOR EXAMPLES — Directly after the showcase */}
+        {/* 2. CREATOR EXAMPLES — Directly after the hero */}
         <section
           id="examples"
           data-testid="home-examples"
           className="scroll-mt-20 border-t border-[#181B25]/10 py-12 lg:py-16"
         >
-          <MotionReveal className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <MotionReveal className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
               <h2 className="text-2xl font-extrabold tracking-tight text-[#181B25] sm:text-3xl">
                 Four clips, four caption looks
