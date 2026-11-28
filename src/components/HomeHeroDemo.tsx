@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Pause, Play, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import {
+  AlertCircle,
+  Pause,
+  Play,
+  RefreshCw,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import {
   SAMPLE_CAPTIONS,
   SAMPLE_CLIP,
@@ -9,56 +16,25 @@ import {
   getActiveCue,
   getActiveWord,
 } from "@/lib/captions";
-import {
-  BUILTIN_STYLE_TEMPLATES,
-  type BuiltInStyleTemplate,
-} from "@/lib/caption-editor";
+import { BUILTIN_STYLE_TEMPLATES } from "@/lib/caption-editor";
 import { CaptionOverlay } from "@/components/CaptionOverlay";
 
-type CompareMode = "split" | "after" | "before";
+type ComparisonView = "original" | "captioned";
 
-const HERO_FEATURED_PRESETS: Array<{ id: string; shortLabel: string }> = [
-  { id: "word-highlight", shortLabel: "Highlight" },
-  { id: "minimal", shortLabel: "Minimal" },
-  { id: "broadcast", shortLabel: "Broadcast" },
-  { id: "editorial-serif", shortLabel: "Editorial" },
-];
+const DEFAULT_HERO_TEMPLATE =
+  BUILTIN_STYLE_TEMPLATES.find((t) => t.id === "word-highlight") ??
+  BUILTIN_STYLE_TEMPLATES[0];
 
 export function HomeHeroDemo() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [compareMode, setCompareMode] = useState<CompareMode>("after");
-  const [splitPercent, setSplitPercent] = useState(38);
-  const [templateId, setTemplateId] = useState<string>(
-    HERO_FEATURED_PRESETS[0].id
-  );
+  const [comparison, setComparison] = useState<ComparisonView>("captioned");
   const [currentTime, setCurrentTime] = useState(0.5);
   const [duration, setDuration] = useState(SAMPLE_CLIP.duration);
   const [initialized, setInitialized] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-
-  const featuredTemplates: Array<{
-    tpl: BuiltInStyleTemplate;
-    shortLabel: string;
-  }> = useMemo(
-    () =>
-      HERO_FEATURED_PRESETS.map((entry) => ({
-        tpl:
-          BUILTIN_STYLE_TEMPLATES.find((t) => t.id === entry.id) ??
-          BUILTIN_STYLE_TEMPLATES[0],
-        shortLabel: entry.shortLabel,
-      })),
-    []
-  );
-
-  const selectedTemplate: BuiltInStyleTemplate = useMemo(
-    () =>
-      BUILTIN_STYLE_TEMPLATES.find((t) => t.id === templateId) ??
-      BUILTIN_STYLE_TEMPLATES[0],
-    [templateId]
-  );
 
   const activeCue = useMemo(
     () => getActiveCue(SAMPLE_CAPTIONS, currentTime),
@@ -69,7 +45,7 @@ export function HomeHeroDemo() {
     [activeCue, currentTime]
   );
 
-  // Smooth 60fps word tracking while playing (strictly user-initiated playback)
+  // Smooth 60fps word tracking during user-initiated playback
   useEffect(() => {
     if (!isPlaying) return;
     let rafId = 0;
@@ -146,63 +122,55 @@ export function HomeHeroDemo() {
   }, [initialized]);
 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const showCaptionsLayer = compareMode !== "before";
-  const clipStyle =
-    compareMode === "split"
-      ? { clipPath: `inset(0 0 0 ${splitPercent}%)` }
-      : undefined;
 
   return (
     <div
       data-testid="home-hero-demo"
-      className="relative mx-auto w-full max-w-[262px] rounded-[1.45rem] border border-ink/12 bg-panel p-2.5 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:max-w-[284px] sm:rounded-[1.6rem] sm:p-3 lg:max-w-[300px] xl:max-w-[314px]"
+      className="relative mx-auto w-full max-w-[312px] rounded-[1.75rem] bg-[#EAE4FA] p-3 text-[#0D0E12] shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:max-w-[352px] sm:rounded-[2rem] sm:p-4 lg:max-w-[372px] lg:p-5"
     >
-      {/* Top Synchronized Before / After Switcher */}
-      <div className="mb-2 flex items-center justify-between gap-1.5 px-0.5">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-secondary">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              isPlaying ? "animate-pulse bg-accent" : "bg-ink-muted"
-            }`}
-          />
-          <span>{selectedTemplate.name}</span>
+      {/* Quiet Header Bar: Original / Captioned toggle on the same clip without resetting playback */}
+      <div className="mb-2.5 flex items-center justify-between gap-2 px-0.5">
+        <span className="text-[11px] font-semibold tracking-tight text-[#2D2A3A]">
+          {comparison === "captioned" ? "Captioned preview" : "Original clip"}
         </span>
 
         <div
           role="group"
-          aria-label="Before and after caption comparison mode"
-          className="inline-flex rounded-full border border-ink/12 bg-inset p-0.5 text-[10px] font-semibold"
+          aria-label="Compare original and captioned video"
+          data-testid="hero-compare-group"
+          className="inline-flex rounded-full bg-[#191C24]/10 p-0.5 text-[11px] font-semibold"
         >
-          {(
-            [
-              { id: "before", label: "Before" },
-              { id: "split", label: "Split" },
-              { id: "after", label: "After" },
-            ] as const
-          ).map((mode) => {
-            const active = compareMode === mode.id;
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                data-testid={`before-after-mode-${mode.id}`}
-                aria-pressed={active}
-                onClick={() => setCompareMode(mode.id)}
-                className={`rounded-full px-2 py-0.5 transition sm:px-2.5 ${
-                  active
-                    ? "bg-accent text-page"
-                    : "text-ink-secondary hover:text-ink"
-                }`}
-              >
-                {mode.label}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            data-testid="hero-compare-original"
+            aria-pressed={comparison === "original"}
+            onClick={() => setComparison("original")}
+            className={`rounded-full px-2.5 py-1 transition ${
+              comparison === "original"
+                ? "bg-accent text-page shadow-sm"
+                : "text-[#2D2A3A] hover:text-[#0D0E12]"
+            }`}
+          >
+            Original
+          </button>
+          <button
+            type="button"
+            data-testid="hero-compare-captioned"
+            aria-pressed={comparison === "captioned"}
+            onClick={() => setComparison("captioned")}
+            className={`rounded-full px-2.5 py-1 transition ${
+              comparison === "captioned"
+                ? "bg-accent text-page shadow-sm"
+                : "text-[#2D2A3A] hover:text-[#0D0E12]"
+            }`}
+          >
+            Captioned
+          </button>
         </div>
       </div>
 
-      {/* Synchronized Single-Video 9:16 Stage */}
-      <div className="studio-stage-container relative aspect-[9/16] w-full overflow-hidden rounded-[1.15rem] border border-ink/12 bg-inset sm:rounded-[1.25rem]">
+      {/* Large 9:16 Footage Stage — footage and captions dominate the visual hierarchy */}
+      <div className="studio-stage-container relative mx-auto aspect-[9/16] w-full max-w-[244px] overflow-hidden rounded-[1.25rem] bg-[#0D0E12] shadow-[0_18px_42px_rgba(13,14,18,0.38)] sm:max-w-[288px] lg:max-w-[308px]">
         <video
           ref={videoRef}
           src={SAMPLE_CLIP.src}
@@ -233,94 +201,47 @@ export function HomeHeroDemo() {
           className="h-full w-full cursor-pointer object-cover"
         />
 
-        {/* Scrims for caption legibility */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/50 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+        {/* Bottom legibility scrim */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
 
-        {/* Quiet comparison indicators only when comparing Before / Split */}
-        {compareMode !== "after" && (
-          <div className="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-center justify-between text-[10px] font-semibold">
-            <span className="rounded-full border border-ink/15 bg-page/80 px-2 py-0.5 text-ink-secondary backdrop-blur-md">
-              Original
-            </span>
-            {compareMode === "split" && (
-              <span className="rounded-full border border-ink/20 bg-page/85 px-2 py-0.5 text-ink backdrop-blur-md">
-                Captioned
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Synchronized Caption Overlay Layer */}
-        {showCaptionsLayer && (
+        {/* Captioned Layer (toggles without touching video playback or currentTime) */}
+        {comparison === "captioned" && (
           <div
-            data-testid="before-after-captioned-layer"
-            style={clipStyle}
+            data-testid="hero-captioned-layer"
             className="pointer-events-none absolute inset-0 z-20"
           >
             <CaptionOverlay
               activeCue={activeCue}
               activeWord={activeWord}
-              preset={selectedTemplate.style.preset}
-              fontSize={selectedTemplate.style.fontSize}
-              verticalPosition={selectedTemplate.style.verticalPosition}
-              accent={selectedTemplate.style.accent}
-              styleConfig={selectedTemplate.style}
+              preset={DEFAULT_HERO_TEMPLATE.style.preset}
+              fontSize={DEFAULT_HERO_TEMPLATE.style.fontSize}
+              verticalPosition={DEFAULT_HERO_TEMPLATE.style.verticalPosition}
+              accent={DEFAULT_HERO_TEMPLATE.style.accent}
+              styleConfig={DEFAULT_HERO_TEMPLATE.style}
               currentTime={currentTime}
             />
           </div>
         )}
 
-        {/* Split Divider Line in Split mode */}
-        {compareMode === "split" && (
-          <div
-            aria-hidden="true"
-            style={{ left: `${splitPercent}%` }}
-            className="pointer-events-none absolute bottom-0 top-0 z-30 -translate-x-1/2"
-          >
-            <div className="h-full w-0.5 bg-ink/90 shadow-md" />
-            <div className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-ink/30 bg-page text-[9px] font-bold text-ink shadow-lg">
-              ↔
-            </div>
-          </div>
-        )}
-
-        {/* Center play affordance positioned below speaker's face */}
+        {/* Discreet center Play affordance when paused */}
         {!isPlaying && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[56%] z-10 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-ink/25 bg-page/80 text-ink shadow-2xl backdrop-blur-md"
+          <button
+            type="button"
+            onClick={() => void togglePlay()}
+            aria-label="Play captioned demo video"
+            className="absolute left-1/2 top-[54%] z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-[#0D0E12]/75 text-ink shadow-xl backdrop-blur-md transition hover:scale-105 hover:bg-[#0D0E12]/90 motion-reduce:transition-none"
           >
-            <Play className="ml-0.5 h-4 w-4 fill-current" />
-          </div>
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          </button>
         )}
       </div>
-
-      {/* Accessible Split Position Slider (shown in Split mode) */}
-      {compareMode === "split" && (
-        <div className="mt-1.5 flex items-center gap-2 px-1">
-          <span className="text-[10px] font-medium text-ink-muted">Before</span>
-          <input
-            type="range"
-            min={5}
-            max={95}
-            step={1}
-            value={splitPercent}
-            data-testid="before-after-slider"
-            onChange={(e) => setSplitPercent(Number(e.target.value))}
-            aria-label="Adjust before and after split position"
-            className="studio-scrubber h-4 flex-1"
-          />
-          <span className="text-[10px] font-medium text-ink">After</span>
-        </div>
-      )}
 
       {/* Media Error / Retry Alert */}
       {mediaError && (
         <div
           role="alert"
           data-testid="hero-media-error"
-          className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-rose-400/35 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-200"
+          className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-rose-600/30 bg-rose-950/90 px-3 py-2 text-[11px] text-rose-100"
         >
           <span className="inline-flex items-center gap-1.5 truncate">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -329,7 +250,7 @@ export function HomeHeroDemo() {
           <button
             type="button"
             onClick={retryMedia}
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-300/30 bg-panel px-2 py-0.5 font-semibold text-rose-100 hover:border-ink/40"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-300/30 bg-rose-900 px-2 py-0.5 font-semibold text-white hover:bg-rose-800"
           >
             <RefreshCw className="h-3 w-3" />
             <span>Retry</span>
@@ -337,8 +258,8 @@ export function HomeHeroDemo() {
         </div>
       )}
 
-      {/* Compact Single-Row Transport Bar (Play, Mute, Scrubber, Time) */}
-      <div className="mt-2 flex items-center gap-2 rounded-xl border border-ink/10 bg-inset px-2 py-1.5">
+      {/* Whisper-quiet Transport Bar */}
+      <div className="mx-auto mt-2.5 flex w-full max-w-[244px] items-center gap-2 rounded-xl bg-[#0D0E12]/90 px-2.5 py-1.5 text-ink sm:max-w-[288px] lg:max-w-[308px]">
         <button
           type="button"
           data-testid="hero-play-btn"
@@ -353,21 +274,8 @@ export function HomeHeroDemo() {
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={toggleMute}
-          aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-panel text-ink-secondary transition hover:border-ink/25 hover:text-ink"
-        >
-          {isMuted ? (
-            <VolumeX className="h-3.5 w-3.5" />
-          ) : (
-            <Volume2 className="h-3.5 w-3.5" />
-          )}
-        </button>
-
         <div className="relative flex h-5 min-w-0 flex-1 items-center">
-          <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-track">
+          <div className="pointer-events-none absolute inset-x-0 h-1.5 overflow-hidden rounded-full bg-white/15">
             <div
               className="h-full rounded-full bg-accent"
               style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
@@ -390,36 +298,19 @@ export function HomeHeroDemo() {
           <span className="mx-0.5 text-ink-muted">/</span>
           <span>{formatTime(duration)}</span>
         </span>
-      </div>
 
-      {/* Live Style Preset Switcher across distinct categories */}
-      <div
-        role="group"
-        aria-label="Demo caption style presets"
-        data-testid="hero-preset-group"
-        className="mt-1.5 grid grid-cols-4 gap-1"
-      >
-        {featuredTemplates.map(({ tpl, shortLabel }) => {
-          const selected = templateId === tpl.id;
-          return (
-            <button
-              key={tpl.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => {
-                setTemplateId(tpl.id);
-                if (compareMode === "before") setCompareMode("after");
-              }}
-              className={`whitespace-nowrap rounded-lg border px-1 py-1 text-[10px] font-semibold transition sm:px-1.5 sm:text-[11px] ${
-                selected
-                  ? "border-accent bg-accent text-page"
-                  : "border-ink/10 bg-inset text-ink-secondary hover:border-ink/25 hover:text-ink"
-              }`}
-            >
-              {shortLabel}
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-label={isMuted ? "Unmute demo clip" : "Mute demo clip"}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-ink-secondary transition hover:bg-white/10 hover:text-ink"
+        >
+          {isMuted ? (
+            <VolumeX className="h-3.5 w-3.5" />
+          ) : (
+            <Volume2 className="h-3.5 w-3.5" />
+          )}
+        </button>
       </div>
     </div>
   );

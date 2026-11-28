@@ -1,8 +1,10 @@
 export const SITE_NAME = "ClipCaptions";
 export const HOMEPAGE_TITLE = "ClipCaptions | Add Captions to Video";
-export const HOMEPAGE_HEADLINE = "Add automatic captions to your videos.";
+export const HOMEPAGE_HEADLINE = "Make every word land.";
+export const HOMEPAGE_SUBHEADLINE =
+  "Add automatic captions to your videos. Fix the words, make the style yours, and export.";
 export const SITE_DESCRIPTION =
-  "Upload vertical or widescreen clips, edit word-synced captions in Clean, Boxed, or Word Highlight styles, and export burned-in MP4, UTF-8 SRT, or transparent ProRes 4444 MOV.";
+  "Add automatic captions to your videos. Edit word-synced transcripts, switch between 12 caption styles, and export burned-in MP4, UTF-8 SRT, or transparent ProRes 4444 MOV.";
 
 export function getPublicOrigin(): string {
   const raw =

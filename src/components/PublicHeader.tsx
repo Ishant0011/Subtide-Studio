@@ -32,6 +32,12 @@ export function PublicHeader({ userEmail }: PublicHeaderProps) {
               <span>Sample Studio</span>
             </Link>
             <Link
+              href="/#styles"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
+            >
+              Styles
+            </Link>
+            <Link
               href="/#workflow"
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-secondary transition hover:bg-panel hover:text-ink"
             >
